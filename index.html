@@ -39,12 +39,26 @@
     </script>
     <!-- Vue 3 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK همراه با تنظیم ماندگاری لاگین -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        window.FirebaseSDK = { initializeApp, getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, getFirestore, doc, setDoc, getDoc };
+        
+        window.FirebaseSDK = { 
+            initializeApp, 
+            getAuth, 
+            GoogleAuthProvider, 
+            signInWithPopup, 
+            signOut, 
+            onAuthStateChanged, 
+            setPersistence, 
+            browserLocalPersistence, 
+            getFirestore, 
+            doc, 
+            setDoc, 
+            getDoc 
+        };
     </script>
 
     <style>
@@ -93,7 +107,6 @@
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-        /* مخفی کردن تبلیغات احتمالی هاست رایگان */
         body > div:not(#app) { display: none !important; }
     </style>
 </head>
@@ -225,7 +238,7 @@
                 </div>
             </header>
 
-            <!-- ==================== ۱. تب داشبورد اصلی + نمودار پایین صفحه + تحلیلگر عملکرد ==================== -->
+            <!-- ==================== ۱. تب داشبورد اصلی ==================== -->
             <div v-show="currentTab === 'dashboard'" class="space-y-6">
                 
                 <!-- ۴ کارت شاخص‌های امروز -->
@@ -278,7 +291,6 @@
 
                 <!-- ردیف میانی: پارت‌های در انتظار و تکمیل‌شده امروز -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                    <!-- پارت‌های آماده اجرا -->
                     <div class="soft-card rounded-2xl p-5 flex flex-col justify-between">
                         <div>
                             <div class="flex justify-between items-center mb-4">
@@ -315,7 +327,6 @@
                         </div>
                     </div>
 
-                    <!-- پارت‌های تکمیل‌شده امروز -->
                     <div class="soft-card rounded-2xl p-5">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="font-bold text-white flex items-center gap-2 text-sm">
@@ -350,7 +361,7 @@
                     </div>
                 </div>
 
-                <!-- ==================== بخش پایین صفحه اصلی: نمودار پیشرفته و دکمه تحلیل عملکرد ==================== -->
+                <!-- نمودار پیشرفته و تحلیلگر -->
                 <div class="soft-card rounded-3xl p-5 md:p-6 border border-primary/20 space-y-5">
                     <div class="flex flex-col lg:flex-row justify-between lg:items-center gap-4 border-b border-slate-800 pb-4">
                         <div>
@@ -360,7 +371,6 @@
                             <p class="text-xs text-slate-400 mt-0.5">بازه زمانی دلخواه را انتخاب کنید یا تعداد دقیق روزها را وارد نمایید</p>
                         </div>
 
-                        <!-- انتخابگر ریزِ بازه زمانی + ورودی عدد دلخواه -->
                         <div class="flex flex-wrap items-center gap-1.5">
                             <button v-for="d in [3, 5, 7, 10, 14, 21, 30, 60, 90]" :key="d" 
                                 @click="setCustomRange(d)"
@@ -376,7 +386,6 @@
                         </div>
                     </div>
 
-                    <!-- نوار تغییر نوع نمودار + دکمه تحلیل عملکرد -->
                     <div class="flex flex-wrap justify-between items-center gap-3">
                         <div class="flex flex-wrap gap-1.5 bg-slate-900/80 p-1.5 rounded-2xl border border-slate-800 text-xs">
                             <button @click="setChartMetric('time')" :class="chartMetric === 'time' ? 'bg-slate-700 text-white font-bold' : 'text-slate-400'" class="px-3 py-1.5 rounded-xl transition">
@@ -395,7 +404,6 @@
                         </button>
                     </div>
 
-                    <!-- خلاصه ۴ شاخص کلیدی در بازه انتخاب‌شده -->
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                         <div class="bg-slate-900/60 p-3 rounded-2xl border border-slate-800/80">
                             <span class="text-[11px] text-slate-400 block">کل مطالعه در {{ chartDaysRange }} روز</span>
@@ -419,12 +427,10 @@
                         </div>
                     </div>
 
-                    <!-- بوم نمودار تعاملی Chart.js -->
                     <div class="bg-slate-950/60 p-3 md:p-4 rounded-2xl border border-slate-800/90 h-64 md:h-72 relative">
                         <canvas id="mainDashboardChart"></canvas>
                     </div>
 
-                    <!-- گزارش متنی تحلیل هوشمند عملکرد (وقتی کاربر روی دکمه تحلیل می‌زند باز می‌شود) -->
                     <div v-if="analysisReport" class="bg-slate-900/90 p-5 rounded-2xl border border-tealSoft/40 space-y-4 transition-all">
                         <div class="flex justify-between items-center border-b border-slate-800 pb-3">
                             <h4 class="font-extrabold text-tealSoft text-sm md:text-base flex items-center gap-2">
@@ -458,10 +464,9 @@
                     </div>
                 </div>
             </div>
-            <!-- ==================== ۲. تب مدیریت پارت‌ها و بخش‌بندی ==================== -->
+
+            <!-- ==================== ۲. تب مدیریت پارت‌ها ==================== -->
             <div v-show="currentTab === 'parts'" class="space-y-6 max-w-4xl mx-auto">
-                
-                <!-- فرم تعریف پارت جدید -->
                 <div class="soft-card p-5 md:p-6 rounded-3xl border border-primary/20">
                     <h3 class="text-base md:text-lg font-extrabold text-white mb-4 flex items-center gap-2">
                         <i class="fas fa-plus-circle text-primarySoft"></i> تعریف پارت مطالعه جدید
@@ -469,8 +474,6 @@
 
                     <form @submit.prevent="createNewPart" class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            
-                            <!-- دراپ‌داون چندانتخابی درس‌ها با تفکیک پایه -->
                             <div class="relative">
                                 <label class="block text-xs text-slate-300 mb-1.5 font-medium">انتخاب درس (امکان انتخاب چندگانه) *</label>
                                 <button type="button" @click="dropdownOpen = !dropdownOpen" class="input-calm flex justify-between items-center text-right">
@@ -499,19 +502,16 @@
                                 </div>
                             </div>
 
-                            <!-- مبحث دقیق -->
                             <div>
                                 <label class="block text-xs text-slate-300 mb-1.5 font-medium">مبحث دقیق *</label>
                                 <input type="text" v-model="newPart.topic" required class="input-calm text-xs md:text-sm" placeholder="مثلاً: حرکت بر خط راست / مشتق">
                             </div>
 
-                            <!-- فیلد توضیحات زیر مبحث -->
                             <div class="md:col-span-2">
                                 <label class="block text-xs text-slate-300 mb-1.5 font-medium">توضیحات پارت (زیرمبحث، صفحات کتاب یا منبع تست)</label>
                                 <input type="text" v-model="newPart.description" class="input-calm text-xs md:text-sm" placeholder="مثلاً: مطالعه درس‌نامه از صفحه ۴۰ تا ۵۲ + حل تست‌های مضرب ۳...">
                             </div>
 
-                            <!-- نوع فعالیت و دسته‌بندی -->
                             <div class="grid grid-cols-2 gap-2.5">
                                 <div>
                                     <label class="block text-xs text-slate-300 mb-1.5 font-medium">نوع فعالیت</label>
@@ -532,7 +532,6 @@
                                 </div>
                             </div>
 
-                            <!-- انتخاب زمان پارت (۶۰، ۷۵، ۹۰ و دلخواه) -->
                             <div>
                                 <label class="block text-xs text-slate-300 mb-1.5 font-medium">مدت زمان پارت (دقیقه)</label>
                                 <div class="flex gap-1.5">
@@ -547,7 +546,6 @@
                             </div>
                         </div>
 
-                        <!-- تقسیم پارت به حداکثر ۴ بخش کوچک‌تر با مدت و بازه زمانی -->
                         <div class="p-4 bg-slate-900/60 rounded-2xl border border-slate-800 space-y-3">
                             <div class="flex justify-between items-center">
                                 <span class="text-xs font-bold text-tealSoft flex items-center gap-1.5">
@@ -584,7 +582,6 @@
                     </form>
                 </div>
 
-                <!-- لیست پارت‌های در انتظار اجرا -->
                 <div class="soft-card p-5 rounded-3xl">
                     <h3 class="font-bold text-white mb-4 flex items-center gap-2 text-sm md:text-base">
                         <i class="fas fa-hourglass-start text-amberSoft"></i> پارت‌های در انتظار مطالعه ({{ pendingParts.length }})
@@ -628,7 +625,6 @@
                     </div>
                 </div>
 
-                <!-- آرشیو پارت‌های تکمیل‌شده -->
                 <div class="soft-card p-5 rounded-3xl">
                     <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
                         <h3 class="font-bold text-white flex items-center gap-2 text-sm md:text-base">
@@ -681,7 +677,6 @@
                     </div>
                 </div>
 
-                <!-- سطل زباله (حذف‌شده‌های موقت) -->
                 <div v-if="trashedParts.length > 0" class="soft-card p-5 rounded-3xl border border-roseSoft/25">
                     <h3 class="font-bold text-roseSoft mb-3 flex items-center gap-2 text-xs md:text-sm">
                         <i class="fas fa-trash-restore"></i> سطل زباله ({{ trashedParts.length }} پارت حذف‌شده)
@@ -701,13 +696,9 @@
                 </div>
             </div>
 
-            <!-- ==================== ۳. تب تایمر مهندسی ۳ حالته (با حلقه گرافیکی) ==================== -->
+            <!-- ==================== ۳. تب تایمر مهندسی ==================== -->
             <div v-show="currentTab === 'timer'" class="max-w-xl mx-auto space-y-5">
-                
-                <!-- پنل تنظیمات سریع تایمر -->
                 <div class="soft-card p-5 rounded-3xl border border-slate-800 space-y-4">
-                    
-                    <!-- انتخاب حالت تایمر (پیش‌رونده، معکوس، پومودورو) -->
                     <div>
                         <label class="block text-xs font-bold text-slate-300 mb-2">حالت کارکرد تایمر را انتخاب کنید:</label>
                         <div class="grid grid-cols-3 gap-2 bg-slate-950/70 p-1.5 rounded-2xl border border-slate-800 text-xs">
@@ -732,7 +723,6 @@
                         </div>
                     </div>
 
-                    <!-- انتخاب منبع درس/پارت برای تایمر -->
                     <div class="flex justify-between items-center pt-1">
                         <label class="text-xs font-bold text-slate-300">این تایمر برای کدام پارت است؟</label>
                         <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-800 text-[11px]">
@@ -795,7 +785,6 @@
                         </div>
                     </div>
 
-                    <!-- تنظیم پایان خودکار -->
                     <div class="flex justify-between items-center pt-2 border-t border-slate-800/80 text-xs">
                         <label class="flex items-center gap-2 cursor-pointer text-slate-300">
                             <input type="checkbox" v-model="timer.autoStop" class="w-4 h-4 accent-tealSoft rounded">
@@ -804,7 +793,6 @@
                     </div>
                 </div>
 
-                <!-- نمایشگر دایره‌ای و دیجیتال تایمر -->
                 <div class="soft-card p-6 md:p-8 rounded-3xl text-center relative overflow-hidden border border-primary/25 shadow-2xl">
                     <div class="mb-3 min-h-[42px] flex flex-col items-center justify-center">
                         <template v-if="activeTimerInfo">
@@ -816,7 +804,6 @@
                         <p v-else class="text-slate-400 text-xs">یک پارت یا درس را از کادر بالا انتخاب کنید</p>
                     </div>
 
-                    <!-- حلقه گرافیکی پیشرفت زمان (SVG Progress Ring) -->
                     <div class="relative w-56 h-56 md:w-64 md:h-64 mx-auto my-2 flex items-center justify-center">
                         <svg class="w-full h-full -rotate-90 transform" viewBox="0 0 120 120">
                             <circle cx="60" cy="60" r="52" stroke="rgba(255,255,255,0.06)" stroke-width="7" fill="transparent" />
@@ -847,7 +834,6 @@
                         <span>وقفه‌ها: <strong class="text-amberSoft">{{ timer.pauseCount }} بار ({{ Math.round((timer.totalPaused || 0)/60000) }} دقیقه)</strong></span>
                     </div>
 
-                    <!-- دکمه‌های کنترل تایمر -->
                     <div class="flex justify-center gap-3 mt-5">
                         <button v-if="!timer.active" @click="startTimer" class="btn-calm bg-gradient-to-r from-primary to-tealSoft text-slate-950 font-black w-full py-4 text-base shadow-lg shadow-primary/25">
                             <i class="fas fa-play"></i> شروع تایمر مطالعه
@@ -867,7 +853,7 @@
                 </div>
             </div>
 
-            <!-- ==================== ۴. تب برنامه هفتگی و پارت‌های تکمیل‌شده هفته ==================== -->
+            <!-- ==================== ۴. تب برنامه هفتگی ==================== -->
             <div v-show="currentTab === 'calendar'" class="space-y-6 max-w-4xl mx-auto">
                 <div class="soft-card p-5 rounded-3xl space-y-4">
                     <h3 class="font-bold text-white text-base flex items-center gap-2">
@@ -906,7 +892,6 @@
                     </div>
                 </div>
 
-                <!-- نمایش پارت‌های تکمیل‌شده در طول ۷ روز اخیر -->
                 <div class="soft-card p-5 rounded-3xl space-y-3">
                     <h3 class="font-bold text-white text-sm md:text-base flex items-center gap-2">
                         <i class="fas fa-check-circle text-tealSoft"></i> پارت‌های تکمیل‌شده در طول این هفته ({{ weekCompletedParts.length }})
@@ -926,7 +911,7 @@
                 </div>
             </div>
 
-            <!-- ==================== ۵. تب آرشیو جزوه‌ها و لینک‌های آموزشی ==================== -->
+            <!-- ==================== ۵. تب آرشیو آموزشی ==================== -->
             <div v-show="currentTab === 'archive'" class="space-y-6 max-w-4xl mx-auto">
                 <div class="soft-card p-5 rounded-3xl space-y-4">
                     <h3 class="font-bold text-white text-base flex items-center gap-2">
@@ -1009,10 +994,8 @@
                 </div>
             </div>
 
-            <!-- ==================== ۷. تب اکانت گوگل، تنظیمات و پشتیبان‌گیری ==================== -->
+            <!-- ==================== ۷. تب اکانت گوگل و تنظیمات ==================== -->
             <div v-show="currentTab === 'settings'" class="max-w-xl mx-auto space-y-5">
-                
-                <!-- اتصال به حساب Google -->
                 <div class="soft-card p-5 rounded-3xl space-y-4 border border-primary/30">
                     <div class="flex justify-between items-center border-b border-slate-800 pb-3">
                         <h3 class="font-bold text-white text-sm md:text-base flex items-center gap-2">
@@ -1047,7 +1030,6 @@
                     </div>
                 </div>
 
-                <!-- شخصی‌سازی مطالعه -->
                 <div class="soft-card p-5 rounded-3xl space-y-4">
                     <h3 class="font-bold text-white border-b border-slate-800 pb-2 text-sm md:text-base">شخصی‌سازی پروفایل و تایمر</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1070,7 +1052,6 @@
                     </div>
                 </div>
 
-                <!-- افزودن درس دلخواه -->
                 <div class="soft-card p-5 rounded-3xl space-y-3">
                     <h3 class="font-bold text-white border-b border-slate-800 pb-2 text-sm md:text-base">افزودن درس جدید به لیست دروس</h3>
                     <div class="flex gap-2">
@@ -1079,7 +1060,6 @@
                     </div>
                 </div>
 
-                <!-- پشتیبان‌گیری -->
                 <div class="soft-card p-5 rounded-3xl space-y-3 border border-sage/20">
                     <h3 class="font-bold text-sage border-b border-slate-800 pb-2 text-sm md:text-base">پشتیبان‌گیری و بازیابی دستی</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
@@ -1096,7 +1076,7 @@
 
         </main>
 
-        <!-- ==================== مودال تکمیل و ویرایش پارت ==================== -->
+        <!-- ==================== مودال‌ها ==================== -->
         <div v-if="completingPart" class="fixed inset-0 z-[100000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
             <div class="soft-card bg-[#162032] w-full max-w-md rounded-3xl p-6 border border-primary/40 shadow-2xl space-y-3.5 my-auto">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-2.5">
@@ -1169,7 +1149,6 @@
             </div>
         </div>
 
-        <!-- ==================== مودال جزئیات کامل پارت ==================== -->
         <div v-if="detailPart" class="fixed inset-0 z-[100000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
             <div class="soft-card bg-[#162032] w-full max-w-md rounded-3xl p-6 border border-tealSoft/40 shadow-2xl space-y-4 my-auto text-xs">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-3">
@@ -1195,14 +1174,6 @@
                     <p v-if="detailPart.notes"><span class="text-slate-400">یادداشت:</span> <span class="text-amberSoft">{{ detailPart.notes }}</span></p>
                 </div>
 
-                <div v-if="detailPart.subParts && detailPart.subParts.length > 0" class="bg-slate-950/70 p-3 rounded-xl border border-slate-800">
-                    <span class="font-bold text-slate-300 block mb-1.5">بخش‌بندی‌های تعریف‌شده در این پارت:</span>
-                    <div v-for="(sp, idx) in detailPart.subParts" :key="idx" class="flex justify-between py-1 border-b border-slate-800/60 last:border-0">
-                        <span>بخش {{ idx + 1 }}: {{ sp.title || 'بدون عنوان' }} <em v-if="sp.timeRange" class="text-slate-400">({{ sp.timeRange }})</em></span>
-                        <span class="text-tealSoft font-bold">{{ sp.duration }} دقیقه</span>
-                    </div>
-                </div>
-
                 <button @click="detailPart = null" class="btn-calm bg-slate-800 text-white w-full py-2.5">بستن پنجره</button>
             </div>
         </div>
@@ -1219,7 +1190,6 @@
                 const timerDropdownOpen = ref(false);
                 const customSubjectInput = ref('');
 
-                // توابع تاریخ و ساعت دقیق به وقت ایران (Asia/Tehran)
                 const getTehranDateISO = (d = new Date()) => {
                     return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tehran', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
                 };
@@ -1236,7 +1206,6 @@
                 const currentDateStr = ref(getTehranFullDateStr());
                 const todayISO = getTehranDateISO();
 
-                // دروس کنکور ریاضی به تفکیک پایه
                 const defaultSubjectGroups = [
                     {
                         category: 'پایه دهم (ریاضی فیزیک)',
@@ -1265,7 +1234,6 @@
                 const archive = ref([]);
                 const settings = ref({ userName: '', dailyGoal: 360, negativeMarkRatio: 3, breakDuration: 15, onboarded: false });
 
-                // وضعیت اتصال به اکانت گوگل و Firebase
                 const currentUser = ref(null);
                 const authInstance = ref(null);
                 let dbInstance = null;
@@ -1280,7 +1248,6 @@
                     return { text: 'متصل به اکانت گوگل', class: 'bg-sage' };
                 });
 
-                // فرم تعریف پارت جدید با قابلیت ۴ زیربخش
                 const getEmptyPartForm = () => ({
                     subjects: [],
                     topic: '',
@@ -1307,7 +1274,6 @@
                     }
                 };
 
-                // وضعیت تایمر ۳ حالته (stopwatch | countdown | pomodoro)
                 const timer = ref({
                     style: 'stopwatch',
                     mode: 'part',
@@ -1331,20 +1297,17 @@
                 const detailPart = ref(null);
                 const calc = ref({ c: 0, w: 0, u: 0 });
 
-                // وضعیت نمودار و تحلیلگر هوشمند
                 const chartDaysRange = ref(7);
-                const chartMetric = ref('time'); // 'time' | 'tests' | 'score'
+                const chartMetric = ref('time');
                 const analysisReport = ref(null);
                 let mainChartInstance = null;
 
-                // برنامه هفتگی و آرشیو
                 const weekDays = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
                 const selectedWeekDay = ref('شنبه');
                 const scheduleForm = ref({ subject: '', topic: '', duration: 60 });
                 const archiveForm = ref({ title: '', category: 'جزوه و خلاصه‌نویسی', link: '', content: '' });
                 const archiveSearch = ref('');
 
-                // Computeds
                 const tabTitle = computed(() => ({
                     dashboard: 'داشبورد و تحلیل عملکرد',
                     parts: 'مدیریت پارت‌ها و بخش‌بندی',
@@ -1364,7 +1327,6 @@
                 const trashedParts = computed(() => parts.value.filter(p => p.status === 'trashed'));
                 const todayCompleted = computed(() => completedParts.value.filter(p => p.dateISO === todayISO));
 
-                // پارت‌های تکمیل‌شده در ۷ روز گذشته
                 const weekCompletedParts = computed(() => {
                     const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
                     const minISO = getTehranDateISO(sevenDaysAgo);
@@ -1390,7 +1352,6 @@
                     return null;
                 });
 
-                // نمایش زمان بر اساس حالت انتخابی (از صفر به جلو یا معکوس به عقب)
                 const formattedTimer = computed(() => {
                     let ms = timer.value.elapsed || 0;
                     if (timer.value.style === 'countdown' || timer.value.style === 'pomodoro') {
@@ -1404,7 +1365,6 @@
                     return `${h}:${m}:${s}`;
                 });
 
-                // درصد پیشرفت حلقه گرافیکی دور تایمر
                 const timerProgressPercent = computed(() => {
                     const targetMs = Math.max(1, currentTargetMinutes.value * 60000);
                     if (!timer.value.active) {
@@ -1442,7 +1402,6 @@
                     return { totalTime, totalTests, descriptive, correct, wrong, goalProgress, accuracy, netScore };
                 });
 
-                // داده‌های روزانه بازه انتخابی برای نمودار و تحلیلگر
                 const chartSeriesData = computed(() => {
                     const days = [];
                     const range = Math.max(1, Math.min(365, Number(chartDaysRange.value) || 7));
@@ -1497,7 +1456,6 @@
                     return { totalMinutes, avgDailyMinutes, totalTests, totalCorrect, totalWrong, totalDescriptive, avgScore, activeDays };
                 });
 
-                // رسم و بروزرسانی نمودار حرفه‌ای Chart.js در پایین صفحه اصلی
                 const updateMainChart = () => {
                     nextTick(() => {
                         const canvas = document.getElementById('mainDashboardChart');
@@ -1594,7 +1552,6 @@
                     updateMainChart();
                 };
 
-                // موتور تحلیلگر هوشمند عملکرد برای هر تعداد روز دلخواه
                 const runPerformanceAnalysis = () => {
                     const days = Math.max(1, Number(chartDaysRange.value) || 7);
                     const startDate = new Date(Date.now() - (days - 1) * 86400000);
@@ -1620,7 +1577,6 @@
                         consistencyDesc = `فاصله بین روزهای مطالعه شما زیاد است. هدف روزانه را کمی کوچک‌تر اما منظم‌تر انتخاب کنید.`;
                     }
 
-                    // تحلیل تفکیکی دروس در بازه
                     const subMap = {};
                     rangeParts.forEach(p => {
                         (p.subjects || []).forEach(sub => {
@@ -1725,7 +1681,6 @@
                     saveAll();
                 };
 
-                // ذخیره‌سازی محلی و ابری
                 const saveAll = () => {
                     localStorage.setItem('sp_pro_parts', JSON.stringify(parts.value));
                     localStorage.setItem('sp_pro_settings', JSON.stringify(settings.value));
@@ -1775,7 +1730,7 @@
                     updateMainChart();
                 };
 
-                // راه‌اندازی Firebase
+                // راه‌اندازی Firebase و تنظیم ماندگاری دائمی لاگین
                 const initFirebase = (rawConfig) => {
                     try {
                         if (!window.FirebaseSDK) return;
@@ -1783,6 +1738,12 @@
                         const app = window.FirebaseSDK.initializeApp(cfg);
                         authInstance.value = window.FirebaseSDK.getAuth(app);
                         dbInstance = window.FirebaseSDK.getFirestore(app);
+
+                        // اعمال ماندگاری محلی برای اینکه لاگین با بستن برنامه نپرد
+                        window.FirebaseSDK.setPersistence(authInstance.value, window.FirebaseSDK.browserLocalPersistence)
+                            .catch((error) => {
+                                console.warn("Persistence Error:", error);
+                            });
 
                         window.FirebaseSDK.onAuthStateChanged(authInstance.value, async (user) => {
                             currentUser.value = user || null;
@@ -1874,7 +1835,6 @@
                     }
                 };
 
-                // مدیریت پارت‌ها
                 const createNewPart = () => {
                     if (newPart.value.subjects.length === 0) {
                         alert('لطفاً حداقل یک درس را از لیست انتخاب کنید.');
@@ -2283,10 +2243,3 @@
     </script>
 </body>
 </html>
-/* مخفی کردن نشان Powered by Netlify */
-a[href*="netlify.com"], 
-div[style*="bottom: 20px"][style*="right: 20px"] {
-    display: none !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-}
