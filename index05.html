@@ -1,0 +1,2245 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0f172a">
+    <title>tilo | دستیار هوشمند مطالعه و تحلیل کنکور</title>
+    
+    <!-- فونت وزیرمتن -->
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.0.0/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
+    <!-- آیکون‌ها -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js برای نمودارهای حرفه‌ای و نرم -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Vazirmatn', 'sans-serif'] },
+                    colors: {
+                        /* پالت رنگ آرامش‌بخش و ضد خستگی چشم (Nordic Slate) */
+                        bgBase: '#0f172a',
+                        bgSurface: '#1e293b',
+                        bgElevated: '#263349',
+                        primary: '#6366f1',
+                        primarySoft: '#818cf8',
+                        tealSoft: '#2dd4bf',
+                        sage: '#34d399',
+                        amberSoft: '#fbbf24',
+                        roseSoft: '#f87171'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Firebase SDK همراه با تنظیم ماندگاری لاگین -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        
+        window.FirebaseSDK = { 
+            initializeApp, 
+            getAuth, 
+            GoogleAuthProvider, 
+            signInWithPopup, 
+            signOut, 
+            onAuthStateChanged, 
+            setPersistence, 
+            browserLocalPersistence, 
+            getFirestore, 
+            doc, 
+            setDoc, 
+            getDoc 
+        };
+    </script>
+
+    <style>
+        body {
+            background-color: #0f172a;
+            background-image: 
+                radial-gradient(at 10% 10%, rgba(99, 102, 241, 0.08) 0px, transparent 45%),
+                radial-gradient(at 90% 90%, rgba(45, 212, 191, 0.07) 0px, transparent 45%);
+            background-attachment: fixed;
+            color: #e2e8f0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        [v-cloak] { display: none; }
+        .soft-card {
+            background: rgba(30, 41, 59, 0.78);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.2);
+        }
+        .input-calm {
+            background: #172033;
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            color: #f1f5f9;
+            border-radius: 0.85rem;
+            padding: 0.7rem 0.95rem;
+            width: 100%;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        .input-calm:focus {
+            border-color: #818cf8;
+            box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.18);
+        }
+        .btn-calm {
+            padding: 0.7rem 1.2rem;
+            border-radius: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .btn-calm:active { transform: scale(0.97); }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        body > div:not(#app) { display: none !important; }
+    </style>
+</head>
+<body class="font-sans antialiased h-screen flex flex-col md:flex-row overflow-hidden select-none">
+    <div id="app" class="w-full h-full flex flex-col md:flex-row max-w-7xl mx-auto relative" v-cloak>
+        
+        <!-- ==================== پنجره خوش‌آمدگویی و ورود مدرن (Onboarding) ==================== -->
+        <div v-if="showWelcomeModal" class="fixed inset-0 z-[100000] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+            <div class="soft-card bg-[#162032] w-full max-w-md rounded-3xl p-6 md:p-8 border border-indigo-500/20 shadow-2xl text-center space-y-5">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary to-tealSoft mx-auto flex items-center justify-center shadow-lg shadow-primary/25">
+                    <i class="fas fa-graduation-cap text-white text-3xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-black text-white">به <span class="text-tealSoft">tilo</span> خوش آمدید</h2>
+                    <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                        دستیار هوشمند برنامه‌ریزی، تایمر مهندسی و تحلیلگر عملکرد مطالعاتی کنکور
+                    </p>
+                </div>
+
+                <div class="bg-slate-900/70 p-4 rounded-2xl border border-slate-800 text-right space-y-3">
+                    <div>
+                        <label class="block text-xs text-slate-300 mb-1.5 font-bold">نام شما (برای نمایش در داشبورد):</label>
+                        <input type="text" v-model="settings.userName" placeholder="مثلاً: بنیامین" class="input-calm text-sm text-center font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-300 mb-1.5 font-bold">هدف مطالعه روزانه (دقیقه):</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button type="button" @click="settings.dailyGoal = 240" :class="settings.dailyGoal === 240 ? 'bg-primary text-white' : 'bg-slate-800 text-slate-300'" class="py-2 rounded-xl text-xs font-bold">۴ ساعت (۲۴۰)</button>
+                            <button type="button" @click="settings.dailyGoal = 360" :class="settings.dailyGoal === 360 ? 'bg-primary text-white' : 'bg-slate-800 text-slate-300'" class="py-2 rounded-xl text-xs font-bold">۶ ساعت (۳۶۰)</button>
+                            <button type="button" @click="settings.dailyGoal = 480" :class="settings.dailyGoal === 480 ? 'bg-primary text-white' : 'bg-slate-800 text-slate-300'" class="py-2 rounded-xl text-xs font-bold">۸ ساعت (۴۸۰)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2.5 pt-1">
+                    <button @click="completeWelcome" class="btn-calm bg-gradient-to-r from-primary to-tealSoft text-slate-950 font-black w-full py-3.5 text-sm shadow-lg shadow-primary/20">
+                        <i class="fas fa-rocket"></i> ورود به داشبورد من
+                    </button>
+                    <button v-if="authInstance" @click="loginWithGoogle" class="btn-calm bg-white text-slate-900 hover:bg-slate-100 w-full py-3 text-xs font-extrabold">
+                        <i class="fab fa-google text-rose-500 text-sm"></i> اتصال مستقیم به حساب Google
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== منوی ناوبری اصلی ==================== -->
+        <nav class="soft-card w-full md:w-60 md:h-full flex md:flex-col justify-around md:justify-start p-2 md:p-4 order-last md:order-first z-50 fixed md:relative bottom-0 left-0 right-0 border-t md:border-t-0 md:border-l border-slate-800/80">
+            <div class="hidden md:flex items-center gap-3 mb-6 px-2 pt-1">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-tealSoft flex items-center justify-center shadow-md">
+                    <i class="fas fa-graduation-cap text-slate-950 text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black tracking-tight text-white">tilo</h1>
+                    <span class="text-[11px] text-tealSoft font-medium">{{ settings.userName || 'نسخه کنکور ریاضی' }}</span>
+                </div>
+            </div>
+
+            <button @click="currentTab = 'dashboard'" :class="navClass('dashboard')">
+                <i class="fas fa-chart-pie text-base md:w-6"></i>
+                <span class="text-[10px] md:text-sm mt-1 md:mt-0">داشبورد و تحلیل</span>
+            </button>
+
+            <button @click="currentTab = 'parts'" :class="navClass('parts')" class="relative">
+                <i class="fas fa-layer-group text-base md:w-6"></i>
+                <span class="text-[10px] md:text-sm mt-1 md:mt-0">پارت‌ها</span>
+                <span v-if="pendingParts.length > 0" class="absolute top-1 right-2 md:top-auto md:left-3 bg-primary text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                    {{ pendingParts.length }}
+                </span>
+            </button>
+
+            <button @click="currentTab = 'timer'" :class="navClass('timer')" class="relative">
+                <i class="fas fa-stopwatch text-base md:w-6"></i>
+                <span class="text-[10px] md:text-sm mt-1 md:mt-0">تایمر حرفه‌ای</span>
+                <span v-if="timer.active" class="absolute top-1.5 right-3 w-2.5 h-2.5 bg-tealSoft rounded-full animate-ping"></span>
+                <span v-if="timer.active" class="absolute top-1.5 right-3 w-2.5 h-2.5 bg-tealSoft rounded-full"></span>
+            </button>
+
+            <button @click="currentTab = 'calendar'" :class="navClass('calendar')">
+                <i class="fas fa-calendar-week text-base md:w-6"></i>
+                <span class="text-[10px] md:text-sm mt-1 md:mt-0">برنامه هفتگی</span>
+            </button>
+
+            <button @click="currentTab = 'archive'" :class="navClass('archive')">
+                <i class="fas fa-folder-open text-base md:w-6"></i>
+                <span class="text-[10px] md:text-sm mt-1 md:mt-0">آرشیو آموزشی</span>
+            </button>
+
+            <button @click="currentTab = 'calculator'" :class="navClass('calculator')">
+                <i class="fas fa-percentage text-base md:w-6"></i>
+                <span class="text-[10px] md:text-sm mt-1 md:mt-0">درصدگیر</span>
+            </button>
+
+            <button @click="currentTab = 'settings'" :class="navClass('settings')" class="md:mt-auto">
+                <i class="fas fa-sliders-h text-base md:w-6"></i>
+                <span class="text-[10px] md:text-sm mt-1 md:mt-0">اکانت و تنظیمات</span>
+            </button>
+        </nav>
+
+        <!-- ==================== محتوای اصلی ==================== -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-7 pb-28 md:pb-8">
+            
+            <!-- هدر مدرن با وضعیت اکانت -->
+            <header class="flex flex-wrap justify-between items-center gap-3 mb-6 bg-slate-800/40 p-3.5 rounded-2xl border border-slate-800">
+                <div class="flex items-center gap-3">
+                    <div @click="currentTab = 'settings'" class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center cursor-pointer hover:border-primarySoft transition">
+                        <i class="fas fa-user-astronaut text-tealSoft"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base md:text-xl font-extrabold text-white flex items-center gap-2">
+                            <span>{{ tabTitle }}</span>
+                            <span v-if="settings.userName" class="text-xs font-normal text-slate-400 hidden sm:inline">| سلام {{ settings.userName }} 👋</span>
+                        </h2>
+                        <p class="text-slate-400 text-[11px] md:text-xs mt-0.5">{{ currentDateStr }}</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <button @click="currentTab = 'settings'" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900/70 border border-slate-700/70 text-[11px]">
+                        <span class="w-2 h-2 rounded-full" :class="cloudStatus.class"></span>
+                        <span class="text-slate-300">{{ currentUser ? currentUser.displayName || 'اکانت متصل' : cloudStatus.text }}</span>
+                    </button>
+
+                    <button v-if="currentTab !== 'parts'" @click="currentTab = 'parts'" class="btn-calm bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs py-2 px-3 border border-slate-700">
+                        <i class="fas fa-plus text-primarySoft"></i> پارت جدید
+                    </button>
+                    <button v-if="currentTab !== 'timer'" @click="currentTab = 'timer'" class="btn-calm bg-primary hover:bg-indigo-500 text-white text-xs py-2 px-3.5 shadow-md shadow-primary/20">
+                        <i class="fas fa-play"></i> تایمر
+                    </button>
+                </div>
+            </header>
+
+            <!-- ==================== ۱. تب داشبورد اصلی ==================== -->
+            <div v-show="currentTab === 'dashboard'" class="space-y-6">
+                
+                <!-- ۴ کارت شاخص‌های امروز -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+                    <div class="soft-card p-4 rounded-2xl border-r-4 border-r-primarySoft">
+                        <div class="flex justify-between items-start">
+                            <p class="text-slate-400 text-xs">مطالعه امروز</p>
+                            <i class="fas fa-clock text-primarySoft/70"></i>
+                        </div>
+                        <p class="text-xl md:text-2xl font-black text-white mt-2">{{ formatMinutes(todayStats.totalTime) }}</p>
+                        <div class="w-full bg-slate-900 h-1.5 rounded-full mt-2 overflow-hidden">
+                            <div class="bg-gradient-to-r from-primary to-tealSoft h-full rounded-full" :style="{width: todayStats.goalProgress + '%'}"></div>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-1">هدف: {{ formatMinutes(settings.dailyGoal) }} ({{ todayStats.goalProgress }}%)</p>
+                    </div>
+
+                    <div class="soft-card p-4 rounded-2xl border-r-4 border-r-tealSoft">
+                        <div class="flex justify-between items-start">
+                            <p class="text-slate-400 text-xs">تست و تشریحی امروز</p>
+                            <i class="fas fa-pen-nib text-tealSoft/70"></i>
+                        </div>
+                        <p class="text-xl md:text-2xl font-black text-white mt-2">
+                            {{ todayStats.totalTests }} <span class="text-xs font-normal text-slate-400">تست</span>
+                            <span v-if="todayStats.descriptive > 0" class="text-xs font-bold text-indigo-300 mr-1">| {{ todayStats.descriptive }} تشریحی</span>
+                        </p>
+                        <p class="text-[11px] text-slate-400 mt-1.5">
+                            <span class="text-sage">{{ todayStats.correct }} درست</span> • 
+                            <span class="text-roseSoft">{{ todayStats.wrong }} غلط</span>
+                        </p>
+                    </div>
+
+                    <div class="soft-card p-4 rounded-2xl border-r-4 border-r-sage">
+                        <div class="flex justify-between items-start">
+                            <p class="text-slate-400 text-xs">درصد خالص امروز</p>
+                            <i class="fas fa-bullseye text-sage/70"></i>
+                        </div>
+                        <p class="text-xl md:text-2xl font-black text-sage mt-2" dir="ltr">{{ todayStats.netScore }}</p>
+                        <p class="text-[11px] text-slate-400 mt-1.5">دقت پاسخ‌گویی: {{ todayStats.accuracy }}</p>
+                    </div>
+
+                    <div class="soft-card p-4 rounded-2xl border-r-4 border-r-amberSoft">
+                        <div class="flex justify-between items-start">
+                            <p class="text-slate-400 text-xs">پارت‌های امروز</p>
+                            <i class="fas fa-check-double text-amberSoft/70"></i>
+                        </div>
+                        <p class="text-xl md:text-2xl font-black text-white mt-2">{{ todayCompleted.length }} <span class="text-xs font-normal text-slate-400">انجام‌شده</span></p>
+                        <p class="text-[11px] text-amberSoft mt-1.5">{{ pendingParts.length }} پارت در صف انتظار</p>
+                    </div>
+                </div>
+
+                <!-- ردیف میانی: پارت‌های در انتظار و تکمیل‌شده امروز -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    <div class="soft-card rounded-2xl p-5 flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-bold text-white flex items-center gap-2 text-sm">
+                                    <i class="fas fa-play-circle text-tealSoft"></i> پارت‌های آماده شروع ({{ pendingParts.length }})
+                                </h3>
+                                <button @click="currentTab = 'parts'" class="text-xs text-primarySoft hover:underline">+ تعریف پارت</button>
+                            </div>
+
+                            <div v-if="pendingParts.length === 0" class="text-center py-8 bg-slate-900/40 rounded-xl border border-dashed border-slate-700/70">
+                                <p class="text-slate-400 text-xs">صف مطالعه فعلاً خالی است.</p>
+                                <button @click="currentTab = 'parts'" class="btn-calm bg-primary/20 text-primarySoft text-xs mt-3 py-2 px-4">
+                                    تعریف اولین پارت امروز
+                                </button>
+                            </div>
+
+                            <div v-else class="space-y-2.5 max-h-64 overflow-y-auto pl-1">
+                                <div v-for="part in pendingParts" :key="part.id" class="bg-slate-900/70 p-3.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                                    <div>
+                                        <div class="flex flex-wrap gap-1 mb-1">
+                                            <span v-for="sub in part.subjects" :key="sub" class="text-[10px] bg-primary/20 text-indigo-300 px-2 py-0.5 rounded font-bold">{{ sub }}</span>
+                                        </div>
+                                        <p class="text-sm font-bold text-white">{{ part.topic }}</p>
+                                        <p class="text-[11px] text-slate-400 mt-0.5">
+                                            {{ part.type }} • هدف: {{ part.plannedTime }} دقیقه
+                                            <span v-if="part.subParts && part.subParts.length > 1" class="text-tealSoft mr-1">({{ part.subParts.length }} بخش)</span>
+                                        </p>
+                                    </div>
+                                    <button @click="selectPartAndGoToTimer(part)" class="btn-calm bg-primary hover:bg-indigo-500 text-white text-xs py-2 px-3 rounded-xl shrink-0">
+                                        <i class="fas fa-play"></i> شروع
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="soft-card rounded-2xl p-5">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-white flex items-center gap-2 text-sm">
+                                <i class="fas fa-check-circle text-sage"></i> تکمیل‌شده‌های امروز ({{ todayCompleted.length }})
+                            </h3>
+                            <button @click="currentTab = 'parts'" class="text-xs text-slate-400 hover:text-white">مشاهده آرشیو کامل</button>
+                        </div>
+                        <div v-if="todayCompleted.length === 0" class="text-center py-8 bg-slate-900/40 rounded-xl border border-dashed border-slate-700/70 text-slate-400 text-xs">
+                            هنوز پارتی در امروز تکمیل نشده است.
+                        </div>
+                        <div v-else class="space-y-2.5 max-h-64 overflow-y-auto pl-1">
+                            <div v-for="item in todayCompleted" :key="item.id" class="bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/80 flex justify-between items-center">
+                                <div>
+                                    <div class="flex flex-wrap gap-1 mb-1">
+                                        <span v-for="s in item.subjects" :key="s" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">{{ s }}</span>
+                                    </div>
+                                    <p class="font-bold text-xs md:text-sm text-white">{{ item.topic }} <span class="text-[11px] font-normal text-slate-400">({{ item.type }})</span></p>
+                                </div>
+                                <div class="text-left flex items-center gap-2">
+                                    <div>
+                                        <span class="text-xs font-bold text-sage block">{{ item.realTime }} دقیقه</span>
+                                        <span v-if="item.tests && item.tests.total > 0" class="text-[10px] text-slate-400">
+                                            {{ item.tests.total }} تست ({{ calcPartPercent(item.tests) }}%)
+                                        </span>
+                                    </div>
+                                    <button @click="openPartDetail(item)" class="text-slate-400 hover:text-white p-1.5" title="جزئیات">
+                                        <i class="fas fa-info-circle"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- نمودار پیشرفته و تحلیلگر -->
+                <div class="soft-card rounded-3xl p-5 md:p-6 border border-primary/20 space-y-5">
+                    <div class="flex flex-col lg:flex-row justify-between lg:items-center gap-4 border-b border-slate-800 pb-4">
+                        <div>
+                            <h3 class="font-extrabold text-white text-base md:text-lg flex items-center gap-2">
+                                <i class="fas fa-chart-line text-tealSoft"></i> نمودار روند پیشرفت و تحلیلگر هوشمند عملکرد
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-0.5">بازه زمانی دلخواه را انتخاب کنید یا تعداد دقیق روزها را وارد نمایید</p>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <button v-for="d in [3, 5, 7, 10, 14, 21, 30, 60, 90]" :key="d" 
+                                @click="setCustomRange(d)"
+                                :class="chartDaysRange === d ? 'bg-primary text-white font-bold shadow' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'"
+                                class="px-2.5 py-1.5 rounded-xl text-xs transition">
+                                {{ d }} روزه
+                            </button>
+                            <div class="flex items-center bg-slate-900 rounded-xl border border-slate-700 px-2 py-1">
+                                <span class="text-[11px] text-slate-400 ml-1">دلخواه:</span>
+                                <input type="number" v-model.number="chartDaysRange" @change="updateMainChart" min="1" max="365" class="w-12 bg-transparent text-center text-xs font-bold text-tealSoft outline-none">
+                                <span class="text-[10px] text-slate-500">روز</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap justify-between items-center gap-3">
+                        <div class="flex flex-wrap gap-1.5 bg-slate-900/80 p-1.5 rounded-2xl border border-slate-800 text-xs">
+                            <button @click="setChartMetric('time')" :class="chartMetric === 'time' ? 'bg-slate-700 text-white font-bold' : 'text-slate-400'" class="px-3 py-1.5 rounded-xl transition">
+                                <i class="fas fa-clock text-primarySoft ml-1"></i> زمان مطالعه (دقیقه)
+                            </button>
+                            <button @click="setChartMetric('tests')" :class="chartMetric === 'tests' ? 'bg-slate-700 text-white font-bold' : 'text-slate-400'" class="px-3 py-1.5 rounded-xl transition">
+                                <i class="fas fa-list-ol text-tealSoft ml-1"></i> تعداد تست و تشریحی
+                            </button>
+                            <button @click="setChartMetric('score')" :class="chartMetric === 'score' ? 'bg-slate-700 text-white font-bold' : 'text-slate-400'" class="px-3 py-1.5 rounded-xl transition">
+                                <i class="fas fa-percentage text-sage ml-1"></i> روند درصد تستی
+                            </button>
+                        </div>
+
+                        <button @click="runPerformanceAnalysis" class="btn-calm bg-gradient-to-r from-primary to-tealSoft text-slate-950 font-black text-xs py-2.5 px-4 shadow-lg shadow-tealSoft/15">
+                            <i class="fas fa-microscope"></i> تحلیل هوشمند عملکرد ({{ chartDaysRange }} روز اخیر)
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                        <div class="bg-slate-900/60 p-3 rounded-2xl border border-slate-800/80">
+                            <span class="text-[11px] text-slate-400 block">کل مطالعه در {{ chartDaysRange }} روز</span>
+                            <span class="font-black text-white text-sm md:text-base mt-1 block">{{ formatMinutes(rangeAnalytics.totalMinutes) }}</span>
+                            <span class="text-[10px] text-slate-500">میانگین روزانه: {{ rangeAnalytics.avgDailyMinutes }} دقیقه</span>
+                        </div>
+                        <div class="bg-slate-900/60 p-3 rounded-2xl border border-slate-800/80">
+                            <span class="text-[11px] text-slate-400 block">تست‌های زده‌شده</span>
+                            <span class="font-black text-tealSoft text-sm md:text-base mt-1 block">{{ rangeAnalytics.totalTests }} تست</span>
+                            <span class="text-[10px] text-slate-500">✓{{ rangeAnalytics.totalCorrect }} | ✗{{ rangeAnalytics.totalWrong }}</span>
+                        </div>
+                        <div class="bg-slate-900/60 p-3 rounded-2xl border border-slate-800/80">
+                            <span class="text-[11px] text-slate-400 block">سؤالات تشریحی</span>
+                            <span class="font-black text-primarySoft text-sm md:text-base mt-1 block">{{ rangeAnalytics.totalDescriptive }} سؤال</span>
+                            <span class="text-[10px] text-slate-500">آمادگی امتحانات نهایی</span>
+                        </div>
+                        <div class="bg-slate-900/60 p-3 rounded-2xl border border-slate-800/80">
+                            <span class="text-[11px] text-slate-400 block">میانگین درصد تستی بازه</span>
+                            <span class="font-black text-sage text-sm md:text-base mt-1 block" dir="ltr">{{ rangeAnalytics.avgScore }}</span>
+                            <span class="text-[10px] text-slate-500">{{ rangeAnalytics.activeDays }} روز فعال از {{ chartDaysRange }} روز</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950/60 p-3 md:p-4 rounded-2xl border border-slate-800/90 h-64 md:h-72 relative">
+                        <canvas id="mainDashboardChart"></canvas>
+                    </div>
+
+                    <div v-if="analysisReport" class="bg-slate-900/90 p-5 rounded-2xl border border-tealSoft/40 space-y-4 transition-all">
+                        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                            <h4 class="font-extrabold text-tealSoft text-sm md:text-base flex items-center gap-2">
+                                <i class="fas fa-brain"></i> کارنامه و تحلیل هوشمند {{ analysisReport.days }} روز گذشته شما
+                            </h4>
+                            <button @click="analysisReport = null" class="text-slate-400 hover:text-white text-xs">بستن گزارش ✕</button>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                            <div class="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800">
+                                <span class="text-slate-400 block mb-1">وضعیت پیوستگی و تعهد به هدف:</span>
+                                <p class="font-bold text-white text-sm">{{ analysisReport.consistencyTitle }}</p>
+                                <p class="text-slate-400 mt-1 leading-relaxed">{{ analysisReport.consistencyDesc }}</p>
+                            </div>
+                            <div class="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800">
+                                <span class="text-slate-400 block mb-1">نقطه قوت (بهترین عملکرد):</span>
+                                <p class="font-bold text-sage text-sm">{{ analysisReport.bestSubject }}</p>
+                                <p class="text-slate-400 mt-1 leading-relaxed">{{ analysisReport.bestSubjectDesc }}</p>
+                            </div>
+                            <div class="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800">
+                                <span class="text-slate-400 block mb-1">نیازمند توجه و تقویت:</span>
+                                <p class="font-bold text-amberSoft text-sm">{{ analysisReport.weakSubject }}</p>
+                                <p class="text-slate-400 mt-1 leading-relaxed">{{ analysisReport.weakSubjectDesc }}</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-indigo-950/40 border border-indigo-500/30 p-3.5 rounded-xl text-xs leading-relaxed text-indigo-200">
+                            <strong class="text-white block mb-1"><i class="fas fa-lightbulb text-amberSoft ml-1"></i> توصیه مشاوره‌ای هوشمند برای روزهای آینده:</strong>
+                            {{ analysisReport.recommendation }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== ۲. تب مدیریت پارت‌ها ==================== -->
+            <div v-show="currentTab === 'parts'" class="space-y-6 max-w-4xl mx-auto">
+                <div class="soft-card p-5 md:p-6 rounded-3xl border border-primary/20">
+                    <h3 class="text-base md:text-lg font-extrabold text-white mb-4 flex items-center gap-2">
+                        <i class="fas fa-plus-circle text-primarySoft"></i> تعریف پارت مطالعه جدید
+                    </h3>
+
+                    <form @submit.prevent="createNewPart" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="relative">
+                                <label class="block text-xs text-slate-300 mb-1.5 font-medium">انتخاب درس (امکان انتخاب چندگانه) *</label>
+                                <button type="button" @click="dropdownOpen = !dropdownOpen" class="input-calm flex justify-between items-center text-right">
+                                    <span class="truncate text-xs md:text-sm" :class="newPart.subjects.length ? 'text-white font-bold' : 'text-slate-400'">
+                                        {{ newPart.subjects.length ? newPart.subjects.join(' ، ') : 'روی فلش بزنید و درس‌ها را انتخاب کنید...' }}
+                                    </span>
+                                    <i class="fas fa-chevron-down text-slate-400 transition-transform duration-200 mr-2" :class="{'rotate-180 text-primarySoft': dropdownOpen}"></i>
+                                </button>
+
+                                <div v-if="dropdownOpen" class="absolute z-50 left-0 right-0 mt-2 soft-card bg-[#162032] rounded-2xl p-3 max-h-72 overflow-y-auto border border-slate-700 shadow-2xl">
+                                    <div class="flex justify-between items-center pb-2 mb-2 border-b border-slate-700">
+                                        <span class="text-xs text-slate-400">{{ newPart.subjects.length }} درس انتخاب شده</span>
+                                        <button type="button" @click="dropdownOpen = false" class="text-xs bg-primary text-white px-3 py-1 rounded-lg">تأیید و بستن</button>
+                                    </div>
+                                    <div v-for="(group, gIndex) in subjectGroups" :key="gIndex" class="mb-3 last:mb-0">
+                                        <div class="text-xs font-bold text-tealSoft bg-slate-900/90 px-2.5 py-1.5 rounded-lg mb-1.5">
+                                            {{ group.category }}
+                                        </div>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-1 pr-1">
+                                            <label v-for="sub in group.items" :key="sub" class="flex items-center gap-2.5 p-2 rounded-lg hover:bg-slate-800/70 cursor-pointer text-xs transition">
+                                                <input type="checkbox" :value="sub" v-model="newPart.subjects" class="w-4 h-4 accent-indigo-500 rounded cursor-pointer">
+                                                <span class="text-slate-200">{{ sub }}</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs text-slate-300 mb-1.5 font-medium">مبحث دقیق *</label>
+                                <input type="text" v-model="newPart.topic" required class="input-calm text-xs md:text-sm" placeholder="مثلاً: حرکت بر خط راست / مشتق">
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label class="block text-xs text-slate-300 mb-1.5 font-medium">توضیحات پارت (زیرمبحث، صفحات کتاب یا منبع تست)</label>
+                                <input type="text" v-model="newPart.description" class="input-calm text-xs md:text-sm" placeholder="مثلاً: مطالعه درس‌نامه از صفحه ۴۰ تا ۵۲ + حل تست‌های مضرب ۳...">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2.5">
+                                <div>
+                                    <label class="block text-xs text-slate-300 mb-1.5 font-medium">نوع فعالیت</label>
+                                    <select v-model="newPart.type" class="input-calm text-xs">
+                                        <option value="تست آموزشی">تست آموزشی</option>
+                                        <option value="تست زمان‌دار">تست زمان‌دار</option>
+                                        <option value="مطالعه تشریحی">مطالعه و درس‌نامه</option>
+                                        <option value="حل تمرین تشریحی">حل سؤال تشریحی</option>
+                                        <option value="مرور و جمع‌بندی">مرور و جمع‌بندی</option>
+                                        <option value="تحلیل آزمون">تحلیل آزمون</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-300 mb-1.5 font-medium">دسته‌بندی</label>
+                                    <select v-model="newPart.category" class="input-calm text-xs">
+                                        <option v-for="cat in partCategories" :key="cat" :value="cat">{{ cat }}</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs text-slate-300 mb-1.5 font-medium">مدت زمان پارت (دقیقه)</label>
+                                <div class="flex gap-1.5">
+                                    <button type="button" v-for="preset in [60, 75, 90]" :key="preset"
+                                        @click="setPlannedTimePreset(preset)"
+                                        :class="newPart.plannedTime === preset ? 'bg-primary text-white font-bold' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'"
+                                        class="px-3 py-2 rounded-xl text-xs transition shrink-0">
+                                        {{ preset }} دقیقه
+                                    </button>
+                                    <input type="number" v-model.number="newPart.plannedTime" min="5" max="400" class="input-calm text-xs font-bold text-center" placeholder="دلخواه">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-slate-900/60 rounded-2xl border border-slate-800 space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs font-bold text-tealSoft flex items-center gap-1.5">
+                                    <i class="fas fa-sitemap"></i> تقسیم پارت به بخش‌های کوچک‌تر ({{ newPart.subParts.length }} از ۴ بخش)
+                                </span>
+                                <button type="button" v-if="newPart.subParts.length < 4" @click="addSubPartToNew" class="text-xs bg-primary/20 text-indigo-300 px-3 py-1 rounded-lg hover:bg-primary/30">
+                                    + افزودن بخش جدید
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                <div v-for="(sp, spIdx) in newPart.subParts" :key="spIdx" class="flex flex-wrap sm:flex-nowrap items-center gap-1.5 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+                                    <span class="text-[11px] font-bold text-primarySoft shrink-0">بخش {{ spIdx + 1 }}:</span>
+                                    <input type="text" v-model="sp.title" placeholder="کار (مثلاً: درس‌نامه)" class="input-calm text-xs py-1.5 px-2 flex-1 min-w-[90px]">
+                                    <input type="text" v-model="sp.timeRange" placeholder="بازه (مثلاً 16 تا 17)" class="input-calm text-xs py-1.5 px-2 w-28 text-center">
+                                    <div class="flex items-center gap-1">
+                                        <input type="number" v-model.number="sp.duration" min="5" class="input-calm text-xs py-1.5 px-1.5 w-14 text-center font-bold text-tealSoft">
+                                        <span class="text-[10px] text-slate-500">دقیقه</span>
+                                    </div>
+                                    <button type="button" v-if="newPart.subParts.length > 1" @click="newPart.subParts.splice(spIdx, 1)" class="text-roseSoft p-1 hover:bg-rose-500/10 rounded">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap gap-3 pt-2">
+                            <button type="submit" class="btn-calm bg-primary hover:bg-indigo-500 text-white text-xs md:text-sm flex-1 py-3">
+                                <i class="fas fa-plus"></i> افزودن به لیست پارت‌ها (آماده تایمر)
+                            </button>
+                            <button type="button" @click="openDirectCompleteModal" class="btn-calm bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs md:text-sm border border-slate-700 py-3">
+                                <i class="fas fa-check-double text-sage"></i> ثبت مستقیم (بدون تایمر)
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="soft-card p-5 rounded-3xl">
+                    <h3 class="font-bold text-white mb-4 flex items-center gap-2 text-sm md:text-base">
+                        <i class="fas fa-hourglass-start text-amberSoft"></i> پارت‌های در انتظار مطالعه ({{ pendingParts.length }})
+                    </h3>
+                    <div v-if="pendingParts.length === 0" class="text-center py-6 text-slate-500 text-xs">
+                        پارت فعالی در صف انتظار نیست.
+                    </div>
+                    <div v-else class="space-y-3">
+                        <div v-for="part in pendingParts" :key="part.id" class="bg-slate-900/75 p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div class="space-y-1">
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <span v-for="s in part.subjects" :key="s" class="bg-primary/20 text-indigo-300 text-xs px-2.5 py-0.5 rounded-md font-bold">{{ s }}</span>
+                                    <span v-if="part.category" class="bg-tealSoft/15 text-tealSoft text-[11px] px-2 py-0.5 rounded">{{ part.category }}</span>
+                                    <span class="text-xs text-slate-400">• {{ part.type }}</span>
+                                </div>
+                                <h4 class="font-bold text-white text-sm md:text-base">{{ part.topic }}</h4>
+                                <p v-if="part.description" class="text-xs text-slate-400">{{ part.description }}</p>
+                                <p class="text-xs text-slate-400">
+                                    مدت هدف: <strong class="text-slate-200">{{ part.plannedTime }} دقیقه</strong>
+                                    <span v-if="part.realTime > 0" class="text-sage mr-2 font-bold">| مطالعه شده: {{ part.realTime }} دقیقه</span>
+                                </p>
+                            </div>
+                            <div class="flex items-center gap-1.5 w-full sm:w-auto justify-end border-t sm:border-t-0 border-slate-800 pt-2.5 sm:pt-0 shrink-0">
+                                <button @click="selectPartAndGoToTimer(part)" class="btn-calm bg-primary hover:bg-indigo-500 text-white text-xs py-2 px-3">
+                                    <i class="fas fa-stopwatch"></i> تایمر
+                                </button>
+                                <button @click="openCompleteModal(part)" class="btn-calm bg-sage/20 hover:bg-sage/30 text-sage border border-sage/30 text-xs py-2 px-2.5">
+                                    <i class="fas fa-check"></i> تکمیل
+                                </button>
+                                <button @click="openPartDetail(part)" class="text-slate-300 hover:bg-slate-800 p-2 rounded-lg" title="جزئیات">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button @click="openEditModal(part)" class="text-amberSoft hover:bg-amber-500/10 p-2 rounded-lg" title="ویرایش">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button @click="deletePart(part.id)" class="text-roseSoft hover:bg-rose-500/10 p-2 rounded-lg" title="حذف">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="soft-card p-5 rounded-3xl">
+                    <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
+                        <h3 class="font-bold text-white flex items-center gap-2 text-sm md:text-base">
+                            <i class="fas fa-check-double text-sage"></i> سوابق پارت‌های تکمیل‌شده ({{ filteredCompletedParts.length }})
+                        </h3>
+                        <div class="flex gap-2">
+                            <select v-model="filterCategory" class="input-calm text-xs py-1.5 px-3 w-36">
+                                <option value="">همه دسته‌ها</option>
+                                <option v-for="cat in partCategories" :key="cat" :value="cat">{{ cat }}</option>
+                            </select>
+                            <button v-if="completedParts.length > 0" @click="exportCSV" class="btn-calm bg-slate-800 hover:bg-slate-700 text-xs py-1.5 px-3 text-slate-200 border border-slate-700">
+                                <i class="fas fa-file-excel text-sage"></i> اکسل
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-if="filteredCompletedParts.length === 0" class="text-center py-6 text-slate-500 text-xs">
+                        رکوردی برای نمایش وجود ندارد.
+                    </div>
+                    <div v-else class="space-y-2.5">
+                        <div v-for="part in filteredCompletedParts" :key="part.id" class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800/80 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                            <div>
+                                <div class="flex flex-wrap items-center gap-1.5 mb-1">
+                                    <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">{{ part.dateStr }}</span>
+                                    <span v-if="part.category" class="text-[10px] bg-tealSoft/15 text-tealSoft px-2 py-0.5 rounded font-bold">{{ part.category }}</span>
+                                    <span v-for="s in part.subjects" :key="s" class="bg-indigo-500/15 text-indigo-300 text-xs px-2 py-0.5 rounded font-semibold">{{ s }}</span>
+                                </div>
+                                <h4 class="font-bold text-white text-sm">{{ part.topic }} <span class="text-xs font-normal text-slate-400">({{ part.type }})</span></h4>
+                                <p v-if="part.description" class="text-xs text-slate-400 mt-0.5">{{ part.description }}</p>
+                                <p v-if="part.notes" class="text-xs text-amberSoft/90 mt-1"><i class="fas fa-sticky-note ml-1"></i>{{ part.notes }}</p>
+                            </div>
+                            <div class="flex items-center gap-1.5 justify-between sm:justify-end border-t sm:border-t-0 border-slate-800 pt-2 sm:pt-0 shrink-0">
+                                <div class="text-left ml-2">
+                                    <span class="font-black text-sage text-sm block">{{ part.realTime }} دقیقه</span>
+                                    <span class="text-[11px] text-slate-400 block" v-if="part.tests && part.tests.total > 0">
+                                        {{ part.tests.total }} تست ({{ calcPartPercent(part.tests) }}%)
+                                    </span>
+                                </div>
+                                <button @click="openPartDetail(part)" class="btn-calm bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs py-1.5 px-2.5">
+                                    <i class="fas fa-info-circle"></i> جزئیات
+                                </button>
+                                <button @click="openEditModal(part)" class="text-amberSoft hover:bg-amber-500/10 p-2 rounded-lg" title="ویرایش">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button @click="deletePart(part.id)" class="text-roseSoft hover:bg-rose-500/10 p-2 rounded-lg" title="حذف">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="trashedParts.length > 0" class="soft-card p-5 rounded-3xl border border-roseSoft/25">
+                    <h3 class="font-bold text-roseSoft mb-3 flex items-center gap-2 text-xs md:text-sm">
+                        <i class="fas fa-trash-restore"></i> سطل زباله ({{ trashedParts.length }} پارت حذف‌شده)
+                    </h3>
+                    <div class="space-y-2">
+                        <div v-for="tp in trashedParts" :key="tp.id" class="bg-slate-950/60 p-3 rounded-xl flex justify-between items-center text-xs">
+                            <div>
+                                <span class="font-bold text-slate-300">{{ tp.subjects.join('، ') }} — {{ tp.topic }}</span>
+                                <span class="text-slate-500 mr-2">({{ tp.dateStr }})</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button @click="restorePart(tp.id)" class="px-2.5 py-1 bg-sage/20 text-sage rounded-lg">بازگردانی</button>
+                                <button @click="permanentDeletePart(tp.id)" class="px-2.5 py-1 bg-roseSoft/20 text-roseSoft rounded-lg">حذف دائمی</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== ۳. تب تایمر مهندسی ==================== -->
+            <div v-show="currentTab === 'timer'" class="max-w-xl mx-auto space-y-5">
+                <div class="soft-card p-5 rounded-3xl border border-slate-800 space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-2">حالت کارکرد تایمر را انتخاب کنید:</label>
+                        <div class="grid grid-cols-3 gap-2 bg-slate-950/70 p-1.5 rounded-2xl border border-slate-800 text-xs">
+                            <button type="button" @click="setTimerStyle('stopwatch')" 
+                                :class="timer.style === 'stopwatch' ? 'bg-primary text-white font-bold shadow' : 'text-slate-400 hover:text-white'" 
+                                class="py-2 px-2 rounded-xl transition flex flex-col items-center gap-1">
+                                <i class="fas fa-arrow-up text-sm"></i>
+                                <span>پیش‌رونده (از صفر)</span>
+                            </button>
+                            <button type="button" @click="setTimerStyle('countdown')" 
+                                :class="timer.style === 'countdown' ? 'bg-tealSoft text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white'" 
+                                class="py-2 px-2 rounded-xl transition flex flex-col items-center gap-1">
+                                <i class="fas fa-hourglass-half text-sm"></i>
+                                <span>معکوس (رو به عقب)</span>
+                            </button>
+                            <button type="button" @click="setTimerStyle('pomodoro')" 
+                                :class="timer.style === 'pomodoro' ? 'bg-amberSoft text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white'" 
+                                class="py-2 px-2 rounded-xl transition flex flex-col items-center gap-1">
+                                <i class="fas fa-bolt text-sm"></i>
+                                <span>پومودورو (۲۵ دقیقه)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center pt-1">
+                        <label class="text-xs font-bold text-slate-300">این تایمر برای کدام پارت است؟</label>
+                        <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-800 text-[11px]">
+                            <button type="button" @click="switchTimerMode('part')" :class="timer.mode === 'part' ? 'bg-slate-700 text-white font-bold' : 'text-slate-400'" class="px-2.5 py-1 rounded-lg">
+                                پارت‌های ثبت‌شده
+                            </button>
+                            <button type="button" @click="switchTimerMode('quick')" :class="timer.mode === 'quick' ? 'bg-slate-700 text-white font-bold' : 'text-slate-400'" class="px-2.5 py-1 rounded-lg">
+                                انتخاب آزاد درس
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-if="timer.mode === 'part'">
+                        <div v-if="pendingParts.length === 0" class="p-3 bg-amberSoft/10 border border-amberSoft/30 rounded-xl flex justify-between items-center">
+                            <span class="text-xs text-amberSoft">پارتی در صف انتظار نیست!</span>
+                            <button @click="currentTab = 'parts'" class="text-xs bg-amberSoft text-slate-950 font-bold px-2.5 py-1 rounded-lg">+ تعریف پارت</button>
+                        </div>
+                        <div v-else class="relative">
+                            <select v-model="timer.selectedPartId" :disabled="timer.active" class="input-calm text-xs md:text-sm appearance-none pr-4 pl-10 font-bold">
+                                <option :value="null" disabled>-- پارت مورد نظر را انتخاب کنید --</option>
+                                <option v-for="p in pendingParts" :key="p.id" :value="p.id">
+                                    {{ p.subjects.join('، ') }} ⬅ {{ p.topic }} (هدف: {{ p.plannedTime }} دقیقه)
+                                </option>
+                            </select>
+                            <i class="fas fa-chevron-down absolute left-4 top-3.5 text-tealSoft pointer-events-none"></i>
+                        </div>
+                    </div>
+
+                    <div v-else class="space-y-2.5">
+                        <div class="relative">
+                            <button type="button" :disabled="timer.active" @click="timerDropdownOpen = !timerDropdownOpen" class="input-calm flex justify-between items-center text-right text-xs">
+                                <span class="truncate" :class="timer.quickSubjects.length ? 'text-white font-bold' : 'text-slate-400'">
+                                    {{ timer.quickSubjects.length ? timer.quickSubjects.join(' ، ') : 'انتخاب درس‌ها (چندانتخابی)...' }}
+                                </span>
+                                <i class="fas fa-chevron-down text-tealSoft"></i>
+                            </button>
+                            <div v-if="timerDropdownOpen" class="absolute z-50 left-0 right-0 mt-2 soft-card bg-[#162032] rounded-2xl p-3 max-h-60 overflow-y-auto border border-slate-700 shadow-2xl">
+                                <div class="flex justify-between items-center pb-2 mb-2 border-b border-slate-700">
+                                    <span class="text-xs text-slate-400">{{ timer.quickSubjects.length }} درس</span>
+                                    <button type="button" @click="timerDropdownOpen = false" class="text-xs bg-primary text-white px-2.5 py-1 rounded-lg">تأیید</button>
+                                </div>
+                                <div v-for="(group, gIdx) in subjectGroups" :key="gIdx" class="mb-2">
+                                    <div class="text-xs font-bold text-tealSoft bg-slate-900 px-2 py-1 rounded mb-1">{{ group.category }}</div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                                        <label v-for="sub in group.items" :key="sub" class="flex items-center gap-2 p-1.5 rounded hover:bg-slate-800 cursor-pointer text-xs">
+                                            <input type="checkbox" :value="sub" v-model="timer.quickSubjects" class="w-4 h-4 accent-indigo-500 rounded">
+                                            <span>{{ sub }}</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="text" v-model="timer.quickTopic" :disabled="timer.active" class="input-calm text-xs" placeholder="مبحث (اختیاری)">
+                            <div class="flex items-center gap-1 bg-[#172033] border border-slate-700/70 rounded-xl px-2.5">
+                                <span class="text-[11px] text-slate-400">هدف:</span>
+                                <input type="number" v-model.number="timer.quickTarget" :disabled="timer.active" min="5" max="300" class="bg-transparent text-center text-xs font-bold text-tealSoft w-full outline-none py-2">
+                                <span class="text-[10px] text-slate-400">دقیقه</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center pt-2 border-t border-slate-800/80 text-xs">
+                        <label class="flex items-center gap-2 cursor-pointer text-slate-300">
+                            <input type="checkbox" v-model="timer.autoStop" class="w-4 h-4 accent-tealSoft rounded">
+                            <span>پایان و ثبت خودکار هنگام رسیدن به زمان هدف ({{ currentTargetMinutes }} دقیقه)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="soft-card p-6 md:p-8 rounded-3xl text-center relative overflow-hidden border border-primary/25 shadow-2xl">
+                    <div class="mb-3 min-h-[42px] flex flex-col items-center justify-center">
+                        <template v-if="activeTimerInfo">
+                            <div class="flex flex-wrap justify-center gap-1 mb-1">
+                                <span v-for="s in activeTimerInfo.subjects" :key="s" class="bg-primary/20 text-indigo-300 text-xs px-2.5 py-0.5 rounded-full font-bold">{{ s }}</span>
+                            </div>
+                            <p class="text-sm font-extrabold text-white">{{ activeTimerInfo.topic }}</p>
+                        </template>
+                        <p v-else class="text-slate-400 text-xs">یک پارت یا درس را از کادر بالا انتخاب کنید</p>
+                    </div>
+
+                    <div class="relative w-56 h-56 md:w-64 md:h-64 mx-auto my-2 flex items-center justify-center">
+                        <svg class="w-full h-full -rotate-90 transform" viewBox="0 0 120 120">
+                            <circle cx="60" cy="60" r="52" stroke="rgba(255,255,255,0.06)" stroke-width="7" fill="transparent" />
+                            <circle cx="60" cy="60" r="52" 
+                                :stroke="timer.style === 'countdown' ? '#2dd4bf' : (timer.style === 'pomodoro' ? '#fbbf24' : '#818cf8')" 
+                                stroke-width="7" 
+                                stroke-linecap="round" 
+                                fill="transparent"
+                                :stroke-dasharray="326.7"
+                                :stroke-dashoffset="326.7 - (326.7 * timerProgressPercent) / 100"
+                                class="transition-all duration-500" />
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span class="text-[11px] text-slate-400 mb-1">
+                                {{ timer.style === 'stopwatch' ? 'زمان سپری‌شده' : (timer.style === 'countdown' ? 'باقی‌مانده از هدف' : 'پومودورو') }}
+                            </span>
+                            <div class="text-4xl md:text-5xl font-mono font-black tracking-wider text-white" dir="ltr">
+                                {{ formattedTimer }}
+                            </div>
+                            <span class="text-[11px] font-bold mt-1.5" :class="timer.running ? 'text-sage animate-pulse' : 'text-amberSoft'">
+                                {{ !timer.active ? 'آماده شروع' : (timer.running ? 'در حال ثبت تمرکز...' : 'توقف موقت (استراحت)') }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div v-if="timer.active" class="flex justify-center gap-4 mt-2 text-[11px] text-slate-400 bg-slate-900/60 py-2 px-3 rounded-xl">
+                        <span>شروع (ایران): <strong class="text-slate-200">{{ timer.startTehranStr }}</strong></span>
+                        <span>وقفه‌ها: <strong class="text-amberSoft">{{ timer.pauseCount }} بار ({{ Math.round((timer.totalPaused || 0)/60000) }} دقیقه)</strong></span>
+                    </div>
+
+                    <div class="flex justify-center gap-3 mt-5">
+                        <button v-if="!timer.active" @click="startTimer" class="btn-calm bg-gradient-to-r from-primary to-tealSoft text-slate-950 font-black w-full py-4 text-base shadow-lg shadow-primary/25">
+                            <i class="fas fa-play"></i> شروع تایمر مطالعه
+                        </button>
+                        <template v-else>
+                            <button v-if="timer.running" @click="pauseTimer" class="btn-calm bg-amberSoft hover:bg-amber-400 text-slate-950 font-black flex-1 py-3.5 text-xs md:text-sm">
+                                <i class="fas fa-pause"></i> استراحت / توقف
+                            </button>
+                            <button v-else @click="resumeTimer" class="btn-calm bg-sage hover:bg-emerald-400 text-slate-950 font-black flex-1 py-3.5 text-xs md:text-sm">
+                                <i class="fas fa-play"></i> ادامه مطالعه
+                            </button>
+                            <button @click="finishTimerAndRecord" class="btn-calm bg-roseSoft hover:bg-rose-400 text-slate-950 font-black flex-1 py-3.5 text-xs md:text-sm">
+                                <i class="fas fa-check-circle"></i> پایان و ثبت زمان
+                            </button>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== ۴. تب برنامه هفتگی ==================== -->
+            <div v-show="currentTab === 'calendar'" class="space-y-6 max-w-4xl mx-auto">
+                <div class="soft-card p-5 rounded-3xl space-y-4">
+                    <h3 class="font-bold text-white text-base flex items-center gap-2">
+                        <i class="fas fa-calendar-alt text-primarySoft"></i> برنامه‌ریزی درسی روزهای هفته
+                    </h3>
+                    <div class="flex flex-wrap gap-1.5">
+                        <button v-for="d in weekDays" :key="d" @click="selectedWeekDay = d" 
+                            :class="selectedWeekDay === d ? 'bg-primary text-white font-bold shadow' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'" 
+                            class="px-3.5 py-2 rounded-xl text-xs transition">
+                            {{ d }}
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="addScheduleItem" class="grid grid-cols-1 sm:grid-cols-4 gap-2.5 bg-slate-900/50 p-3.5 rounded-2xl border border-slate-800">
+                        <input type="text" v-model="scheduleForm.subject" required placeholder="درس (مثلاً: فیزیک ۳)" class="input-calm text-xs">
+                        <input type="text" v-model="scheduleForm.topic" required placeholder="مبحث و هدف..." class="input-calm text-xs">
+                        <input type="number" v-model.number="scheduleForm.duration" placeholder="مدت (دقیقه)" class="input-calm text-xs">
+                        <button type="submit" class="btn-calm bg-primary text-white text-xs py-2">+ افزودن به {{ selectedWeekDay }}</button>
+                    </form>
+
+                    <div class="space-y-2">
+                        <div v-if="currentDaySchedule.length === 0" class="text-center py-6 text-slate-500 text-xs">
+                            برنامه‌ای برای {{ selectedWeekDay }} ثبت نشده است.
+                        </div>
+                        <div v-for="item in currentDaySchedule" :key="item.id" class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
+                            <div>
+                                <span class="font-bold text-indigo-300">{{ item.subject }}</span>
+                                <span class="text-white mx-2">⬅ {{ item.topic }}</span>
+                                <span class="text-slate-400">({{ item.duration }} دقیقه)</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button @click="sendScheduleToParts(item)" class="px-3 py-1.5 bg-primary/20 text-indigo-300 rounded-lg hover:bg-primary/30 font-bold">ارسال به پارت‌های امروز</button>
+                                <button @click="removeScheduleItem(item.id)" class="text-roseSoft p-1.5"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="soft-card p-5 rounded-3xl space-y-3">
+                    <h3 class="font-bold text-white text-sm md:text-base flex items-center gap-2">
+                        <i class="fas fa-check-circle text-tealSoft"></i> پارت‌های تکمیل‌شده در طول این هفته ({{ weekCompletedParts.length }})
+                    </h3>
+                    <div v-if="weekCompletedParts.length === 0" class="text-center py-6 text-slate-500 text-xs">
+                        در ۷ روز گذشته پارتی تکمیل نشده است.
+                    </div>
+                    <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                        <div v-for="wp in weekCompletedParts" :key="wp.id" class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
+                            <div>
+                                <span class="text-[10px] text-slate-400 block">{{ wp.dateStr }}</span>
+                                <span class="font-bold text-white">{{ wp.subjects.join('، ') }}: {{ wp.topic }}</span>
+                            </div>
+                            <span class="font-black text-sage shrink-0">{{ wp.realTime }} دقیقه</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== ۵. تب آرشیو آموزشی ==================== -->
+            <div v-show="currentTab === 'archive'" class="space-y-6 max-w-4xl mx-auto">
+                <div class="soft-card p-5 rounded-3xl space-y-4">
+                    <h3 class="font-bold text-white text-base flex items-center gap-2">
+                        <i class="fas fa-bookmark text-tealSoft"></i> افزودن به آرشیو آموزشی (جزوه، سؤال نشان‌دار، لینک)
+                    </h3>
+                    <form @submit.prevent="addArchiveItem" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <input type="text" v-model="archiveForm.title" required placeholder="عنوان جزوه، نکته یا سؤال *" class="input-calm text-xs">
+                        <select v-model="archiveForm.category" class="input-calm text-xs">
+                            <option value="جزوه و خلاصه‌نویسی">جزوه و خلاصه‌نویسی</option>
+                            <option value="سؤال و تست نشان‌دار">سؤال و تست نشان‌دار</option>
+                            <option value="لینک و ویدیو آموزشی">لینک و ویدیو آموزشی</option>
+                            <option value="فرمول و نکته کلیدی">فرمول و نکته کلیدی</option>
+                        </select>
+                        <input type="text" v-model="archiveForm.link" placeholder="لینک مرتبط (اختیاری - https://...)" class="input-calm text-xs" dir="ltr">
+                        <input type="text" v-model="archiveForm.content" placeholder="توضیحات، صورت سؤال یا پاسخ..." class="input-calm text-xs">
+                        <button type="submit" class="btn-calm bg-primary text-white text-xs sm:col-span-2 py-2.5">
+                            <i class="fas fa-save"></i> ذخیره در آرشیو شخصی
+                        </button>
+                    </form>
+                </div>
+
+                <div class="soft-card p-5 rounded-3xl space-y-4">
+                    <div class="flex flex-wrap justify-between items-center gap-2">
+                        <input type="text" v-model="archiveSearch" placeholder="جست‌وجو در عنوان، دسته یا متن آرشیو..." class="input-calm text-xs max-w-xs">
+                        <span class="text-xs text-slate-400">{{ filteredArchive.length }} مورد ثبت‌شده</span>
+                    </div>
+                    <div v-if="filteredArchive.length === 0" class="text-center py-6 text-slate-500 text-xs">موردی در آرشیو یافت نشد.</div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div v-for="ar in filteredArchive" :key="ar.id" class="bg-slate-900/70 p-4 rounded-2xl border border-slate-800 flex flex-col justify-between gap-2">
+                            <div>
+                                <div class="flex justify-between items-start mb-1">
+                                    <span class="text-[10px] bg-tealSoft/15 text-tealSoft px-2 py-0.5 rounded font-bold">{{ ar.category }}</span>
+                                    <button @click="deleteArchiveItem(ar.id)" class="text-roseSoft text-xs"><i class="fas fa-trash"></i></button>
+                                </div>
+                                <h4 class="font-bold text-white text-sm mt-1">{{ ar.title }}</h4>
+                                <p v-if="ar.content" class="text-xs text-slate-300 mt-1 leading-relaxed">{{ ar.content }}</p>
+                            </div>
+                            <a v-if="ar.link" :href="ar.link" target="_blank" class="text-xs text-primarySoft hover:underline flex items-center gap-1 mt-2">
+                                <i class="fas fa-external-link-alt"></i> باز کردن لینک
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== ۶. تب درصدگیر کنکور ==================== -->
+            <div v-show="currentTab === 'calculator'" class="max-w-xl mx-auto soft-card p-6 rounded-3xl space-y-5">
+                <h3 class="font-bold text-white text-base border-b border-slate-800 pb-3">محاسبه‌گر سریع درصد و نمره منفی</h3>
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs text-sage mb-1 text-center font-bold">درست</label>
+                        <input type="number" v-model.number="calc.c" min="0" class="input-calm text-center text-xl font-black">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-roseSoft mb-1 text-center font-bold">غلط</label>
+                        <input type="number" v-model.number="calc.w" min="0" class="input-calm text-center text-xl font-black">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1 text-center font-bold">نزده</label>
+                        <input type="number" v-model.number="calc.u" min="0" class="input-calm text-center text-xl font-black">
+                    </div>
+                </div>
+                <div class="space-y-3 pt-2">
+                    <div class="flex justify-between items-center p-3.5 bg-slate-900/70 rounded-xl">
+                        <span class="text-slate-400 text-sm">مجموع کل سؤالات</span>
+                        <span class="font-bold text-white text-lg">{{ calcTotalTests }} تست</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3.5 bg-slate-900/70 rounded-xl border-r-4 border-primarySoft">
+                        <span class="text-slate-300 text-sm">درصد با نمره منفی</span>
+                        <span class="font-black text-primarySoft text-xl" dir="ltr">{{ calcPercentNegative }}</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3.5 bg-slate-900/70 rounded-xl border-r-4 border-sage">
+                        <span class="text-slate-300 text-sm">درصد خام</span>
+                        <span class="font-bold text-sage text-lg" dir="ltr">{{ calcPercentTotal }}</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3.5 bg-slate-900/70 rounded-xl border-r-4 border-tealSoft">
+                        <span class="text-slate-300 text-sm">دقت پاسخ‌گویی</span>
+                        <span class="font-bold text-tealSoft text-lg" dir="ltr">{{ calcPercentAccuracy }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== ۷. تب اکانت گوگل و تنظیمات ==================== -->
+            <div v-show="currentTab === 'settings'" class="max-w-xl mx-auto space-y-5">
+                <div class="soft-card p-5 rounded-3xl space-y-4 border border-primary/30">
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                        <h3 class="font-bold text-white text-sm md:text-base flex items-center gap-2">
+                            <i class="fab fa-google text-tealSoft"></i> حساب کاربری و فضای ابری (Firebase)
+                        </h3>
+                        <span class="text-xs px-2.5 py-1 rounded-full bg-slate-900 text-slate-300">{{ cloudStatus.text }}</span>
+                    </div>
+
+                    <div v-if="currentUser" class="flex items-center justify-between bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
+                        <div>
+                            <p class="font-bold text-white text-sm">{{ currentUser.displayName || settings.userName }}</p>
+                            <p class="text-xs text-slate-400" dir="ltr">{{ currentUser.email }}</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button @click="syncToCloud" class="btn-calm bg-primary/20 text-indigo-300 text-xs py-2 px-3">همگام‌سازی</button>
+                            <button @click="logoutGoogle" class="btn-calm bg-roseSoft/20 text-roseSoft text-xs py-2 px-3">خروج</button>
+                        </div>
+                    </div>
+
+                    <div v-else class="space-y-3">
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            اطلاعات شما به‌طور خودکار در حافظه دستگاه ذخیره می‌شود. برای همگام‌سازی آنلاین بین گوشی و لپ‌تاپ، می‌توانید به حساب Google متصل شوید.
+                        </p>
+                        <button @click="loginWithGoogle" class="btn-calm bg-white text-slate-900 hover:bg-slate-200 w-full py-3 text-xs md:text-sm font-extrabold">
+                            <i class="fab fa-google text-rose-500 text-base"></i> ورود امن با حساب Google
+                        </button>
+                        <details class="text-xs text-slate-400 bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+                            <summary class="cursor-pointer font-bold text-indigo-300">تنظیم کد اتصال Firebase پروژه (اختیاری)</summary>
+                            <textarea v-model="firebaseConfigInput" rows="4" dir="ltr" placeholder='{"apiKey": "...", "authDomain": "...", "projectId": "..."}' class="input-calm text-xs font-mono mt-2"></textarea>
+                            <button @click="saveFirebaseConfig" class="btn-calm bg-primary text-white text-xs py-2 px-3 mt-2 w-full">ذخیره و فعال‌سازی فضای ابری</button>
+                        </details>
+                    </div>
+                </div>
+
+                <div class="soft-card p-5 rounded-3xl space-y-4">
+                    <h3 class="font-bold text-white border-b border-slate-800 pb-2 text-sm md:text-base">شخصی‌سازی پروفایل و تایمر</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-slate-300 mb-1">نام شما</label>
+                            <input type="text" v-model="settings.userName" @change="saveAll" class="input-calm text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-300 mb-1">هدف مطالعه روزانه (دقیقه)</label>
+                            <input type="number" v-model.number="settings.dailyGoal" @change="saveAll" class="input-calm text-xs">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-300 mb-1">قانون نمره منفی آزمون‌ها</label>
+                        <select v-model.number="settings.negativeMarkRatio" @change="saveAll" class="input-calm text-xs">
+                            <option :value="3">استاندارد کنکور (هر ۳ غلط = حذف ۱ صحیح)</option>
+                            <option :value="0">بدون نمره منفی</option>
+                            <option :value="4">هر ۴ غلط = حذف ۱ صحیح</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="soft-card p-5 rounded-3xl space-y-3">
+                    <h3 class="font-bold text-white border-b border-slate-800 pb-2 text-sm md:text-base">افزودن درس جدید به لیست دروس</h3>
+                    <div class="flex gap-2">
+                        <input type="text" v-model="customSubjectInput" placeholder="نام درس جدید..." class="input-calm text-xs">
+                        <button @click="addCustomSubject" class="btn-calm bg-primary text-white text-xs px-4 shrink-0">افزودن</button>
+                    </div>
+                </div>
+
+                <div class="soft-card p-5 rounded-3xl space-y-3 border border-sage/20">
+                    <h3 class="font-bold text-sage border-b border-slate-800 pb-2 text-sm md:text-base">پشتیبان‌گیری و بازیابی دستی</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                        <button @click="exportJSON" class="btn-calm bg-slate-800 hover:bg-slate-700 text-white text-xs py-3">
+                            <i class="fas fa-download text-tealSoft"></i> دانلود فایل پشتیبان (JSON)
+                        </button>
+                        <label class="btn-calm bg-slate-800 hover:bg-slate-700 text-white text-xs py-3 cursor-pointer">
+                            <i class="fas fa-upload text-sage"></i> بازیابی از فایل پشتیبان
+                            <input type="file" accept=".json" @change="importJSON" class="hidden">
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- ==================== مودال‌ها ==================== -->
+        <div v-if="completingPart" class="fixed inset-0 z-[100000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+            <div class="soft-card bg-[#162032] w-full max-w-md rounded-3xl p-6 border border-primary/40 shadow-2xl space-y-3.5 my-auto">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2.5">
+                    <h3 class="font-extrabold text-white text-base flex items-center gap-2">
+                        <i class="fas fa-check-circle text-sage"></i> {{ completingPart.isEditMode ? 'ویرایش اطلاعات پارت' : 'ثبت و تکمیل پارت' }}
+                    </h3>
+                    <button @click="completingPart = null" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[11px] text-slate-400 mb-1">مبحث</label>
+                        <input type="text" v-model="completingPart.topic" class="input-calm text-xs py-2">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-slate-400 mb-1">دسته‌بندی</label>
+                        <select v-model="completingPart.category" class="input-calm text-xs py-2">
+                            <option v-for="cat in partCategories" :key="cat" :value="cat">{{ cat }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] text-slate-400 mb-1">توضیحات مبحث</label>
+                    <input type="text" v-model="completingPart.description" class="input-calm text-xs py-2">
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[11px] text-sage font-bold mb-1">زمان واقعی مطالعه (دقیقه) *</label>
+                        <input type="number" v-model.number="completingPart.realTime" min="1" class="input-calm text-base font-black text-center text-sage py-1.5">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-indigo-300 font-bold mb-1">تعداد سؤالات تشریحی</label>
+                        <input type="number" v-model.number="completingPart.descriptiveCount" min="0" class="input-calm text-base font-black text-center text-indigo-300 py-1.5">
+                    </div>
+                </div>
+
+                <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-800 space-y-2">
+                    <label class="block text-xs text-slate-300 font-bold">عملکرد سؤالات تستی این پارت</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <span class="text-[10px] text-sage block mb-1 text-center">درست</span>
+                            <input type="number" v-model.number="completingPart.tests.correct" min="0" class="input-calm text-center text-xs py-1.5">
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-roseSoft block mb-1 text-center">غلط</span>
+                            <input type="number" v-model.number="completingPart.tests.wrong" min="0" class="input-calm text-center text-xs py-1.5">
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 block mb-1 text-center">نزده</span>
+                            <input type="number" v-model.number="completingPart.tests.unanswered" min="0" class="input-calm text-center text-xs py-1.5">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">یادداشت / تحلیل عملکرد پارت</label>
+                    <input type="text" v-model="completingPart.notes" class="input-calm text-xs py-2" placeholder="نکات مهم یا علت اشتباهات...">
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button @click="confirmCompletePart(true)" class="btn-calm bg-sage hover:bg-emerald-400 text-slate-950 font-black flex-1 py-2.5 text-xs">
+                        <i class="fas fa-check-double"></i> ذخیره نهایی
+                    </button>
+                    <button v-if="!completingPart.isEditMode" @click="confirmCompletePart(false)" class="btn-calm bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs py-2.5 px-3">
+                        ذخیره موقت (در انتظار)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="detailPart" class="fixed inset-0 z-[100000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+            <div class="soft-card bg-[#162032] w-full max-w-md rounded-3xl p-6 border border-tealSoft/40 shadow-2xl space-y-4 my-auto text-xs">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                    <h3 class="font-extrabold text-white text-base flex items-center gap-2">
+                        <i class="fas fa-info-circle text-tealSoft"></i> جزئیات کامل پارت مطالعه
+                    </h3>
+                    <button @click="detailPart = null" class="text-slate-400 hover:text-white text-base"><i class="fas fa-times"></i></button>
+                </div>
+
+                <div class="space-y-2 bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
+                    <p><span class="text-slate-400">درس‌ها:</span> <strong class="text-indigo-300">{{ detailPart.subjects.join(' ، ') }}</strong></p>
+                    <p><span class="text-slate-400">مبحث:</span> <strong class="text-white">{{ detailPart.topic }}</strong> ({{ detailPart.type }})</p>
+                    <p v-if="detailPart.category"><span class="text-slate-400">دسته‌بندی:</span> <strong class="text-tealSoft">{{ detailPart.category }}</strong></p>
+                    <p v-if="detailPart.description"><span class="text-slate-400">توضیحات مبحث:</span> {{ detailPart.description }}</p>
+                    <hr class="border-slate-800 my-2">
+                    <p><span class="text-slate-400">تاریخ ثبت:</span> {{ detailPart.dateStr }} (به وقت ایران)</p>
+                    <p><span class="text-slate-400">زمان شروع و پایان:</span> <strong class="text-sage">{{ detailPart.startTehranStr || 'ثبت دستی' }}</strong> تا <strong class="text-sage">{{ detailPart.endTehranStr || 'ثبت دستی' }}</strong></p>
+                    <p><span class="text-slate-400">مدت هدف / مطالعه واقعی:</span> {{ detailPart.plannedTime }} دقیقه هدف / <strong class="text-white">{{ detailPart.realTime }} دقیقه واقعی</strong></p>
+                    <p><span class="text-slate-400">تعداد وقفه‌ها:</span> {{ detailPart.pauseCount || 0 }} بار وقفه ({{ detailPart.pauseMinutes || 0 }} دقیقه استراحت)</p>
+                    <hr class="border-slate-800 my-2">
+                    <p><span class="text-slate-400">تست‌ها:</span> کل: {{ detailPart.tests?.total || 0 }} (✓{{ detailPart.tests?.correct || 0 }} | ✗{{ detailPart.tests?.wrong || 0 }} | نزده: {{ detailPart.tests?.unanswered || 0 }}) — درصد: <strong class="text-primarySoft" dir="ltr">{{ calcPartPercent(detailPart.tests) }}%</strong></p>
+                    <p><span class="text-slate-400">سؤالات تشریحی:</span> <strong class="text-indigo-300">{{ detailPart.descriptiveCount || 0 }} سؤال</strong></p>
+                    <p v-if="detailPart.notes"><span class="text-slate-400">یادداشت:</span> <span class="text-amberSoft">{{ detailPart.notes }}</span></p>
+                </div>
+
+                <button @click="detailPart = null" class="btn-calm bg-slate-800 text-white w-full py-2.5">بستن پنجره</button>
+            </div>
+        </div>
+
+    </div>
+    <script>
+        const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                const currentTab = ref('dashboard');
+                const showWelcomeModal = ref(false);
+                const dropdownOpen = ref(false);
+                const timerDropdownOpen = ref(false);
+                const customSubjectInput = ref('');
+
+                const getTehranDateISO = (d = new Date()) => {
+                    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tehran', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+                };
+                const getTehranTimeStr = (d = new Date()) => {
+                    return new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(d);
+                };
+                const getTehranFullDateStr = (d = new Date()) => {
+                    return new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(d);
+                };
+                const getTehranShortDateStr = (d = new Date()) => {
+                    return new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran' }).format(d);
+                };
+
+                const currentDateStr = ref(getTehranFullDateStr());
+                const todayISO = getTehranDateISO();
+
+                const defaultSubjectGroups = [
+                    {
+                        category: 'پایه دهم (ریاضی فیزیک)',
+                        items: ['ریاضی ۱ (دهم)', 'فیزیک ۱ (دهم)', 'شیمی ۱ (دهم)', 'هندسه ۱ (دهم)']
+                    },
+                    {
+                        category: 'پایه یازدهم (ریاضی فیزیک)',
+                        items: ['حسابان ۱ (یازدهم)', 'فیزیک ۲ (یازدهم)', 'شیمی ۲ (یازدهم)', 'هندسه ۲ (یازدهم)', 'آمار و احتمال (یازدهم)']
+                    },
+                    {
+                        category: 'پایه دوازدهم (ریاضی فیزیک)',
+                        items: ['حسابان ۲ (دوازدهم)', 'فیزیک ۳ (دوازدهم)', 'شیمی ۳ (دوازدهم)', 'هندسه ۳ (دوازدهم)', 'ریاضیات گسسته (دوازدهم)']
+                    },
+                    {
+                        category: 'دروس عمومی و امتحانات نهایی',
+                        items: ['ادبیات فارسی', 'عربی', 'دینی و معارف', 'زبان انگلیسی', 'هویت و سلامت']
+                    }
+                ];
+
+                const subjectGroups = ref(defaultSubjectGroups);
+                const partCategories = ref(['کنکوری', 'امتحان نهایی', 'مرور و جمع‌بندی', 'آزمون آزمایشی', 'جبرانی']);
+                const filterCategory = ref('');
+
+                const parts = ref([]);
+                const schedule = ref([]);
+                const archive = ref([]);
+                const settings = ref({ userName: '', dailyGoal: 360, negativeMarkRatio: 3, breakDuration: 15, onboarded: false });
+
+                const currentUser = ref(null);
+                const authInstance = ref(null);
+                let dbInstance = null;
+                const syncState = ref('local');
+                const firebaseConfigInput = ref('');
+
+                const cloudStatus = computed(() => {
+                    if (!currentUser.value) return { text: 'حافظه محلی (آفلاین)', class: 'bg-amberSoft' };
+                    if (syncState.value === 'saving') return { text: 'در حال همگام‌سازی...', class: 'bg-tealSoft animate-ping' };
+                    if (syncState.value === 'saved') return { text: 'همگام با فضای ابری', class: 'bg-sage' };
+                    if (syncState.value === 'error') return { text: 'آفلاین (ذخیره در دستگاه)', class: 'bg-roseSoft' };
+                    return { text: 'متصل به اکانت گوگل', class: 'bg-sage' };
+                });
+
+                const getEmptyPartForm = () => ({
+                    subjects: [],
+                    topic: '',
+                    description: '',
+                    type: 'تست آموزشی',
+                    category: 'کنکوری',
+                    plannedTime: 60,
+                    subParts: [{ title: 'بخش اول', timeRange: '', duration: 60 }]
+                });
+                const newPart = ref(getEmptyPartForm());
+
+                const setPlannedTimePreset = (preset) => {
+                    newPart.value.plannedTime = preset;
+                    if (newPart.value.subParts.length === 1) {
+                        newPart.value.subParts[0].duration = preset;
+                    }
+                };
+
+                const addSubPartToNew = () => {
+                    if (newPart.value.subParts.length < 4) {
+                        const nextNum = newPart.value.subParts.length + 1;
+                        const defaultDur = Math.max(15, Math.round(newPart.value.plannedTime / nextNum));
+                        newPart.value.subParts.push({ title: `بخش ${nextNum}`, timeRange: '', duration: defaultDur });
+                    }
+                };
+
+                const timer = ref({
+                    style: 'stopwatch',
+                    mode: 'part',
+                    selectedPartId: null,
+                    quickSubjects: [],
+                    quickTopic: '',
+                    quickTarget: 60,
+                    autoStop: true,
+                    active: false,
+                    running: false,
+                    startTime: null,
+                    totalPaused: 0,
+                    lastPause: null,
+                    elapsed: 0,
+                    pauseCount: 0,
+                    startTehranStr: ''
+                });
+                let intervalId = null;
+
+                const completingPart = ref(null);
+                const detailPart = ref(null);
+                const calc = ref({ c: 0, w: 0, u: 0 });
+
+                const chartDaysRange = ref(7);
+                const chartMetric = ref('time');
+                const analysisReport = ref(null);
+                let mainChartInstance = null;
+
+                const weekDays = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
+                const selectedWeekDay = ref('شنبه');
+                const scheduleForm = ref({ subject: '', topic: '', duration: 60 });
+                const archiveForm = ref({ title: '', category: 'جزوه و خلاصه‌نویسی', link: '', content: '' });
+                const archiveSearch = ref('');
+
+                const tabTitle = computed(() => ({
+                    dashboard: 'داشبورد و تحلیل عملکرد',
+                    parts: 'مدیریت پارت‌ها و بخش‌بندی',
+                    timer: 'تایمر مهندسی مطالعه',
+                    calendar: 'برنامه هفتگی درسی',
+                    archive: 'آرشیو جزوات و لینک‌ها',
+                    calculator: 'محاسبه‌گر درصد کنکور',
+                    settings: 'اکانت گوگل و تنظیمات'
+                }[currentTab.value]));
+
+                const pendingParts = computed(() => parts.value.filter(p => p.status === 'pending'));
+                const completedParts = computed(() => parts.value.filter(p => p.status === 'completed').sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0)));
+                const filteredCompletedParts = computed(() => {
+                    if (!filterCategory.value) return completedParts.value;
+                    return completedParts.value.filter(p => p.category === filterCategory.value);
+                });
+                const trashedParts = computed(() => parts.value.filter(p => p.status === 'trashed'));
+                const todayCompleted = computed(() => completedParts.value.filter(p => p.dateISO === todayISO));
+
+                const weekCompletedParts = computed(() => {
+                    const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
+                    const minISO = getTehranDateISO(sevenDaysAgo);
+                    return completedParts.value.filter(p => p.dateISO >= minISO);
+                });
+
+                const currentTargetMinutes = computed(() => {
+                    if (timer.value.style === 'pomodoro') return 25;
+                    if (timer.value.mode === 'part' && timer.value.selectedPartId) {
+                        const found = parts.value.find(p => p.id === timer.value.selectedPartId);
+                        if (found) return Number(found.plannedTime || 60);
+                    }
+                    return Number(timer.value.quickTarget || 60);
+                });
+
+                const activeTimerInfo = computed(() => {
+                    if (timer.value.mode === 'part' && timer.value.selectedPartId) {
+                        const found = parts.value.find(p => p.id === timer.value.selectedPartId);
+                        if (found) return { subjects: found.subjects, topic: found.topic };
+                    } else if (timer.value.mode === 'quick' && timer.value.quickSubjects.length > 0) {
+                        return { subjects: timer.value.quickSubjects, topic: timer.value.quickTopic || 'مطالعه آزاد' };
+                    }
+                    return null;
+                });
+
+                const formattedTimer = computed(() => {
+                    let ms = timer.value.elapsed || 0;
+                    if (timer.value.style === 'countdown' || timer.value.style === 'pomodoro') {
+                        const targetMs = currentTargetMinutes.value * 60000;
+                        ms = Math.max(0, targetMs - ms);
+                    }
+                    const totalSecs = Math.floor(ms / 1000);
+                    const h = String(Math.floor(totalSecs / 3600)).padStart(2, '0');
+                    const m = String(Math.floor((totalSecs % 3600) / 60)).padStart(2, '0');
+                    const s = String(totalSecs % 60).padStart(2, '0');
+                    return `${h}:${m}:${s}`;
+                });
+
+                const timerProgressPercent = computed(() => {
+                    const targetMs = Math.max(1, currentTargetMinutes.value * 60000);
+                    if (!timer.value.active) {
+                        return timer.value.style === 'stopwatch' ? 0 : 100;
+                    }
+                    const pct = Math.min(100, Math.max(0, (timer.value.elapsed / targetMs) * 100));
+                    return timer.value.style === 'stopwatch' ? pct : (100 - pct);
+                });
+
+                const todayStats = computed(() => {
+                    let totalTime = 0, totalTests = 0, descriptive = 0, correct = 0, wrong = 0;
+                    todayCompleted.value.forEach(p => {
+                        totalTime += Number(p.realTime || 0);
+                        descriptive += Number(p.descriptiveCount || 0);
+                        if (p.tests) {
+                            correct += Number(p.tests.correct || 0);
+                            wrong += Number(p.tests.wrong || 0);
+                            totalTests += Number(p.tests.total || 0);
+                        }
+                    });
+                    pendingParts.value.forEach(p => {
+                        if (p.dateISO === todayISO && p.realTime > 0) totalTime += Number(p.realTime);
+                    });
+
+                    const goalProgress = settings.value.dailyGoal > 0 ? Math.min(100, Math.round((totalTime / settings.value.dailyGoal) * 100)) : 0;
+                    const answered = correct + wrong;
+                    const accuracy = answered > 0 ? ((correct / answered) * 100).toFixed(1) + '%' : '—';
+                    
+                    let netScore = '—';
+                    if (totalTests > 0) {
+                        const ratio = settings.value.negativeMarkRatio;
+                        const raw = ratio > 0 ? ((correct - (wrong / ratio)) / totalTests) * 100 : (correct / totalTests) * 100;
+                        netScore = raw.toFixed(1) + '%';
+                    }
+                    return { totalTime, totalTests, descriptive, correct, wrong, goalProgress, accuracy, netScore };
+                });
+
+                const chartSeriesData = computed(() => {
+                    const days = [];
+                    const range = Math.max(1, Math.min(365, Number(chartDaysRange.value) || 7));
+
+                    for (let i = range - 1; i >= 0; i--) {
+                        const d = new Date(Date.now() - i * 86400000);
+                        const iso = getTehranDateISO(d);
+                        const label = new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', month: 'numeric', day: 'numeric' }).format(d);
+                        
+                        let minutes = 0, tests = 0, correct = 0, wrong = 0, descriptive = 0;
+                        completedParts.value.forEach(p => {
+                            if (p.dateISO === iso) {
+                                minutes += Number(p.realTime || 0);
+                                descriptive += Number(p.descriptiveCount || 0);
+                                if (p.tests) {
+                                    tests += Number(p.tests.total || 0);
+                                    correct += Number(p.tests.correct || 0);
+                                    wrong += Number(p.tests.wrong || 0);
+                                }
+                            }
+                        });
+
+                        let score = 0;
+                        if (tests > 0) {
+                            const r = settings.value.negativeMarkRatio;
+                            score = r > 0 ? ((correct - (wrong / r)) / tests) * 100 : (correct / tests) * 100;
+                            score = Number(score.toFixed(1));
+                        }
+                        days.push({ iso, label, minutes, tests, correct, wrong, descriptive, score });
+                    }
+                    return days;
+                });
+
+                const rangeAnalytics = computed(() => {
+                    let totalMinutes = 0, totalTests = 0, totalCorrect = 0, totalWrong = 0, totalDescriptive = 0, activeDays = 0;
+                    const series = chartSeriesData.value;
+                    series.forEach(d => {
+                        totalMinutes += d.minutes;
+                        totalTests += d.tests;
+                        totalCorrect += d.correct;
+                        totalWrong += d.wrong;
+                        totalDescriptive += d.descriptive;
+                        if (d.minutes > 0 || d.tests > 0 || d.descriptive > 0) activeDays++;
+                    });
+                    const avgDailyMinutes = series.length > 0 ? Math.round(totalMinutes / series.length) : 0;
+                    let avgScore = '—';
+                    if (totalTests > 0) {
+                        const r = settings.value.negativeMarkRatio;
+                        const s = r > 0 ? ((totalCorrect - (totalWrong / r)) / totalTests) * 100 : (totalCorrect / totalTests) * 100;
+                        avgScore = s.toFixed(1) + '%';
+                    }
+                    return { totalMinutes, avgDailyMinutes, totalTests, totalCorrect, totalWrong, totalDescriptive, avgScore, activeDays };
+                });
+
+                const updateMainChart = () => {
+                    nextTick(() => {
+                        const canvas = document.getElementById('mainDashboardChart');
+                        if (!canvas || !window.Chart) return;
+
+                        const series = chartSeriesData.value;
+                        const labels = series.map(d => d.label);
+
+                        if (mainChartInstance) {
+                            mainChartInstance.destroy();
+                        }
+
+                        const ctx = canvas.getContext('2d');
+                        let datasets = [];
+
+                        if (chartMetric.value === 'time') {
+                            const grad = ctx.createLinearGradient(0, 0, 0, 260);
+                            grad.addColorStop(0, 'rgba(129, 140, 248, 0.55)');
+                            grad.addColorStop(1, 'rgba(129, 140, 248, 0.02)');
+                            datasets = [{
+                                label: 'زمان مطالعه (دقیقه)',
+                                data: series.map(d => d.minutes),
+                                borderColor: '#818cf8',
+                                backgroundColor: grad,
+                                borderWidth: 2.5,
+                                fill: true,
+                                tension: 0.35,
+                                pointBackgroundColor: '#2dd4bf',
+                                pointRadius: 4
+                            }];
+                        } else if (chartMetric.value === 'tests') {
+                            datasets = [
+                                {
+                                    label: 'تعداد تست',
+                                    data: series.map(d => d.tests),
+                                    backgroundColor: 'rgba(45, 212, 191, 0.75)',
+                                    borderRadius: 6
+                                },
+                                {
+                                    label: 'سؤال تشریحی',
+                                    data: series.map(d => d.descriptive),
+                                    backgroundColor: 'rgba(129, 140, 248, 0.75)',
+                                    borderRadius: 6
+                                }
+                            ];
+                        } else {
+                            datasets = [{
+                                label: 'درصد تستی روزانه (%)',
+                                data: series.map(d => d.score),
+                                borderColor: '#34d399',
+                                backgroundColor: 'rgba(52, 211, 153, 0.15)',
+                                borderWidth: 2.5,
+                                fill: true,
+                                tension: 0.35,
+                                pointBackgroundColor: '#34d399',
+                                pointRadius: 4
+                            }];
+                        }
+
+                        mainChartInstance = new window.Chart(ctx, {
+                            type: chartMetric.value === 'tests' ? 'bar' : 'line',
+                            data: { labels, datasets },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        labels: { color: '#cbd5e1', font: { family: 'Vazirmatn', size: 11 } }
+                                    }
+                                },
+                                scales: {
+                                    x: {
+                                        ticks: { color: '#94a3b8', font: { family: 'Vazirmatn', size: 10 } },
+                                        grid: { color: 'rgba(255,255,255,0.04)' }
+                                    },
+                                    y: {
+                                        ticks: { color: '#94a3b8', font: { family: 'Vazirmatn', size: 10 } },
+                                        grid: { color: 'rgba(255,255,255,0.06)' }
+                                    }
+                                }
+                            }
+                        });
+                    });
+                };
+
+                const setCustomRange = (d) => {
+                    chartDaysRange.value = d;
+                    updateMainChart();
+                    if (analysisReport.value) runPerformanceAnalysis();
+                };
+
+                const setChartMetric = (m) => {
+                    chartMetric.value = m;
+                    updateMainChart();
+                };
+
+                const runPerformanceAnalysis = () => {
+                    const days = Math.max(1, Number(chartDaysRange.value) || 7);
+                    const startDate = new Date(Date.now() - (days - 1) * 86400000);
+                    const minISO = getTehranDateISO(startDate);
+                    const rangeParts = completedParts.value.filter(p => p.dateISO >= minISO);
+
+                    const stats = rangeAnalytics.value;
+                    const consistencyRatio = Math.round((stats.activeDays / days) * 100);
+
+                    let consistencyTitle = '';
+                    let consistencyDesc = '';
+                    if (stats.activeDays === 0) {
+                        consistencyTitle = 'بدون سابقه ثبت‌شده در این بازه';
+                        consistencyDesc = `در ${days} روز گذشته هیچ پارت تکمیل‌شده‌ای ثبت نکرده‌اید. از همین امروز اولین پارت را استارت بزنید.`;
+                    } else if (consistencyRatio >= 80) {
+                        consistencyTitle = `پیوستگی عالی (${stats.activeDays} روز فعال از ${days} روز)`;
+                        consistencyDesc = `میانگین مطالعه شما ${stats.avgDailyMinutes} دقیقه در روز بوده است که نشان‌دهنده نظم بالای مطالعاتی شماست.`;
+                    } else if (consistencyRatio >= 50) {
+                        consistencyTitle = `پیوستگی متوسط (${consistencyRatio}٪ روزها فعال)`;
+                        consistencyDesc = `در برخی روزها نوسان داشته‌اید. سعی کنید حتی در روزهای شلوغ، حداقل ۱ پارت کوتاه ثبت کنید تا زنجیره مطالعه قطع نشود.`;
+                    } else {
+                        consistencyTitle = `نیاز به افزایش استمرار (${stats.activeDays} روز فعال)`;
+                        consistencyDesc = `فاصله بین روزهای مطالعه شما زیاد است. هدف روزانه را کمی کوچک‌تر اما منظم‌تر انتخاب کنید.`;
+                    }
+
+                    const subMap = {};
+                    rangeParts.forEach(p => {
+                        (p.subjects || []).forEach(sub => {
+                            if (!subMap[sub]) subMap[sub] = { time: 0, tests: 0, correct: 0, wrong: 0 };
+                            subMap[sub].time += Number(p.realTime || 0);
+                            if (p.tests) {
+                                subMap[sub].tests += Number(p.tests.total || 0);
+                                subMap[sub].correct += Number(p.tests.correct || 0);
+                                subMap[sub].wrong += Number(p.tests.wrong || 0);
+                            }
+                        });
+                    });
+
+                    const subKeys = Object.keys(subMap);
+                    let bestSubject = '—';
+                    let bestSubjectDesc = 'هنوز داده کافی برای تعیین نقطه قوت وجود ندارد.';
+                    let weakSubject = '—';
+                    let weakSubjectDesc = 'با ثبت پارت‌های بیشتر، دروس نیازمند تقویت مشخص می‌شوند.';
+
+                    if (subKeys.length > 0) {
+                        subKeys.sort((a, b) => subMap[b].time - subMap[a].time);
+                        const top = subKeys[0];
+                        bestSubject = top;
+                        bestSubjectDesc = `${subMap[top].time} دقیقه مطالعه و ${subMap[top].tests} تست در این بازه ثبت شده است.`;
+
+                        if (subKeys.length > 1) {
+                            const low = subKeys[subKeys.length - 1];
+                            weakSubject = low;
+                            weakSubjectDesc = `کمترین زمان مطالعه (${subMap[low].time} دقیقه) را در بین دروس خوانده‌شده داشته است.`;
+                        }
+                    }
+
+                    let recommendation = '';
+                    if (stats.totalMinutes > 0 && stats.totalTests === 0) {
+                        recommendation = 'شما زمان خوبی برای مطالعه گذاشته‌اید اما تستی ثبت نکرده‌اید. برای تثبیت مطالب کنکور ریاضی، حتماً بعد از هر پارت درس‌نامه، حداقل ۱۵ تا ۲۰ تست آموزشی حل کنید.';
+                    } else if (stats.totalWrong > stats.totalCorrect && stats.totalTests > 10) {
+                        recommendation = 'تعداد تست‌های غلط شما بالاست. عجله در تست‌زنی را کم کنید، روی درک عمیق مفاهیم تمرکز کنید و از زدن گزینه‌های شک‌دار پرهیز نمایید.';
+                    } else {
+                        recommendation = `در ${days} روز اخیر مجموعاً ${formatMinutes(stats.totalMinutes)} مطالعه و ${stats.totalTests} تست داشته‌اید. برای رشد تراز در هفته آینده، روزانه ۳۰ دقیقه به میانگین مطالعه خود اضافه کنید و مرور تست‌های نشان‌دار را در برنامه قرار دهید.`;
+                    }
+
+                    analysisReport.value = {
+                        days,
+                        consistencyTitle,
+                        consistencyDesc,
+                        bestSubject,
+                        bestSubjectDesc,
+                        weakSubject,
+                        weakSubjectDesc,
+                        recommendation
+                    };
+                };
+
+                const currentDaySchedule = computed(() => schedule.value.filter(s => s.day === selectedWeekDay.value));
+                const filteredArchive = computed(() => {
+                    const q = archiveSearch.value.trim().toLowerCase();
+                    if (!q) return archive.value;
+                    return archive.value.filter(a => 
+                        (a.title && a.title.toLowerCase().includes(q)) ||
+                        (a.content && a.content.toLowerCase().includes(q)) ||
+                        (a.category && a.category.toLowerCase().includes(q))
+                    );
+                });
+
+                const calcTotalTests = computed(() => (calc.value.c || 0) + (calc.value.w || 0) + (calc.value.u || 0));
+                const calcPercentTotal = computed(() => calcTotalTests.value === 0 ? '—' : ((calc.value.c / calcTotalTests.value) * 100).toFixed(1) + '%');
+                const calcPercentAccuracy = computed(() => {
+                    const ans = (calc.value.c || 0) + (calc.value.w || 0);
+                    return ans === 0 ? '—' : ((calc.value.c / ans) * 100).toFixed(1) + '%';
+                });
+                const calcPercentNegative = computed(() => {
+                    const t = calcTotalTests.value;
+                    if (t === 0) return '—';
+                    const r = settings.value.negativeMarkRatio;
+                    if (r === 0) return calcPercentTotal.value;
+                    return (((calc.value.c - (calc.value.w / r)) / t) * 100).toFixed(2) + '%';
+                });
+
+                const navClass = (tab) => [
+                    'flex flex-col md:flex-row items-center p-2 md:px-3.5 md:py-2.5 rounded-xl transition font-semibold md:mb-1',
+                    currentTab.value === tab ? 'bg-primary/20 text-primarySoft' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                ];
+
+                const formatMinutes = (m) => {
+                    if (!m || m <= 0) return '۰ دقیقه';
+                    if (m < 60) return `${m} دقیقه`;
+                    const h = Math.floor(m / 60);
+                    const rem = m % 60;
+                    return rem > 0 ? `${h} ساعت و ${rem} دقیقه` : `${h} ساعت`;
+                };
+
+                const calcPartPercent = (t) => {
+                    if (!t || !t.total) return 0;
+                    const r = settings.value.negativeMarkRatio;
+                    const score = r > 0 ? ((t.correct - (t.wrong / r)) / t.total) * 100 : (t.correct / t.total) * 100;
+                    return score.toFixed(1);
+                };
+
+                const completeWelcome = () => {
+                    settings.value.onboarded = true;
+                    showWelcomeModal.value = false;
+                    saveAll();
+                };
+
+                const saveAll = () => {
+                    localStorage.setItem('sp_pro_parts', JSON.stringify(parts.value));
+                    localStorage.setItem('sp_pro_settings', JSON.stringify(settings.value));
+                    localStorage.setItem('sp_pro_subjects', JSON.stringify(subjectGroups.value));
+                    localStorage.setItem('tilo_schedule', JSON.stringify(schedule.value));
+                    localStorage.setItem('tilo_archive', JSON.stringify(archive.value));
+                    updateMainChart();
+                    if (currentUser.value && dbInstance) {
+                        syncToCloud();
+                    }
+                };
+                const saveTimer = () => localStorage.setItem('sp_pro_timer', JSON.stringify(timer.value));
+
+                const loadAll = () => {
+                    const p = localStorage.getItem('sp_pro_parts');
+                    const s = localStorage.getItem('sp_pro_settings');
+                    const sub = localStorage.getItem('sp_pro_subjects');
+                    const sch = localStorage.getItem('tilo_schedule');
+                    const arc = localStorage.getItem('tilo_archive');
+                    const t = localStorage.getItem('sp_pro_timer');
+
+                    if (p) parts.value = JSON.parse(p);
+                    if (s) settings.value = { ...settings.value, ...JSON.parse(s) };
+                    if (sub) subjectGroups.value = JSON.parse(sub);
+                    if (sch) schedule.value = JSON.parse(sch);
+                    if (arc) archive.value = JSON.parse(arc);
+
+                    if (!settings.value.onboarded && parts.value.length === 0) {
+                        showWelcomeModal.value = true;
+                    }
+
+                    if (t) {
+                        timer.value = { ...timer.value, ...JSON.parse(t) };
+                        if (timer.value.active && timer.value.running) {
+                            startTick();
+                        }
+                    }
+                    if (!timer.value.selectedPartId && pendingParts.value.length > 0) {
+                        timer.value.selectedPartId = pendingParts.value[0].id;
+                    }
+
+                    const savedFbConfig = localStorage.getItem('tilo_fb_config');
+                    if (savedFbConfig) {
+                        firebaseConfigInput.value = savedFbConfig;
+                        initFirebase(savedFbConfig);
+                    }
+                    updateMainChart();
+                };
+
+                // راه‌اندازی Firebase و تنظیم ماندگاری دائمی لاگین
+                const initFirebase = (rawConfig) => {
+                    try {
+                        if (!window.FirebaseSDK) return;
+                        const cfg = JSON.parse(rawConfig);
+                        const app = window.FirebaseSDK.initializeApp(cfg);
+                        authInstance.value = window.FirebaseSDK.getAuth(app);
+                        dbInstance = window.FirebaseSDK.getFirestore(app);
+
+                        // اعمال ماندگاری محلی برای اینکه لاگین با بستن برنامه نپرد
+                        window.FirebaseSDK.setPersistence(authInstance.value, window.FirebaseSDK.browserLocalPersistence)
+                            .catch((error) => {
+                                console.warn("Persistence Error:", error);
+                            });
+
+                        window.FirebaseSDK.onAuthStateChanged(authInstance.value, async (user) => {
+                            currentUser.value = user || null;
+                            if (user) {
+                                if (!settings.value.userName && user.displayName) {
+                                    settings.value.userName = user.displayName;
+                                }
+                                showWelcomeModal.value = false;
+                                await loadFromCloud(user.uid);
+                            } else {
+                                syncState.value = 'local';
+                            }
+                        });
+                    } catch (e) {
+                        console.warn('Firebase Init Warning:', e);
+                    }
+                };
+
+                const saveFirebaseConfig = () => {
+                    try {
+                        JSON.parse(firebaseConfigInput.value);
+                        localStorage.setItem('tilo_fb_config', firebaseConfigInput.value.trim());
+                        initFirebase(firebaseConfigInput.value.trim());
+                        alert('تنظیمات فضای ابری ذخیره شد! اکنون می‌توانید روی دکمه ورود با Google بزنید.');
+                    } catch {
+                        alert('کد وارد شده باید در فرمت معتبر JSON باشد.');
+                    }
+                };
+
+                const loginWithGoogle = async () => {
+                    if (!authInstance.value) {
+                        return alert('برای استفاده از ورود گوگل، ابتدا کد کانفیگ Firebase پروژه خود را در بخش زیرین وارد و ذخیره کنید.');
+                    }
+                    try {
+                        const provider = new window.FirebaseSDK.GoogleAuthProvider();
+                        await window.FirebaseSDK.signInWithPopup(authInstance.value, provider);
+                    } catch (e) {
+                        alert('خطا در ورود با گوگل: ' + e.message);
+                    }
+                };
+
+                const logoutGoogle = async () => {
+                    if (authInstance.value) {
+                        await window.FirebaseSDK.signOut(authInstance.value);
+                        currentUser.value = null;
+                        syncState.value = 'local';
+                    }
+                };
+
+                const syncToCloud = async () => {
+                    if (!currentUser.value || !dbInstance) return;
+                    try {
+                        syncState.value = 'saving';
+                        const refDoc = window.FirebaseSDK.doc(dbInstance, 'users', currentUser.value.uid);
+                        await window.FirebaseSDK.setDoc(refDoc, {
+                            parts: parts.value,
+                            settings: settings.value,
+                            subjectGroups: subjectGroups.value,
+                            schedule: schedule.value,
+                            archive: archive.value,
+                            updatedAt: Date.now()
+                        }, { merge: true });
+                        syncState.value = 'saved';
+                    } catch {
+                        syncState.value = 'error';
+                    }
+                };
+
+                const loadFromCloud = async (uid) => {
+                    if (!dbInstance) return;
+                    try {
+                        syncState.value = 'saving';
+                        const refDoc = window.FirebaseSDK.doc(dbInstance, 'users', uid);
+                        const snap = await window.FirebaseSDK.getDoc(refDoc);
+                        if (snap.exists()) {
+                            const data = snap.data();
+                            if (data.parts && data.parts.length >= parts.value.length) parts.value = data.parts;
+                            if (data.settings) settings.value = { ...settings.value, ...data.settings };
+                            if (data.subjectGroups) subjectGroups.value = data.subjectGroups;
+                            if (data.schedule) schedule.value = data.schedule;
+                            if (data.archive) archive.value = data.archive;
+                            saveAll();
+                        } else {
+                            await syncToCloud();
+                        }
+                        syncState.value = 'saved';
+                    } catch {
+                        syncState.value = 'error';
+                    }
+                };
+
+                const createNewPart = () => {
+                    if (newPart.value.subjects.length === 0) {
+                        alert('لطفاً حداقل یک درس را از لیست انتخاب کنید.');
+                        dropdownOpen.value = true;
+                        return;
+                    }
+                    const partObj = {
+                        id: Date.now(),
+                        dateISO: todayISO,
+                        dateStr: getTehranShortDateStr(),
+                        subjects: [...newPart.value.subjects],
+                        topic: newPart.value.topic.trim(),
+                        description: (newPart.value.description || '').trim(),
+                        type: newPart.value.type,
+                        category: newPart.value.category || 'کنکوری',
+                        plannedTime: newPart.value.plannedTime || 60,
+                        subParts: JSON.parse(JSON.stringify(newPart.value.subParts || [])),
+                        realTime: 0,
+                        pauseCount: 0,
+                        pauseMinutes: 0,
+                        descriptiveCount: 0,
+                        status: 'pending',
+                        tests: { correct: 0, wrong: 0, unanswered: 0, total: 0 },
+                        notes: ''
+                    };
+                    parts.value.unshift(partObj);
+                    saveAll();
+                    timer.value.selectedPartId = partObj.id;
+                    newPart.value = getEmptyPartForm();
+                    dropdownOpen.value = false;
+                };
+
+                const openDirectCompleteModal = () => {
+                    if (newPart.value.subjects.length === 0 || !newPart.value.topic) {
+                        return alert('ابتدا درس و مبحث را وارد کنید.');
+                    }
+                    completingPart.value = {
+                        id: Date.now(),
+                        isNewDirect: true,
+                        dateISO: todayISO,
+                        dateStr: getTehranShortDateStr(),
+                        subjects: [...newPart.value.subjects],
+                        topic: newPart.value.topic.trim(),
+                        description: (newPart.value.description || '').trim(),
+                        type: newPart.value.type,
+                        category: newPart.value.category || 'کنکوری',
+                        plannedTime: newPart.value.plannedTime || 60,
+                        subParts: JSON.parse(JSON.stringify(newPart.value.subParts || [])),
+                        realTime: newPart.value.plannedTime || 60,
+                        descriptiveCount: 0,
+                        tests: { correct: 0, wrong: 0, unanswered: 0, total: 0 },
+                        notes: ''
+                    };
+                };
+
+                const selectPartAndGoToTimer = (part) => {
+                    if (timer.value.active && timer.value.selectedPartId !== part.id) {
+                        if (!confirm('تایمر در حال کار است. آیا پارت تایمر تغییر کند؟')) return;
+                    }
+                    timer.value.mode = 'part';
+                    timer.value.selectedPartId = part.id;
+                    saveTimer();
+                    currentTab.value = 'timer';
+                };
+
+                const setTimerStyle = (st) => {
+                    timer.value.style = st;
+                    saveTimer();
+                };
+
+                const switchTimerMode = (m) => {
+                    if (timer.value.active) return alert('هنگام روشن بودن تایمر نمی‌توان منبع را تغییر داد.');
+                    timer.value.mode = m;
+                };
+
+                const startTick = () => {
+                    if (intervalId) clearInterval(intervalId);
+                    intervalId = setInterval(() => {
+                        timer.value.elapsed = Date.now() - timer.value.startTime - timer.value.totalPaused;
+                        saveTimer();
+
+                        if (timer.value.autoStop) {
+                            const targetMs = currentTargetMinutes.value * 60000;
+                            if (timer.value.elapsed >= targetMs) {
+                                finishTimerAndRecord();
+                                alert('⏰ زمان هدف این پارت به پایان رسید! خسته نباشید.');
+                            }
+                        }
+                    }, 1000);
+                };
+
+                const startTimer = () => {
+                    if (timer.value.mode === 'part' && !timer.value.selectedPartId) {
+                        return alert('لطفاً ابتدا یک پارت از لیست انتخاب کنید.');
+                    }
+                    if (timer.value.mode === 'quick' && timer.value.quickSubjects.length === 0) {
+                        timerDropdownOpen.value = true;
+                        return alert('لطفاً حداقل یک درس انتخاب کنید.');
+                    }
+                    timer.value.active = true;
+                    timer.value.running = true;
+                    timer.value.startTime = Date.now();
+                    timer.value.totalPaused = 0;
+                    timer.value.lastPause = null;
+                    timer.value.elapsed = 0;
+                    timer.value.pauseCount = 0;
+                    timer.value.startTehranStr = getTehranTimeStr();
+                    timerDropdownOpen.value = false;
+                    saveTimer();
+                    startTick();
+                };
+
+                const pauseTimer = () => {
+                    timer.value.running = false;
+                    timer.value.lastPause = Date.now();
+                    timer.value.pauseCount = (timer.value.pauseCount || 0) + 1;
+                    clearInterval(intervalId);
+                    saveTimer();
+                };
+
+                const resumeTimer = () => {
+                    if (timer.value.lastPause) {
+                        timer.value.totalPaused += (Date.now() - timer.value.lastPause);
+                    }
+                    timer.value.running = true;
+                    timer.value.lastPause = null;
+                    saveTimer();
+                    startTick();
+                };
+
+                const finishTimerAndRecord = () => {
+                    clearInterval(intervalId);
+                    const totalDurationMs = timer.value.running 
+                        ? (Date.now() - timer.value.startTime - timer.value.totalPaused)
+                        : timer.value.elapsed;
+                    const sessionMinutes = Math.max(1, Math.round(totalDurationMs / 60000));
+                    const pauseMins = Math.round((timer.value.totalPaused || 0) / 60000);
+                    const endTehran = getTehranTimeStr();
+
+                    if (timer.value.mode === 'part') {
+                        const targetPart = parts.value.find(p => p.id === timer.value.selectedPartId);
+                        if (targetPart) {
+                            completingPart.value = JSON.parse(JSON.stringify(targetPart));
+                            completingPart.value.realTime = (Number(targetPart.realTime) || 0) + sessionMinutes;
+                            completingPart.value.pauseCount = (Number(targetPart.pauseCount) || 0) + (timer.value.pauseCount || 0);
+                            completingPart.value.pauseMinutes = (Number(targetPart.pauseMinutes) || 0) + pauseMins;
+                            completingPart.value.startTehranStr = targetPart.startTehranStr || timer.value.startTehranStr;
+                            completingPart.value.endTehranStr = endTehran;
+                        }
+                    } else {
+                        completingPart.value = {
+                            id: Date.now(),
+                            isNewDirect: true,
+                            dateISO: todayISO,
+                            dateStr: getTehranShortDateStr(),
+                            subjects: [...timer.value.quickSubjects],
+                            topic: timer.value.quickTopic || 'مطالعه با تایمر',
+                            description: '',
+                            type: 'مطالعه و تست',
+                            category: 'کنکوری',
+                            plannedTime: currentTargetMinutes.value,
+                            realTime: sessionMinutes,
+                            pauseCount: timer.value.pauseCount || 0,
+                            pauseMinutes: pauseMins,
+                            startTehranStr: timer.value.startTehranStr,
+                            endTehranStr: endTehran,
+                            descriptiveCount: 0,
+                            tests: { correct: 0, wrong: 0, unanswered: 0, total: 0 },
+                            notes: ''
+                        };
+                    }
+
+                    timer.value.active = false;
+                    timer.value.running = false;
+                    timer.value.elapsed = 0;
+                    timer.value.startTime = null;
+                    timer.value.totalPaused = 0;
+                    localStorage.removeItem('sp_pro_timer');
+                };
+
+                const openCompleteModal = (part) => {
+                    completingPart.value = JSON.parse(JSON.stringify(part));
+                    if (!completingPart.value.realTime) completingPart.value.realTime = completingPart.value.plannedTime || 60;
+                    if (!completingPart.value.category) completingPart.value.category = 'کنکوری';
+                };
+
+                const openEditModal = (part) => {
+                    completingPart.value = JSON.parse(JSON.stringify(part));
+                    completingPart.value.isEditMode = true;
+                };
+
+                const openPartDetail = (part) => {
+                    detailPart.value = part;
+                };
+
+                const confirmCompletePart = (markAsCompleted) => {
+                    const cp = completingPart.value;
+                    cp.tests = cp.tests || { correct: 0, wrong: 0, unanswered: 0, total: 0 };
+                    cp.tests.correct = Number(cp.tests.correct || 0);
+                    cp.tests.wrong = Number(cp.tests.wrong || 0);
+                    cp.tests.unanswered = Number(cp.tests.unanswered || 0);
+                    cp.tests.total = cp.tests.correct + cp.tests.wrong + cp.tests.unanswered;
+                    cp.descriptiveCount = Number(cp.descriptiveCount || 0);
+
+                    const wasEdit = cp.isEditMode;
+                    delete cp.isEditMode;
+
+                    if (cp.isNewDirect) {
+                        delete cp.isNewDirect;
+                        cp.status = markAsCompleted ? 'completed' : 'pending';
+                        cp.completedAt = Date.now();
+                        parts.value.unshift(cp);
+                        newPart.value = getEmptyPartForm();
+                    } else {
+                        const idx = parts.value.findIndex(p => p.id === cp.id);
+                        if (idx !== -1) {
+                            if (!wasEdit) {
+                                cp.status = markAsCompleted ? 'completed' : 'pending';
+                                cp.completedAt = Date.now();
+                            }
+                            parts.value[idx] = cp;
+                        }
+                    }
+
+                    saveAll();
+                    completingPart.value = null;
+
+                    if (pendingParts.value.length > 0) {
+                        timer.value.selectedPartId = pendingParts.value[0].id;
+                    } else {
+                        timer.value.selectedPartId = null;
+                    }
+                    if (!wasEdit) currentTab.value = 'dashboard';
+                };
+
+                const deletePart = (id) => {
+                    const idx = parts.value.findIndex(p => p.id === id);
+                    if (idx !== -1) {
+                        parts.value[idx].previousStatus = parts.value[idx].status;
+                        parts.value[idx].status = 'trashed';
+                        if (timer.value.selectedPartId === id) {
+                            timer.value.selectedPartId = pendingParts.value.length ? pendingParts.value[0].id : null;
+                        }
+                        saveAll();
+                    }
+                };
+
+                const restorePart = (id) => {
+                    const idx = parts.value.findIndex(p => p.id === id);
+                    if (idx !== -1) {
+                        parts.value[idx].status = parts.value[idx].previousStatus || 'completed';
+                        saveAll();
+                    }
+                };
+
+                const permanentDeletePart = (id) => {
+                    if (confirm('آیا از حذف دائمی این پارت مطمئن هستید؟')) {
+                        parts.value = parts.value.filter(p => p.id !== id);
+                        saveAll();
+                    }
+                };
+
+                const addScheduleItem = () => {
+                    schedule.value.push({
+                        id: Date.now(),
+                        day: selectedWeekDay.value,
+                        subject: scheduleForm.value.subject.trim(),
+                        topic: scheduleForm.value.topic.trim(),
+                        duration: scheduleForm.value.duration || 60
+                    });
+                    scheduleForm.value = { subject: '', topic: '', duration: 60 };
+                    saveAll();
+                };
+
+                const removeScheduleItem = (id) => {
+                    schedule.value = schedule.value.filter(s => s.id !== id);
+                    saveAll();
+                };
+
+                const sendScheduleToParts = (item) => {
+                    const partObj = {
+                        id: Date.now(),
+                        dateISO: todayISO,
+                        dateStr: getTehranShortDateStr(),
+                        subjects: [item.subject],
+                        topic: item.topic,
+                        description: `از برنامه هفتگی (${item.day})`,
+                        type: 'مطالعه و تست',
+                        category: 'کنکوری',
+                        plannedTime: item.duration || 60,
+                        subParts: [{ title: 'بخش اول', timeRange: '', duration: item.duration || 60 }],
+                        realTime: 0,
+                        status: 'pending',
+                        tests: { correct: 0, wrong: 0, unanswered: 0, total: 0 },
+                        notes: ''
+                    };
+                    parts.value.unshift(partObj);
+                    saveAll();
+                    alert('به لیست پارت‌های آماده امروز اضافه شد!');
+                };
+
+                const addArchiveItem = () => {
+                    archive.value.unshift({
+                        id: Date.now(),
+                        title: archiveForm.value.title.trim(),
+                        category: archiveForm.value.category,
+                        link: archiveForm.value.link.trim(),
+                        content: archiveForm.value.content.trim(),
+                        dateStr: getTehranShortDateStr()
+                    });
+                    archiveForm.value = { title: '', category: 'جزوه و خلاصه‌نویسی', link: '', content: '' };
+                    saveAll();
+                };
+
+                const deleteArchiveItem = (id) => {
+                    if (confirm('این مورد از آرشیو حذف شود؟')) {
+                        archive.value = archive.value.filter(a => a.id !== id);
+                        saveAll();
+                    }
+                };
+
+                const addCustomSubject = () => {
+                    const name = customSubjectInput.value.trim();
+                    if (!name) return;
+                    subjectGroups.value[subjectGroups.value.length - 1].items.push(name);
+                    customSubjectInput.value = '';
+                    saveAll();
+                    alert(`درس «${name}» به لیست دروس اضافه شد.`);
+                };
+
+                const exportCSV = () => {
+                    let csv = 'تاریخ,دسته‌بندی,دروس,مبحث,توضیحات,نوع فعالیت,زمان هدف,زمان واقعی,کل تست,درست,غلط,نزده,تشریحی,شروع,پایان,یادداشت\n';
+                    completedParts.value.forEach(p => {
+                        csv += `${p.dateStr},${p.category || ''},"${p.subjects.join(' - ')}","${p.topic || ''}","${p.description || ''}",${p.type},${p.plannedTime},${p.realTime},${p.tests?.total || 0},${p.tests?.correct || 0},${p.tests?.wrong || 0},${p.tests?.unanswered || 0},${p.descriptiveCount || 0},${p.startTehranStr || ''},${p.endTehranStr || ''},"${(p.notes || '').replace(/"/g, '')}"\n`;
+                    });
+                    const link = document.createElement("a");
+                    link.href = URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' }));
+                    link.download = "tilo_Report.csv";
+                    link.click();
+                };
+
+                const exportJSON = () => {
+                    const data = {
+                        parts: parts.value,
+                        settings: settings.value,
+                        subjectGroups: subjectGroups.value,
+                        schedule: schedule.value,
+                        archive: archive.value
+                    };
+                    const link = document.createElement("a");
+                    link.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+                    link.download = "tilo_Backup.json";
+                    link.click();
+                };
+
+                const importJSON = (e) => {
+                    const file = e.target.files[0];
+                    if (!file || !confirm('آیا مطمئن هستید؟ اطلاعات فعلی با فایل پشتیبان ادغام/جایگزین می‌شود.')) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        try {
+                            const data = JSON.parse(ev.target.result);
+                            if (data.parts) parts.value = data.parts;
+                            if (data.settings) settings.value = { ...settings.value, ...data.settings };
+                            if (data.subjectGroups) subjectGroups.value = data.subjectGroups;
+                            if (data.schedule) schedule.value = data.schedule;
+                            if (data.archive) archive.value = data.archive;
+                            saveAll();
+                            alert('نسخه پشتیبان با موفقیت بازیابی شد!');
+                        } catch { alert('فایل پشتیبان معتبر نیست.'); }
+                    };
+                    reader.readAsText(file);
+                };
+
+                watch(currentTab, (newVal) => {
+                    if (newVal === 'dashboard') updateMainChart();
+                });
+
+                onMounted(loadAll);
+
+                return {
+                    currentTab, tabTitle, currentDateStr, showWelcomeModal, completeWelcome,
+                    cloudStatus, authInstance, currentUser, firebaseConfigInput,
+                    subjectGroups, partCategories, filterCategory, dropdownOpen, timerDropdownOpen,
+                    parts, pendingParts, completedParts, filteredCompletedParts, trashedParts, todayCompleted, weekCompletedParts, todayStats,
+                    newPart, setPlannedTimePreset, addSubPartToNew,
+                    timer, setTimerStyle, switchTimerMode, currentTargetMinutes, activeTimerInfo, formattedTimer, timerProgressPercent,
+                    completingPart, detailPart,
+                    chartDaysRange, chartMetric, rangeAnalytics, analysisReport, setCustomRange, setChartMetric, updateMainChart, runPerformanceAnalysis,
+                    weekDays, selectedWeekDay, scheduleForm, currentDaySchedule,
+                    archiveForm, archiveSearch, filteredArchive,
+                    calc, calcTotalTests, calcPercentTotal, calcPercentAccuracy, calcPercentNegative,
+                    settings, customSubjectInput,
+                    navClass, formatMinutes, calcPartPercent,
+                    createNewPart, openDirectCompleteModal, selectPartAndGoToTimer,
+                    startTimer, pauseTimer, resumeTimer, finishTimerAndRecord,
+                    openCompleteModal, openEditModal, openPartDetail, confirmCompletePart,
+                    deletePart, restorePart, permanentDeletePart,
+                    addScheduleItem, removeScheduleItem, sendScheduleToParts,
+                    addArchiveItem, deleteArchiveItem, addCustomSubject,
+                    saveAll, saveFirebaseConfig, loginWithGoogle, logoutGoogle, syncToCloud,
+                    exportCSV, exportJSON, importJSON
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
