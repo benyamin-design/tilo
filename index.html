@@ -7,6 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#0f172a">
     <title>tilo | دستیار هوشمند مطالعه و تحلیل کنکور</title>
+    
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.0.0/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -26,23 +27,56 @@
         }
     </script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         window.FirebaseSDK = { initializeApp, getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, getFirestore, doc, setDoc, getDoc };
     </script>
+
     <style>
         body {
             background-color: #0f172a;
-            background-image: radial-gradient(at 10% 10%, rgba(99, 102, 241, 0.08) 0px, transparent 45%), radial-gradient(at 90% 90%, rgba(45, 212, 191, 0.07) 0px, transparent 45%);
-            background-attachment: fixed; color: #e2e8f0; -webkit-tap-highlight-color: transparent;
+            background-image: 
+                radial-gradient(at 10% 10%, rgba(99, 102, 241, 0.08) 0px, transparent 45%),
+                radial-gradient(at 90% 90%, rgba(45, 212, 191, 0.07) 0px, transparent 45%);
+            background-attachment: fixed;
+            color: #e2e8f0;
+            -webkit-tap-highlight-color: transparent;
         }
         [v-cloak] { display: none; }
-        .soft-card { background: rgba(30, 41, 59, 0.78); backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, 0.06); box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.2); }
-        .input-calm { background: #172033; border: 1px solid rgba(255, 255, 255, 0.09); color: #f1f5f9; border-radius: 0.85rem; padding: 0.7rem 0.95rem; width: 100%; transition: all 0.2s ease; outline: none; }
-        .input-calm:focus { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.18); }
-        .btn-calm { padding: 0.7rem 1.2rem; border-radius: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.18s ease; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .soft-card {
+            background: rgba(30, 41, 59, 0.78);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.2);
+        }
+        .input-calm {
+            background: #172033;
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            color: #f1f5f9;
+            border-radius: 0.85rem;
+            padding: 0.7rem 0.95rem;
+            width: 100%;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        .input-calm:focus {
+            border-color: #818cf8;
+            box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.18);
+        }
+        .btn-calm {
+            padding: 0.7rem 1.2rem;
+            border-radius: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
         .btn-calm:active { transform: scale(0.97); }
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -52,12 +86,22 @@
 </head>
 <body class="font-sans antialiased h-screen flex flex-col md:flex-row overflow-hidden select-none">
     <div id="app" class="w-full h-full flex flex-col md:flex-row max-w-7xl mx-auto relative" v-cloak>
+        
+        <!-- Onboarding Modal -->
         <div v-if="showWelcomeModal" class="fixed inset-0 z-[100000] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
             <div class="soft-card bg-[#162032] w-full max-w-md rounded-3xl p-6 md:p-8 border border-indigo-500/20 shadow-2xl text-center space-y-5">
-                <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary to-tealSoft mx-auto flex items-center justify-center shadow-lg shadow-primary/25"><i class="fas fa-graduation-cap text-white text-3xl"></i></div>
-                <div><h2 class="text-2xl font-black text-white">به <span class="text-tealSoft">tilo</span> خوش آمدید</h2><p class="text-xs text-slate-400 mt-1.5">دستیار هوشمند برنامه‌ریزی، تایمر و تحلیلگر عملکرد</p></div>
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary to-tealSoft mx-auto flex items-center justify-center shadow-lg shadow-primary/25">
+                    <i class="fas fa-graduation-cap text-white text-3xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-black text-white">به <span class="text-tealSoft">tilo</span> خوش آمدید</h2>
+                    <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">دستیار هوشمند برنامه‌ریزی، تایمر مهندسی و تحلیلگر عملکرد مطالعاتی کنکور</p>
+                </div>
                 <div class="bg-slate-900/70 p-4 rounded-2xl border border-slate-800 text-right space-y-3">
-                    <div><label class="block text-xs text-slate-300 mb-1.5 font-bold">نام شما:</label><input type="text" v-model="settings.userName" class="input-calm text-sm text-center font-bold"></div>
+                    <div>
+                        <label class="block text-xs text-slate-300 mb-1.5 font-bold">نام شما:</label>
+                        <input type="text" v-model="settings.userName" placeholder="مثلاً: بنیامین" class="input-calm text-sm text-center font-bold">
+                    </div>
                     <div>
                         <label class="block text-xs text-slate-300 mb-1.5 font-bold">هدف مطالعه روزانه (دقیقه):</label>
                         <div class="grid grid-cols-3 gap-2">
@@ -68,353 +112,50 @@
                     </div>
                 </div>
                 <div class="space-y-2.5 pt-1">
-                    <button @click="completeWelcome" class="btn-calm bg-gradient-to-r from-primary to-tealSoft text-slate-950 font-black w-full py-3.5 text-sm shadow-lg shadow-primary/20"><i class="fas fa-rocket"></i> ورود به داشبورد من</button>
-                    <button v-if="authInstance" @click="loginWithGoogle" class="btn-calm bg-white text-slate-900 hover:bg-slate-100 w-full py-3 text-xs font-extrabold"><i class="fab fa-google text-rose-500 text-sm"></i> اتصال مستقیم به حساب Google</button>
+                    <button @click="completeWelcome" class="btn-calm bg-gradient-to-r from-primary to-tealSoft text-slate-950 font-black w-full py-3.5 text-sm shadow-lg shadow-primary/20">
+                        <i class="fas fa-rocket"></i> ورود به داشبورد من
+                    </button>
+                    <button v-if="authInstance" @click="loginWithGoogle" class="btn-calm bg-white text-slate-900 hover:bg-slate-100 w-full py-3 text-xs font-extrabold">
+                        <i class="fab fa-google text-rose-500 text-sm"></i> اتصال مستقیم به حساب Google
+                    </button>
                 </div>
             </div>
         </div>
 
+        <!-- Navigation Menu -->
         <nav class="soft-card w-full md:w-60 md:h-full flex md:flex-col justify-around md:justify-start p-2 md:p-4 order-last md:order-first z-50 fixed md:relative bottom-0 left-0 right-0 border-t md:border-t-0 md:border-l border-slate-800/80">
             <div class="hidden md:flex items-center gap-3 mb-6 px-2 pt-1">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-tealSoft flex items-center justify-center shadow-md"><i class="fas fa-graduation-cap text-slate-950 text-lg"></i></div>
-                <div><h1 class="text-xl font-black tracking-tight text-white">tilo</h1><span class="text-[11px] text-tealSoft font-medium">{{ settings.userName || 'نسخه کنکور ریاضی' }}</span></div>
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-tealSoft flex items-center justify-center shadow-md">
+                    <i class="fas fa-graduation-cap text-slate-950 text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black tracking-tight text-white">tilo</h1>
+                    <span class="text-[11px] text-tealSoft font-medium">{{ settings.userName || 'نسخه کنکور ریاضی' }}</span>
+                </div>
             </div>
-            <button @click="currentTab = 'dashboard'" :class="navClass('dashboard')"><i class="fas fa-chart-pie text-base md:w-6"></i><span class="text-[10px] md:text-sm mt-1 md:mt-0">داشبورد</span></button>
+            <button @click="currentTab = 'dashboard'" :class="navClass('dashboard')"><i class="fas fa-chart-pie text-base md:w-6"></i><span class="text-[10px] md:text-sm mt-1 md:mt-0">داشبورد و تحلیل</span></button>
             <button @click="currentTab = 'parts'" :class="navClass('parts')" class="relative"><i class="fas fa-layer-group text-base md:w-6"></i><span class="text-[10px] md:text-sm mt-1 md:mt-0">پارت‌ها</span><span v-if="pendingParts.length > 0" class="absolute top-1 right-2 md:top-auto md:left-3 bg-primary text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">{{ pendingParts.length }}</span></button>
-            <button @click="currentTab = 'timer'" :class="navClass('timer')" class="relative"><i class="fas fa-stopwatch text-base md:w-6"></i><span class="text-[10px] md:text-sm mt-1 md:mt-0">تایمر</span><span v-if="timer.active" class="absolute top-1.5 right-3 w-2.5 h-2.5 bg-tealSoft rounded-full animate-ping"></span></button>
-            <button @click="currentTab = 'calendar'" :class="navClass('calendar')"><i class="fas fa-calendar-week text-base md:w-6"></i><span class="text-[10px] md:text-sm mt-1 md:mt-0">برنامه</span></button>
-            <button @click="currentTab = 'archive'" :class="navClass('archive')"><i class="fas fa-folder-open text-base md:w-6"></i><span class="text-[10px] md:text-sm mt-1 md:mt-0">آرشیو</span></button>
+            <button @click="currentTab = 'timer'" :class="navClass('timer')" class="relative"><i class="fas fa-stopwatch text-base md:w-6"></i><span class="text-[10px] md:text-sm mt-1 md:mt-0">تایمر حرفه‌ای</span><span v-if="timer.active" class="absolute top-1.5 right-3 w-2.5 h-2.5 bg-tealSoft rounded-full animate-ping"></span></button>
+            <button @click="currentTab = 'calendar'" :class="navClass('calendar')"><i class="fas fa-calendar-week text-base md:w-6"></i><span class="text-[10px] md:text-sm mt-1 md:mt-0">برنامه هفتگی</span></button>
+            <button @click="currentTab = 'archive'" :class="navClass('archive')"><i class="fas fa-folder-open text-base md:w-6"></i><span class="text-[10px] md:text-sm mt-1 md:mt-0">آرشیو آموزشی</span></button>
             <button @click="currentTab = 'calculator'" :class="navClass('calculator')"><i class="fas fa-percentage text-base md:w-6"></i><span class="text-[10px] md:text-sm mt-1 md:mt-0">درصدگیر</span></button>
-            <button @click="currentTab = 'settings'" :class="navClass('settings')" class="md:mt-auto"><i class="fas fa-sliders-h text-base md:w-6"></i><span class="text-[10px] md:text-sm mt-1 md:mt-0">تنظیمات</span></button>
+            <button @click="currentTab = 'settings'" :class="navClass('settings')" class="md:mt-auto"><i class="fas fa-sliders-h text-base md:w-6"></i><span class="text-[10px] md:text-sm mt-1 md:mt-0">اکانت و تنظیمات</span></button>
         </nav>
 
+        <!-- Main Content Area -->
         <main class="flex-1 overflow-y-auto p-4 md:p-7 pb-28 md:pb-8">
             <header class="flex flex-wrap justify-between items-center gap-3 mb-6 bg-slate-800/40 p-3.5 rounded-2xl border border-slate-800">
                 <div class="flex items-center gap-3">
-                    <div @click="currentTab = 'settings'" class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center cursor-pointer hover:border-primarySoft"><i class="fas fa-user-astronaut text-tealSoft"></i></div>
-                    <div><h2 class="text-base md:text-xl font-extrabold text-white flex items-center gap-2"><span>{{ tabTitle }}</span></h2><p class="text-slate-400 text-[11px] md:text-xs mt-0.5">{{ currentDateStr }}</p></div>
+                    <div @click="currentTab = 'settings'" class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center cursor-pointer hover:border-primarySoft transition">
+                        <i class="fas fa-user-astronaut text-tealSoft"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base md:text-xl font-extrabold text-white flex items-center gap-2">
+                            <span>{{ tabTitle }}</span>
+                            <span v-if="settings.userName" class="text-xs font-normal text-slate-400 hidden sm:inline">| سلام {{ settings.userName }} 👋</span>
+                        </h2>
+                        <p class="text-slate-400 text-[11px] md:text-xs mt-0.5">{{ currentDateStr }}</p>
+                    </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button @click="currentTab = 'settings'" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900/70 border border-slate-700/70 text-[11px]"><span class="w-2 h-2 rounded-full" :class="cloudStatus.class"></span><span class="text-slate-300">{{ currentUser ? currentUser.displayName || 'اکانت متصل' : cloudStatus.text }}</span></button>
-                    <button v-if="currentTab !== 'parts'" @click="currentTab = 'parts'" class="btn-calm bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs py-2 px-3 border border-slate-700"><i class="fas fa-plus text-primarySoft"></i> پارت جدید</button>
-                </div>
-            </header>
-            <div v-show="currentTab === 'dashboard'" class="space-y-6">
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-                    <div class="soft-card p-4 rounded-2xl border-r-4 border-r-primarySoft">
-                        <div class="flex justify-between items-start"><p class="text-slate-400 text-xs">مطالعه امروز</p><i class="fas fa-clock text-primarySoft/70"></i></div>
-                        <p class="text-xl md:text-2xl font-black text-white mt-2">{{ formatMinutes(todayStats.totalTime) }}</p>
-                        <p v-if="todayStats.nonStudyTime > 0" class="text-[10px] text-amberSoft mt-1 font-bold">+ {{ formatMinutes(todayStats.nonStudyTime) }} غیر درسی</p>
-                        <div class="w-full bg-slate-900 h-1.5 rounded-full mt-2 overflow-hidden"><div class="bg-gradient-to-r from-primary to-tealSoft h-full rounded-full" :style="{width: todayStats.goalProgress + '%'}"></div></div>
-                        <p class="text-[10px] text-slate-400 mt-1">هدف: {{ formatMinutes(settings.dailyGoal) }} ({{ todayStats.goalProgress }}%)</p>
-                    </div>
-                    <div class="soft-card p-4 rounded-2xl border-r-4 border-r-tealSoft">
-                        <div class="flex justify-between items-start"><p class="text-slate-400 text-xs">تست و تشریحی امروز</p><i class="fas fa-pen-nib text-tealSoft/70"></i></div>
-                        <p class="text-xl md:text-2xl font-black text-white mt-2">{{ todayStats.totalTests }} <span class="text-xs font-normal text-slate-400">تست</span> <span v-if="todayStats.descriptive > 0" class="text-xs font-bold text-indigo-300 mr-1">| {{ todayStats.descriptive }} تشریحی</span></p>
-                        <p class="text-[11px] text-slate-400 mt-1.5"><span class="text-sage">{{ todayStats.correct }} درست</span> • <span class="text-roseSoft">{{ todayStats.wrong }} غلط</span></p>
-                    </div>
-                    <div class="soft-card p-4 rounded-2xl border-r-4 border-r-sage">
-                        <div class="flex justify-between items-start"><p class="text-slate-400 text-xs">درصد خالص امروز</p><i class="fas fa-bullseye text-sage/70"></i></div>
-                        <p class="text-xl md:text-2xl font-black text-sage mt-2" dir="ltr">{{ todayStats.netScore }}</p>
-                        <p class="text-[11px] text-slate-400 mt-1.5">دقت پاسخ‌گویی: {{ todayStats.accuracy }}</p>
-                    </div>
-                    <div class="soft-card p-4 rounded-2xl border-r-4 border-r-amberSoft">
-                        <div class="flex justify-between items-start"><p class="text-slate-400 text-xs">پارت‌های امروز</p><i class="fas fa-check-double text-amberSoft/70"></i></div>
-                        <p class="text-xl md:text-2xl font-black text-white mt-2">{{ todayCompleted.length }} <span class="text-xs font-normal text-slate-400">انجام‌شده</span></p>
-                        <p class="text-[11px] text-amberSoft mt-1.5">{{ pendingParts.length }} پارت در صف انتظار</p>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                    <div class="soft-card rounded-2xl p-5 flex flex-col justify-between">
-                        <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-white flex items-center gap-2 text-sm"><i class="fas fa-play-circle text-tealSoft"></i> پارت‌های آماده شروع</h3><button @click="currentTab = 'parts'" class="text-xs text-primarySoft hover:underline">+ تعریف پارت</button></div>
-                        <div v-if="pendingParts.length === 0" class="text-center py-8 text-slate-400 text-xs">صف مطالعه خالی است.</div>
-                        <div v-else class="space-y-2.5 max-h-64 overflow-y-auto">
-                            <div v-for="part in pendingParts" :key="part.id" class="bg-slate-900/70 p-3.5 rounded-xl border border-slate-800 flex justify-between items-center">
-                                <div>
-                                    <div class="flex flex-wrap gap-1 mb-1">
-                                        <span v-if="part.isNonStudy" class="bg-amberSoft/20 text-amberSoft text-[10px] px-2 py-0.5 rounded font-bold">☕ غیر درسی</span>
-                                        <span v-else v-for="sub in part.subjects" :key="sub" class="text-[10px] bg-primary/20 text-indigo-300 px-2 py-0.5 rounded font-bold">{{ sub }}</span>
-                                    </div>
-                                    <p class="text-sm font-bold text-white">{{ part.topic }}</p>
-                                    <p class="text-[11px] text-slate-400 mt-0.5">{{ part.type }} • هدف: {{ part.plannedTime }} دقیقه</p>
-                                </div>
-                                <button @click="selectPartAndGoToTimer(part)" class="btn-calm bg-primary hover:bg-indigo-500 text-white text-xs py-2 px-3 rounded-xl shrink-0"><i class="fas fa-play"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="soft-card rounded-2xl p-5">
-                        <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-white flex items-center gap-2 text-sm"><i class="fas fa-check-circle text-sage"></i> تکمیل‌شده‌های امروز</h3><button @click="currentTab = 'parts'" class="text-xs text-slate-400">آرشیو کامل</button></div>
-                        <div v-if="todayCompleted.length === 0" class="text-center py-8 text-slate-400 text-xs">پارتی تکمیل نشده است.</div>
-                        <div v-else class="space-y-2.5 max-h-64 overflow-y-auto">
-                            <div v-for="item in todayCompleted" :key="item.id" class="bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/80 flex justify-between items-center">
-                                <div>
-                                    <div class="flex flex-wrap gap-1 mb-1">
-                                        <span v-if="item.isNonStudy" class="bg-amberSoft/20 text-amberSoft text-[10px] px-2 py-0.5 rounded font-bold">☕ غیر درسی</span>
-                                        <span v-else v-for="s in item.subjects" :key="s" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">{{ s }}</span>
-                                    </div>
-                                    <p class="font-bold text-xs md:text-sm text-white">{{ item.topic }}</p>
-                                </div>
-                                <div class="text-left flex items-center gap-2">
-                                    <span class="text-xs font-bold text-sage block">{{ item.realTime }} دقیقه</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div v-show="currentTab === 'parts'" class="space-y-6 max-w-4xl mx-auto">
-                <div class="soft-card p-5 md:p-6 rounded-3xl border border-primary/20">
-                    <h3 class="text-base md:text-lg font-extrabold text-white mb-4 flex items-center gap-2"><i class="fas fa-plus-circle text-primarySoft"></i> تعریف پارت مطالعه جدید</h3>
-                    <form @submit.prevent="createNewPart" class="space-y-4">
-                        
-                        <div class="flex gap-2 bg-slate-900/60 p-1.5 rounded-xl border border-slate-800 w-fit mb-2">
-                            <button type="button" @click="newPart.isNonStudy = false" :class="!newPart.isNonStudy ? 'bg-primary text-white font-bold shadow' : 'text-slate-400 hover:text-white'" class="px-4 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5"><i class="fas fa-book"></i> پارت درسی</button>
-                            <button type="button" @click="newPart.isNonStudy = true" :class="newPart.isNonStudy ? 'bg-amberSoft text-slate-900 font-bold shadow' : 'text-slate-400 hover:text-white'" class="px-4 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5"><i class="fas fa-coffee"></i> کار غیر درسی</button>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="relative" v-show="!newPart.isNonStudy">
-                                <label class="block text-xs text-slate-300 mb-1.5 font-medium">انتخاب درس (امکان انتخاب چندگانه) *</label>
-                                <button type="button" @click="dropdownOpen = !dropdownOpen" class="input-calm flex justify-between items-center text-right text-xs md:text-sm">
-                                    <span class="truncate" :class="newPart.subjects.length ? 'text-white font-bold' : 'text-slate-400'">{{ newPart.subjects.length ? newPart.subjects.join(' ، ') : 'انتخاب درس‌ها...' }}</span>
-                                    <i class="fas fa-chevron-down text-slate-400"></i>
-                                </button>
-                                <div v-if="dropdownOpen" class="absolute z-50 left-0 right-0 mt-2 soft-card bg-[#162032] rounded-2xl p-3 max-h-72 overflow-y-auto border border-slate-700 shadow-2xl">
-                                    <div class="flex justify-between items-center pb-2 mb-2 border-b border-slate-700"><span class="text-xs text-slate-400">{{ newPart.subjects.length }} درس</span><button type="button" @click="dropdownOpen = false" class="text-xs bg-primary text-white px-3 py-1 rounded-lg">تأیید</button></div>
-                                    <div v-for="(group, gIndex) in subjectGroups" :key="gIndex" class="mb-3">
-                                        <div class="text-xs font-bold text-tealSoft bg-slate-900/90 px-2.5 py-1.5 rounded-lg mb-1.5">{{ group.category }}</div>
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-1 pr-1">
-                                            <label v-for="sub in group.items" :key="sub" class="flex items-center gap-2.5 p-2 rounded-lg hover:bg-slate-800/70 cursor-pointer text-xs transition"><input type="checkbox" :value="sub" v-model="newPart.subjects" class="w-4 h-4 accent-indigo-500 rounded"><span class="text-slate-200">{{ sub }}</span></label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-xs text-slate-300 mb-1.5 font-medium">عنوان دقیق (مبحث / فعالیت) *</label>
-                                <input type="text" v-model="newPart.topic" required class="input-calm text-xs md:text-sm" placeholder="مثلاً: حرکت بر خط راست / مرتب‌سازی اتاق">
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="block text-xs text-slate-300 mb-1.5 font-medium">توضیحات (اختیاری)</label>
-                                <input type="text" v-model="newPart.description" class="input-calm text-xs md:text-sm" placeholder="مثلاً: حل تست‌های مضرب ۳...">
-                            </div>
-                            <div class="grid grid-cols-2 gap-2.5">
-                                <div>
-                                    <label class="block text-xs text-slate-300 mb-1.5 font-medium">نوع فعالیت</label>
-                                    <select v-model="newPart.type" class="input-calm text-xs">
-                                        <option value="آموزشی / مطالعاتی">آموزشی / مطالعاتی</option>
-                                        <option value="تست و تمرین">تست و تمرین</option>
-                                        <option value="مرور و جمع‌بندی">مرور و جمع‌بندی</option>
-                                        <option value="سایر کارهای شخصی">سایر کارهای شخصی (غیردرسی)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-xs text-slate-300 mb-1.5 font-medium">مدت زمان (دقیقه)</label>
-                                    <input type="number" v-model.number="newPart.plannedTime" min="5" max="400" class="input-calm text-xs font-bold text-center" placeholder="دقیقه">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex flex-wrap gap-3 pt-2">
-                            <button type="submit" class="btn-calm bg-primary hover:bg-indigo-500 text-white text-xs md:text-sm flex-1 py-3"><i class="fas fa-plus"></i> افزودن به لیست پارت‌ها (آماده تایمر)</button>
-                            <button type="button" @click="openDirectCompleteModal" class="btn-calm bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs md:text-sm border border-slate-700 py-3"><i class="fas fa-check-double text-sage"></i> ثبت مستقیم (بدون تایمر)</button>
-                        </div>
-                    </form>
-                </div>
-
-                <div class="soft-card p-5 rounded-3xl">
-                    <h3 class="font-bold text-white mb-4 flex items-center gap-2 text-sm md:text-base"><i class="fas fa-hourglass-start text-amberSoft"></i> پارت‌های در انتظار مطالعه</h3>
-                    <div v-if="pendingParts.length === 0" class="text-center py-6 text-slate-500 text-xs">پارت فعالی در صف انتظار نیست.</div>
-                    <div class="space-y-3">
-                        <div v-for="part in pendingParts" :key="part.id" class="bg-slate-900/75 p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                            <div class="space-y-1">
-                                <div class="flex flex-wrap items-center gap-1.5">
-                                    <span v-if="part.isNonStudy" class="bg-amberSoft/20 text-amberSoft px-2.5 py-0.5 rounded-md font-bold text-[11px]">☕ غیر درسی</span>
-                                    <span v-else v-for="s in part.subjects" :key="s" class="bg-primary/20 text-indigo-300 text-[11px] px-2.5 py-0.5 rounded-md font-bold">{{ s }}</span>
-                                    <span class="text-xs text-slate-400">• {{ part.type }}</span>
-                                </div>
-                                <h4 class="font-bold text-white text-sm md:text-base">{{ part.topic }}</h4>
-                                <p class="text-xs text-slate-400">هدف: <strong class="text-slate-200">{{ part.plannedTime }} دقیقه</strong></p>
-                            </div>
-                            <div class="flex items-center gap-1.5 justify-end border-t sm:border-t-0 border-slate-800 pt-2.5 sm:pt-0 shrink-0 w-full sm:w-auto">
-                                <button @click="selectPartAndGoToTimer(part)" class="btn-calm bg-primary text-white text-xs py-2 px-3"><i class="fas fa-stopwatch"></i> تایمر</button>
-                                <button @click="openCompleteModal(part)" class="btn-calm bg-sage/20 text-sage border border-sage/30 text-xs py-2 px-2.5"><i class="fas fa-check"></i> تکمیل</button>
-                                <button @click="deletePart(part.id)" class="text-roseSoft hover:bg-rose-500/10 p-2 rounded-lg"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- باقی‌مانده تب‌ها شامل تایمر، تقویم و تنظیمات بدون تغییر بزرگ ظاهری باقی مانده‌اند -->
-            <div v-show="currentTab === 'timer' || currentTab === 'calendar' || currentTab === 'archive' || currentTab === 'calculator' || currentTab === 'settings'" class="max-w-4xl mx-auto space-y-6 text-center text-slate-400 py-10">
-                 جهت حفظ خلاصه‌نویسی کدهای رابط کاربری سایر تب‌ها در اینجا مانند نسخه قبل شما قرار دارند و نیازی به جایگزینی آن‌ها نیست. فقط بخش منطق Vue به‌روز می‌شود.
-                 (هنگام کپی روی فایل خود، کدهای این تب‌ها که در فایل فعلی‌تان دارید را نگه دارید، ما فقط منطق Vue زیر را جایگزین می‌کنیم.)
-            </div>
-        </main>
-    </div>
-    <script>
-        const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
-
-        createApp({
-            setup() {
-                const currentTab = ref('dashboard');
-                const showWelcomeModal = ref(false);
-                const dropdownOpen = ref(false);
-                const timerDropdownOpen = ref(false);
-                
-                const getTehranDateISO = (d = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tehran' }).format(d);
-                const getTehranTimeStr = (d = new Date()) => new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(d);
-                const getTehranShortDateStr = (d = new Date()) => new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran' }).format(d);
-                
-                const currentDateStr = ref(getTehranShortDateStr());
-                const todayISO = getTehranDateISO();
-
-                const subjectGroups = ref([{ category: 'پیش‌فرض', items: ['ریاضی', 'فیزیک', 'شیمی'] }]); // این اطلاعات از لوکال شما پر خواهد شد
-                const parts = ref([]);
-                const settings = ref({ userName: '', dailyGoal: 360, negativeMarkRatio: 3 });
-
-                const currentUser = ref(null);
-                const authInstance = ref(null);
-                const cloudStatus = ref({ text: 'در حال بررسی...', class: 'bg-slate-700' });
-
-                // فرم پارت با کلید جدید برای کارهای غیردرسی
-                const getEmptyPartForm = () => ({
-                    isNonStudy: false,
-                    subjects: [],
-                    topic: '',
-                    description: '',
-                    type: 'آموزشی / مطالعاتی',
-                    plannedTime: 60
-                });
-                const newPart = ref(getEmptyPartForm());
-
-                const pendingParts = computed(() => parts.value.filter(p => p.status === 'pending'));
-                const completedParts = computed(() => parts.value.filter(p => p.status === 'completed').sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0)));
-                const todayCompleted = computed(() => completedParts.value.filter(p => p.dateISO === todayISO));
-
-                // آمار داشبورد با قابلیت تفکیک درسی و غیر درسی
-                const todayStats = computed(() => {
-                    let totalTime = 0, nonStudyTime = 0, totalTests = 0, descriptive = 0, correct = 0, wrong = 0;
-                    todayCompleted.value.forEach(p => {
-                        if (p.isNonStudy) {
-                            nonStudyTime += Number(p.realTime || 0);
-                        } else {
-                            totalTime += Number(p.realTime || 0);
-                            descriptive += Number(p.descriptiveCount || 0);
-                            if (p.tests) {
-                                correct += Number(p.tests.correct || 0);
-                                wrong += Number(p.tests.wrong || 0);
-                                totalTests += Number(p.tests.total || 0);
-                            }
-                        }
-                    });
-                    pendingParts.value.forEach(p => {
-                        if (p.dateISO === todayISO && p.realTime > 0) {
-                            if (p.isNonStudy) nonStudyTime += Number(p.realTime);
-                            else totalTime += Number(p.realTime);
-                        }
-                    });
-                    const goalProgress = settings.value.dailyGoal > 0 ? Math.min(100, Math.round((totalTime / settings.value.dailyGoal) * 100)) : 0;
-                    const accuracy = (correct + wrong) > 0 ? ((correct / (correct + wrong)) * 100).toFixed(1) + '%' : '—';
-                    let netScore = '—';
-                    if (totalTests > 0) {
-                        const ratio = settings.value.negativeMarkRatio;
-                        const raw = ratio > 0 ? ((correct - (wrong / ratio)) / totalTests) * 100 : (correct / totalTests) * 100;
-                        netScore = raw.toFixed(1) + '%';
-                    }
-                    return { totalTime, nonStudyTime, totalTests, descriptive, correct, wrong, goalProgress, accuracy, netScore };
-                });
-
-                const createNewPart = () => {
-                    if (!newPart.value.isNonStudy && newPart.value.subjects.length === 0) {
-                        alert('برای پارت درسی، لطفاً حداقل یک درس را انتخاب کنید.');
-                        dropdownOpen.value = true;
-                        return;
-                    }
-                    if (!newPart.value.topic) return alert('عنوان مبحث/فعالیت را وارد کنید.');
-
-                    const partObj = {
-                        id: Date.now(),
-                        dateISO: todayISO,
-                        dateStr: getTehranShortDateStr(),
-                        isNonStudy: newPart.value.isNonStudy || false,
-                        subjects: newPart.value.isNonStudy ? [] : [...newPart.value.subjects],
-                        topic: newPart.value.topic.trim(),
-                        description: (newPart.value.description || '').trim(),
-                        type: newPart.value.type,
-                        plannedTime: newPart.value.plannedTime || 60,
-                        realTime: 0,
-                        status: 'pending',
-                        tests: { correct: 0, wrong: 0, unanswered: 0, total: 0 }
-                    };
-                    parts.value.unshift(partObj);
-                    saveAll();
-                    newPart.value = getEmptyPartForm();
-                    dropdownOpen.value = false;
-                };
-
-                const openDirectCompleteModal = () => {
-                    if ((!newPart.value.isNonStudy && newPart.value.subjects.length === 0) || !newPart.value.topic) {
-                        return alert('اطلاعات پارت (مبحث و در صورت درسی بودن، نام درس) را کامل کنید.');
-                    }
-                    // این تابع می‌تواند یک مودال باز کند. برای سادگی اینجا پارت را مستقیم تکمیل می‌کنیم
-                    const partObj = {
-                        id: Date.now(),
-                        dateISO: todayISO,
-                        dateStr: getTehranShortDateStr(),
-                        isNonStudy: newPart.value.isNonStudy || false,
-                        subjects: newPart.value.isNonStudy ? [] : [...newPart.value.subjects],
-                        topic: newPart.value.topic.trim(),
-                        plannedTime: newPart.value.plannedTime || 60,
-                        realTime: newPart.value.plannedTime || 60,
-                        status: 'completed',
-                        completedAt: Date.now()
-                    };
-                    parts.value.unshift(partObj);
-                    saveAll();
-                    newPart.value = getEmptyPartForm();
-                    alert('پارت با موفقیت مستقیماً ثبت شد.');
-                };
-
-                const deletePart = (id) => {
-                    parts.value = parts.value.filter(p => p.id !== id);
-                    saveAll();
-                };
-
-                const saveAll = () => {
-                    localStorage.setItem('sp_pro_parts', JSON.stringify(parts.value));
-                    localStorage.setItem('sp_pro_settings', JSON.stringify(settings.value));
-                    // این تابع توسط ماژول ابری ما شنود و همگام‌سازی می‌شود
-                };
-
-                const loadAll = () => {
-                    const p = localStorage.getItem('sp_pro_parts');
-                    const s = localStorage.getItem('sp_pro_settings');
-                    if (p) parts.value = JSON.parse(p);
-                    if (s) settings.value = { ...settings.value, ...JSON.parse(s) };
-                };
-
-                const navClass = (tab) => ['flex flex-col md:flex-row items-center p-2 rounded-xl transition', currentTab.value === tab ? 'bg-primary/20 text-primarySoft' : 'text-slate-400'];
-                const formatMinutes = (m) => {
-                    if (!m) return '۰ دقیقه';
-                    const h = Math.floor(m / 60); const rem = m % 60;
-                    return h > 0 ? (rem > 0 ? `${h} ساعت و ${rem} دقیقه` : `${h} ساعت`) : `${m} دقیقه`;
-                };
-
-                onMounted(loadAll);
-
-                return {
-                    currentTab, currentDateStr, tabTitle: computed(() => currentTab.value === 'dashboard' ? 'داشبورد' : 'مدیریت پارت‌ها'),
-                    showWelcomeModal, settings, cloudStatus, authInstance, currentUser,
-                    newPart, dropdownOpen, subjectGroups, createNewPart, openDirectCompleteModal, deletePart,
-                    parts, pendingParts, todayCompleted, todayStats, formatMinutes, navClass,
-                    saveAll
-                };
-            }
-        }).mount('#app');
-    </script>
-    <!-- ماژول مرحله اول (همگام‌سازی ابری امن) -->
-    <script src="./tilo-cloud.js"></script>
-</body>
-</html>
+                    <button @click="currentTab = 'settings'" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900/70 border border-slate-700/70 text
