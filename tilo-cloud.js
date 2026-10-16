@@ -6,6 +6,7 @@
     const FB_VERSION = "10.8.0";
     let authModule = null;
 
+    // ۱. بارگذاری ماژول‌های تکمیلی Auth برای ماندگاری نشست و پشتیبانی از موبایل
     try {
         authModule = await import(`https://www.gstatic.com/firebasejs/${FB_VERSION}/firebase-auth.js`);
         if (window.FirebaseSDK && authModule) {
@@ -22,6 +23,7 @@
         return;
     }
 
+    // ۲. انتظار برای بارگذاری کامل اپلیکیشن Vue روی #app
     const waitForVueApp = setInterval(() => {
         const appEl = document.getElementById("app");
         if (appEl && appEl.__vue_app__ && appEl.__vue_app__._instance) {
@@ -35,23 +37,28 @@
         const fb = window.FirebaseSDK;
         if (!fb) return;
 
+        // الف) تابع ادغام هوشمند آرایه‌ها بر اساس ID (جلوگیری از حذف پارت‌های محلی یا ابری)
         function mergeItemsById(localArr = [], cloudArr = []) {
             const map = new Map();
             
+            // ابتدا داده‌های ابری را وارد می‌کنیم
             (Array.isArray(cloudArr) ? cloudArr : []).forEach(item => {
                 if (item && item.id !== undefined) {
                     map.set(String(item.id), item);
                 }
             });
 
+            // سپس داده‌های محلی را بررسی و ادغام می‌کنیم
             (Array.isArray(localArr) ? localArr : []).forEach(localItem => {
                 if (!localItem || localItem.id === undefined) return;
                 const key = String(localItem.id);
                 const existing = map.get(key);
 
                 if (!existing) {
+                    // آیتمی که در دستگاه هست ولی هنوز در ابر نیست حفظ می‌شود
                     map.set(key, localItem);
                 } else {
+                    // اگر هر دو جا هست، نسخه‌ای که کامل‌تر یا جدیدتر است انتخاب می‌شود
                     const localTime = localItem.completedAt || localItem.updatedAt || 0;
                     const cloudTime = existing.completedAt || existing.updatedAt || 0;
 
@@ -68,6 +75,7 @@
             return Array.from(map.values()).sort((a, b) => (b.id || 0) - (a.id || 0));
         }
 
+        // ب) ذخیره‌سازی مستقیم در LocalStorage بدون ایجاد حلقه تکراری
         function saveToLocalSilently() {
             localStorage.setItem('sp_pro_parts', JSON.stringify(state.parts || []));
             localStorage.setItem('sp_pro_settings', JSON.stringify(state.settings || {}));
@@ -79,6 +87,7 @@
             }
         }
 
+        // ج) دریافت اطلاعات از Firestore و ادغام ایمن با اطلاعات فعلی دستگاه
         async function safePullAndMerge(uid, db) {
             if (!uid || !db) return;
             try {
@@ -88,10 +97,12 @@
                 if (snap.exists()) {
                     const cloudData = snap.data();
 
+                    // ۱. ادغام ایمن پارت‌ها، برنامه هفتگی و آرشیو (هیچ داده‌ای پاک نمی‌شود)
                     state.parts = mergeItemsById(state.parts, cloudData.parts);
                     state.schedule = mergeItemsById(state.schedule, cloudData.schedule);
                     state.archive = mergeItemsById(state.archive, cloudData.archive);
 
+                    // ۲. ادغام تنظیمات
                     if (cloudData.settings) {
                         state.settings = {
                             ...cloudData.settings,
@@ -101,6 +112,7 @@
                         };
                     }
 
+                    // ۳. ادغام لیست دروس سفارشی
                     if (Array.isArray(cloudData.subjectGroups) && cloudData.subjectGroups.length > 0) {
                         const mergedGroups = JSON.parse(JSON.stringify(state.subjectGroups));
                         cloudData.subjectGroups.forEach((cGroup, idx) => {
@@ -113,8 +125,10 @@
                     }
 
                     saveToLocalSilently();
+                    // ارسال نسخه نهایی ادغام‌شده به ابر برای یکسان‌سازی کامل
                     await safePushToCloud(uid, db);
                 } else {
+                    // اگر کاربر جدید است، اطلاعات محلی فعلی او به حسابش منتقل می‌شود
                     await safePushToCloud(uid, db);
                 }
             } catch (err) {
@@ -123,6 +137,7 @@
             }
         }
 
+        // د) ارسال ایمن اطلاعات به Firestore
         async function safePushToCloud(uid, db) {
             if (!uid || !db) return;
             try {
@@ -146,6 +161,7 @@
             }
         }
 
+        // هـ) راه‌اندازی مجدد و استاندارد اتصال Firebase با ماندگاری دائمی (Local Persistence)
         let activeDb = null;
 
         async function setupPersistentFirebase(rawConfigStr) {
@@ -157,16 +173,19 @@
                 activeDb = fb.getFirestore(app);
                 state.authInstance = auth;
 
+                // تنظیم ماندگاری دائمی نشست روی مرورگر (جلوگیری از خروج با رفرش صفحه)
                 try {
                     await fbAuth.setPersistence(auth, fbAuth.indexedDBLocalPersistence);
                 } catch {
                     await fbAuth.setPersistence(auth, fbAuth.browserLocalPersistence);
                 }
 
+                // بررسی نتیجه برگشت از صفحه لاگین گوگل (در صورت استفاده از Redirect در موبایل)
                 fbAuth.getRedirectResult(auth).catch(err => {
                     console.warn("Redirect Auth Info:", err.message);
                 });
 
+                // گوش دادن به وضعیت ورود کاربر
                 fb.onAuthStateChanged(auth, async (user) => {
                     state.currentUser = user || null;
                     if (user) {
@@ -190,6 +209,7 @@
             }
         }
 
+        // و) بازنویسی متدهای ورود، خروج و همگام‌سازی روی State اصلی برنامه
         state.loginWithGoogle = async () => {
             if (!state.authInstance) {
                 alert('ابتدا کد کانفیگ Firebase پروژه خود را در بخش تنظیمات وارد و ذخیره کنید.');
@@ -202,6 +222,7 @@
                 await fbAuth.setPersistence(state.authInstance, fbAuth.browserLocalPersistence);
                 await fb.signInWithPopup(state.authInstance, provider);
             } catch (err) {
+                // اگر پاپ‌آپ در مرورگر گوشی مسدود شد، خودکار از روش هدایت مستقیم استفاده کن
                 if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
                     await fbAuth.signInWithRedirect(state.authInstance, provider);
                 } else {
@@ -240,6 +261,7 @@
             }
         };
 
+        // اتصال همگام‌سازی خودکار به تابع saveAll برنامه
         const originalSaveAll = state.saveAll;
         let syncTimeout = null;
         state.saveAll = () => {
@@ -252,6 +274,7 @@
             }
         };
 
+        // ز) افزودن نوار وضعیت دقیق همگام‌سازی در بخش تنظیمات
         function updateSyncBadge(text, colorClass) {
             let badge = document.getElementById('tilo-cloud-status-detail');
             if (!badge) {
@@ -271,6 +294,7 @@
             }
         }
 
+        // اجرای اولیه در صورت وجود کانفیگ ذخیره‌شده
         const savedCfg = localStorage.getItem('tilo_fb_config');
         if (savedCfg) {
             setupPersistentFirebase(savedCfg);
