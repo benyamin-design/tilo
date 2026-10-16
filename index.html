@@ -158,4 +158,213 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button @click="currentTab = 'settings'" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900/70 border border-slate-700/70 text
+                    <button @click="currentTab = 'settings'" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900/70 border border-slate-700/70 text-[11px]">
+                        <span class="w-2 h-2 rounded-full" :class="cloudStatus.class"></span>
+                        <span class="text-slate-300">{{ currentUser ? currentUser.displayName || 'اکانت متصل' : cloudStatus.text }}</span>
+                    </button>
+                    <button v-if="currentTab !== 'parts'" @click="currentTab = 'parts'" class="btn-calm bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs py-2 px-3 border border-slate-700">
+                        <i class="fas fa-plus text-primarySoft"></i> پارت جدید
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dashboard Tab -->
+            <div v-show="currentTab === 'dashboard'" class="space-y-6">
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+                    <div class="soft-card p-4 rounded-2xl border-r-4 border-r-primarySoft">
+                        <div class="flex justify-between items-start"><p class="text-slate-400 text-xs">مطالعه امروز</p><i class="fas fa-clock text-primarySoft/70"></i></div>
+                        <p class="text-xl md:text-2xl font-black text-white mt-2">{{ formatMinutes(todayStats.totalTime) }}</p>
+                        <div class="w-full bg-slate-900 h-1.5 rounded-full mt-2 overflow-hidden"><div class="bg-gradient-to-r from-primary to-tealSoft h-full rounded-full" :style="{width: todayStats.goalProgress + '%'}"></div></div>
+                        <p class="text-[10px] text-slate-400 mt-1">هدف: {{ formatMinutes(settings.dailyGoal) }} ({{ todayStats.goalProgress }}%)</p>
+                    </div>
+                    <div class="soft-card p-4 rounded-2xl border-r-4 border-r-tealSoft">
+                        <div class="flex justify-between items-start"><p class="text-slate-400 text-xs">تست و تشریحی امروز</p><i class="fas fa-pen-nib text-tealSoft/70"></i></div>
+                        <p class="text-xl md:text-2xl font-black text-white mt-2">{{ todayStats.totalTests }} <span class="text-xs font-normal text-slate-400">تست</span></p>
+                        <p class="text-[11px] text-slate-400 mt-1.5"><span class="text-sage">{{ todayStats.correct }} درست</span> • <span class="text-roseSoft">{{ todayStats.wrong }} غلط</span></p>
+                    </div>
+                    <div class="soft-card p-4 rounded-2xl border-r-4 border-r-sage">
+                        <div class="flex justify-between items-start"><p class="text-slate-400 text-xs">درصد خالص امروز</p><i class="fas fa-bullseye text-sage/70"></i></div>
+                        <p class="text-xl md:text-2xl font-black text-sage mt-2" dir="ltr">{{ todayStats.netScore }}</p>
+                        <p class="text-[11px] text-slate-400 mt-1.5">دقت پاسخ‌گویی: {{ todayStats.accuracy }}</p>
+                    </div>
+                    <div class="soft-card p-4 rounded-2xl border-r-4 border-r-amberSoft">
+                        <div class="flex justify-between items-start"><p class="text-slate-400 text-xs">پارت‌های امروز</p><i class="fas fa-check-double text-amberSoft/70"></i></div>
+                        <p class="text-xl md:text-2xl font-black text-white mt-2">{{ todayCompleted.length }} <span class="text-xs font-normal text-slate-400">انجام‌شده</span></p>
+                        <p class="text-[11px] text-amberSoft mt-1.5">{{ pendingParts.length }} پارت در صف انتظار</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parts Management Tab -->
+            <div v-show="currentTab === 'parts'" class="space-y-6 max-w-4xl mx-auto">
+                <div class="soft-card p-5 md:p-6 rounded-3xl border border-primary/20">
+                    <h3 class="text-base md:text-lg font-extrabold text-white mb-4"><i class="fas fa-plus-circle text-primarySoft"></i> تعریف پارت مطالعه جدید</h3>
+                    <form @submit.prevent="createNewPart" class="space-y-4">
+                        <div>
+                            <label class="block text-xs text-slate-300 mb-1.5 font-medium">مبحث دقیق *</label>
+                            <input type="text" v-model="newPart.topic" required class="input-calm text-xs md:text-sm" placeholder="مثلاً: مشتق">
+                        </div>
+                        <button type="submit" class="btn-calm bg-primary text-white text-xs w-full py-3">افزودن به لیست پارت‌ها</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Other Tabs Placeholder to prevent missing references -->
+            <div v-show="currentTab === 'timer'" class="max-w-xl mx-auto text-center py-10 text-slate-400">بخش تایمر حرفه‌ای</div>
+            <div v-show="currentTab === 'calendar'" class="max-w-xl mx-auto text-center py-10 text-slate-400">برنامه هفتگی</div>
+            <div v-show="currentTab === 'archive'" class="max-w-xl mx-auto text-center py-10 text-slate-400">آرشیو آموزشی</div>
+            <div v-show="currentTab === 'calculator'" class="max-w-xl mx-auto text-center py-10 text-slate-400">درصدگیر کنکور</div>
+            
+            <!-- Settings Tab -->
+            <div v-show="currentTab === 'settings'" class="max-w-xl mx-auto space-y-5">
+                <div class="soft-card p-5 rounded-3xl space-y-4 border border-primary/30">
+                    <h3 class="font-bold text-white text-sm">حساب کاربری و فضای ابری (Firebase)</h3>
+                    <div v-if="currentUser" class="flex items-center justify-between bg-slate-900/80 p-3.5 rounded-2xl">
+                        <p class="font-bold text-white text-sm">{{ currentUser.email }}</p>
+                        <button @click="logoutGoogle" class="btn-calm bg-roseSoft/20 text-roseSoft text-xs py-2 px-3">خروج</button>
+                    </div>
+                    <div v-else class="space-y-3">
+                        <button @click="loginWithGoogle" class="btn-calm bg-white text-slate-950 w-full py-3 text-xs font-extrabold">ورود با گوگل</button>
+                        <details class="text-xs text-slate-400 bg-slate-950/60 p-3 rounded-xl">
+                            <summary class="cursor-pointer font-bold text-indigo-300">تنظیم کانفیگ Firebase</summary>
+                            <textarea v-model="firebaseConfigInput" rows="3" class="input-calm text-xs font-mono mt-2" placeholder='{"apiKey": "..."}'></textarea>
+                            <button @click="saveFirebaseConfig" class="btn-calm bg-primary text-white text-xs py-2 mt-2 w-full">ذخیره کانفیگ</button>
+                        </details>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Vue App Logic -->
+    <script>
+        const { createApp, ref, computed, onMounted } = Vue;
+        createApp({
+            setup() {
+                const currentTab = ref('dashboard');
+                const showWelcomeModal = ref(false);
+                const dropdownOpen = ref(false);
+                const currentDateStr = ref('امروز');
+                const todayISO = '2026-06-06';
+
+                const parts = ref([]);
+                const settings = ref({ userName: 'بنیامین', dailyGoal: 360, negativeMarkRatio: 3, onboarded: true });
+                const currentUser = ref(null);
+                const authInstance = ref(null);
+                let dbInstance = null;
+                const firebaseConfigInput = ref('');
+                const cloudStatus = ref({ text: 'آفلاین', class: 'bg-amberSoft' });
+
+                const newPart = ref({ subjects: [], topic: '', plannedTime: 60, type: 'تست آموزشی' });
+
+                const pendingParts = computed(() => parts.value.filter(p => p.status === 'pending'));
+                const completedParts = computed(() => parts.value.filter(p => p.status === 'completed'));
+                const todayCompleted = computed(() => completedParts.value.filter(p => p.dateISO === todayISO));
+
+                const todayStats = computed(() => {
+                    let totalTime = 0, totalTests = 0, correct = 0, wrong = 0;
+                    todayCompleted.value.forEach(p => {
+                        totalTime += Number(p.realTime || 0);
+                        if (p.tests) {
+                            correct += Number(p.tests.correct || 0);
+                            wrong += Number(p.tests.wrong || 0);
+                            totalTests += Number(p.tests.total || 0);
+                        }
+                    });
+                    const goalProgress = settings.value.dailyGoal > 0 ? Math.min(100, Math.round((totalTime / settings.value.dailyGoal) * 100)) : 0;
+                    const accuracy = (correct + wrong) > 0 ? ((correct / (correct + wrong)) * 100).toFixed(1) + '%' : '—';
+                    let netScore = totalTests > 0 ? (((correct - (wrong / 3)) / totalTests) * 100).toFixed(1) + '%' : '—';
+                    return { totalTime, totalTests, correct, wrong, goalProgress, accuracy, netScore };
+                });
+
+                const tabTitle = computed(() => ({
+                    dashboard: 'داشبورد و تحلیل عملکرد',
+                    parts: 'مدیریت پارت‌ها',
+                    timer: 'تایمر مهندسی مطالعه',
+                    calendar: 'برنامه هفتگی درسی',
+                    archive: 'آرشیو جزوات',
+                    calculator: 'محاسبه‌گر درصد',
+                    settings: 'تنظیمات'
+                }[currentTab.value]));
+
+                const navClass = (tab) => [
+                    'flex flex-col md:flex-row items-center p-2 md:px-3.5 md:py-2.5 rounded-xl transition font-semibold md:mb-1',
+                    currentTab.value === tab ? 'bg-primary/20 text-primarySoft' : 'text-slate-400 hover:bg-slate-800/60'
+                ];
+
+                const formatMinutes = (m) => m < 60 ? `${m} دقیقه` : `${Math.floor(m / 60)} ساعت و ثبت‌شده`;
+
+                const completeWelcome = () => { showWelcomeModal.value = false; };
+
+                const saveAll = () => {
+                    localStorage.setItem('sp_pro_parts', JSON.stringify(parts.value));
+                    localStorage.setItem('sp_pro_settings', JSON.stringify(settings.value));
+                };
+
+                const loadAll = () => {
+                    const p = localStorage.getItem('sp_pro_parts');
+                    if (p) parts.value = JSON.parse(p);
+                };
+
+                const createNewPart = () => {
+                    if (!newPart.value.topic) return;
+                    parts.value.unshift({
+                        id: Date.now(),
+                        dateISO: todayISO,
+                        topic: newPart.value.topic,
+                        plannedTime: 60,
+                        status: 'pending',
+                        tests: { correct: 0, wrong: 0, total: 0 }
+                    });
+                    saveAll();
+                    newPart.value.topic = '';
+                };
+
+                const loginWithGoogle = async () => {
+                    if (!authInstance.value) return alert('ابتدا کانفیگ فایربیس را وارد کنید.');
+                    const provider = new window.FirebaseSDK.GoogleAuthProvider();
+                    await window.FirebaseSDK.signInWithPopup(authInstance.value, provider);
+                };
+
+                const logoutGoogle = async () => {
+                    if (authInstance.value) {
+                        await window.FirebaseSDK.signOut(authInstance.value);
+                        currentUser.value = null;
+                    }
+                };
+
+                const saveFirebaseConfig = () => {
+                    try {
+                        const cfg = JSON.parse(firebaseConfigInput.value);
+                        localStorage.setItem('tilo_fb_config', firebaseConfigInput.value);
+                        const app = window.FirebaseSDK.initializeApp(cfg);
+                        authInstance.value = window.FirebaseSDK.getAuth(app);
+                        dbInstance = window.FirebaseSDK.getFirestore(app);
+                        window.FirebaseSDK.onAuthStateChanged(authInstance.value, (u) => { currentUser.value = u; });
+                        alert('فایربیس متصل شد.');
+                    } catch { alert('JSON نامعتبر است.'); }
+                };
+
+                onMounted(() => {
+                    loadAll();
+                    const cfg = localStorage.getItem('tilo_fb_config');
+                    if (cfg) {
+                        firebaseConfigInput.value = cfg;
+                        saveFirebaseConfig();
+                    }
+                });
+
+                return {
+                    currentTab, tabTitle, currentDateStr, showWelcomeModal, completeWelcome,
+                    cloudStatus, authInstance, currentUser, firebaseConfigInput,
+                    parts, pendingParts, todayCompleted, todayStats, newPart,
+                    navClass, formatMinutes, createNewPart,
+                    loginWithGoogle, logoutGoogle, saveFirebaseConfig
+                };
+            }
+        }).mount('#app');
+    </script>
+    <!-- ماژول فضای ابریرحله اول -->
+    <script src="./tilo-cloud.js"></script>
+</body>
+</html>
