@@ -1,6 +1,6 @@
 /**
  * Tilo Cloud & Auth Persistence Module (Stage 1)
- * متصل‌شونده به هسته اصلی برای ورود خودکار و ذخیره ابری
+ * متصل‌شونده به هسته اصلی بدون تغییر کدهای پایه
  */
 (async function initTiloCloudModule() {
     const FB_VERSION = "10.8.0";
@@ -18,7 +18,7 @@
             });
         }
     } catch (err) {
-        console.error("Tilo Cloud: خطا در بارگذاری احراز هویت:", err);
+        console.error("Tilo Cloud: خطا در بارگذاری کتابخانه احراز هویت:", err);
         return;
     }
 
@@ -35,13 +35,126 @@
         const fb = window.FirebaseSDK;
         if (!fb) return;
 
+        function mergeItemsById(localArr = [], cloudArr = []) {
+            const map = new Map();
+            
+            (Array.isArray(cloudArr) ? cloudArr : []).forEach(item => {
+                if (item && item.id !== undefined) {
+                    map.set(String(item.id), item);
+                }
+            });
+
+            (Array.isArray(localArr) ? localArr : []).forEach(localItem => {
+                if (!localItem || localItem.id === undefined) return;
+                const key = String(localItem.id);
+                const existing = map.get(key);
+
+                if (!existing) {
+                    map.set(key, localItem);
+                } else {
+                    const localTime = localItem.completedAt || localItem.updatedAt || 0;
+                    const cloudTime = existing.completedAt || existing.updatedAt || 0;
+
+                    if (localItem.status === 'completed' && existing.status !== 'completed') {
+                        map.set(key, localItem);
+                    } else if (localTime > cloudTime) {
+                        map.set(key, localItem);
+                    } else if ((localItem.realTime || 0) > (existing.realTime || 0)) {
+                        map.set(key, localItem);
+                    }
+                }
+            });
+
+            return Array.from(map.values()).sort((a, b) => (b.id || 0) - (a.id || 0));
+        }
+
+        function saveToLocalSilently() {
+            localStorage.setItem('sp_pro_parts', JSON.stringify(state.parts || []));
+            localStorage.setItem('sp_pro_settings', JSON.stringify(state.settings || {}));
+            localStorage.setItem('sp_pro_subjects', JSON.stringify(state.subjectGroups || []));
+            localStorage.setItem('tilo_schedule', JSON.stringify(state.schedule || []));
+            localStorage.setItem('tilo_archive', JSON.stringify(state.archive || []));
+            if (typeof state.updateMainChart === 'function') {
+                state.updateMainChart();
+            }
+        }
+
+        async function safePullAndMerge(uid, db) {
+            if (!uid || !db) return;
+            try {
+                const refDoc = fb.doc(db, 'users', uid);
+                const snap = await fb.getDoc(refDoc);
+
+                if (snap.exists()) {
+                    const cloudData = snap.data();
+
+                    state.parts = mergeItemsById(state.parts, cloudData.parts);
+                    state.schedule = mergeItemsById(state.schedule, cloudData.schedule);
+                    state.archive = mergeItemsById(state.archive, cloudData.archive);
+
+                    if (cloudData.settings) {
+                        state.settings = {
+                            ...cloudData.settings,
+                            ...state.settings,
+                            userName: state.settings.userName || cloudData.settings.userName || '',
+                            onboarded: true
+                        };
+                    }
+
+                    if (Array.isArray(cloudData.subjectGroups) && cloudData.subjectGroups.length > 0) {
+                        const mergedGroups = JSON.parse(JSON.stringify(state.subjectGroups));
+                        cloudData.subjectGroups.forEach((cGroup, idx) => {
+                            if (mergedGroups[idx] && Array.isArray(cGroup.items)) {
+                                const itemSet = new Set([...mergedGroups[idx].items, ...cGroup.items]);
+                                mergedGroups[idx].items = Array.from(itemSet);
+                            }
+                        });
+                        state.subjectGroups = mergedGroups;
+                    }
+
+                    saveToLocalSilently();
+                    await safePushToCloud(uid, db);
+                } else {
+                    await safePushToCloud(uid, db);
+                }
+            } catch (err) {
+                console.error("Tilo Cloud Pull Error:", err);
+                updateSyncBadge('خطا در دریافت ابری (بررسی قوانین Firestore)', 'text-roseSoft');
+            }
+        }
+
+        async function safePushToCloud(uid, db) {
+            if (!uid || !db) return;
+            try {
+                updateSyncBadge('در حال ذخیره در فضای ابری...', 'text-tealSoft');
+                const refDoc = fb.doc(db, 'users', uid);
+                await fb.setDoc(refDoc, {
+                    parts: JSON.parse(JSON.stringify(state.parts || [])),
+                    settings: JSON.parse(JSON.stringify(state.settings || {})),
+                    subjectGroups: JSON.parse(JSON.stringify(state.subjectGroups || [])),
+                    schedule: JSON.parse(JSON.stringify(state.schedule || [])),
+                    archive: JSON.parse(JSON.stringify(state.archive || [])),
+                    updatedAt: Date.now()
+                }, { merge: true });
+
+                const nowStr = new Intl.DateTimeFormat('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date());
+                localStorage.setItem('tilo_last_sync', nowStr);
+                updateSyncBadge(`آخرین همگام‌سازی موفق: ${nowStr}`, 'text-sage');
+            } catch (err) {
+                console.error("Tilo Cloud Push Error:", err);
+                updateSyncBadge('خطا در همگام‌سازی (احتمالاً قوانین Firestore تنظیم نشده)', 'text-roseSoft');
+            }
+        }
+
+        let activeDb = null;
+
         async function setupPersistentFirebase(rawConfigStr) {
             if (!rawConfigStr) return;
             try {
                 const cfg = JSON.parse(rawConfigStr);
                 const app = fb.initializeApp(cfg);
                 const auth = fb.getAuth(app);
-                const activeDb = fb.getFirestore(app);
+                activeDb = fb.getFirestore(app);
                 state.authInstance = auth;
 
                 try {
@@ -49,6 +162,10 @@
                 } catch {
                     await fbAuth.setPersistence(auth, fbAuth.browserLocalPersistence);
                 }
+
+                fbAuth.getRedirectResult(auth).catch(err => {
+                    console.warn("Redirect Auth Info:", err.message);
+                });
 
                 fb.onAuthStateChanged(auth, async (user) => {
                     state.currentUser = user || null;
@@ -62,8 +179,10 @@
                             state.settings.userName = user.displayName;
                         }
                         state.showWelcomeModal = false;
+                        await safePullAndMerge(user.uid, activeDb);
                     } else {
                         localStorage.removeItem('tilo_cached_user');
+                        updateSyncBadge('حالت آفلاین (ذخیره در حافظه دستگاه)', 'text-amberSoft');
                     }
                 });
             } catch (err) {
@@ -73,15 +192,17 @@
 
         state.loginWithGoogle = async () => {
             if (!state.authInstance) {
-                alert('ابتدا کانفیگ فایربیس را در تنظیمات وارد کنید.');
+                alert('ابتدا کد کانفیگ Firebase پروژه خود را در بخش تنظیمات وارد و ذخیره کنید.');
                 return;
             }
             const provider = new fb.GoogleAuthProvider();
+            provider.setCustomParameters({ prompt: 'select_account' });
+
             try {
                 await fbAuth.setPersistence(state.authInstance, fbAuth.browserLocalPersistence);
                 await fb.signInWithPopup(state.authInstance, provider);
             } catch (err) {
-                if (err.code === 'auth/popup-blocked') {
+                if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
                     await fbAuth.signInWithRedirect(state.authInstance, provider);
                 } else {
                     alert('خطا در ورود با گوگل: ' + err.message);
@@ -90,12 +211,21 @@
         };
 
         state.logoutGoogle = async () => {
-            if (!confirm('آیا از حساب گوگل خارج می‌شوید؟')) return;
+            if (!confirm('آیا می‌خواهید از حساب گوگل خارج شوید؟ (اطلاعات روی دستگاه شما باقی می‌ماند)')) return;
             if (state.authInstance) {
                 await fb.signOut(state.authInstance);
                 state.currentUser = null;
                 localStorage.removeItem('tilo_cached_user');
+                updateSyncBadge('خارج شدید (حالت حافظه محلی)', 'text-amberSoft');
             }
+        };
+
+        state.syncToCloud = async () => {
+            if (!state.currentUser || !activeDb) {
+                alert('ابتدا وارد حساب گوگل خود شوید.');
+                return;
+            }
+            await safePullAndMerge(state.currentUser.uid, activeDb);
         };
 
         state.saveFirebaseConfig = () => {
@@ -104,15 +234,45 @@
                 JSON.parse(cleaned);
                 localStorage.setItem('tilo_fb_config', cleaned);
                 setupPersistentFirebase(cleaned);
-                alert('فضای ابری و ماندگاری نشست فعال شد!');
+                alert('تنظیمات فضای ابری با ماندگاری دائمی فعال شد!');
             } catch {
-                alert('فرمت کد باید JSON معتبر باشد.');
+                alert('فرمت کد وارد شده باید JSON معتبر باشد.');
             }
         };
 
+        const originalSaveAll = state.saveAll;
+        let syncTimeout = null;
+        state.saveAll = () => {
+            if (typeof originalSaveAll === 'function') originalSaveAll();
+            if (state.currentUser && activeDb) {
+                clearTimeout(syncTimeout);
+                syncTimeout = setTimeout(() => {
+                    safePushToCloud(state.currentUser.uid, activeDb);
+                }, 800);
+            }
+        };
+
+        function updateSyncBadge(text, colorClass) {
+            let badge = document.getElementById('tilo-cloud-status-detail');
+            if (!badge) {
+                const settingsContainer = document.querySelector('[v-show="currentTab === \'settings\'"] .soft-card');
+                if (settingsContainer) {
+                    badge = document.createElement('div');
+                    badge.id = 'tilo-cloud-status-detail';
+                    badge.className = 'text-[11px] bg-slate-950/70 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center mt-2';
+                    settingsContainer.appendChild(badge);
+                }
+            }
+            if (badge) {
+                badge.innerHTML = `
+                    <span class="${colorClass} font-bold"><i class="fas fa-cloud mr-1"></i> ${text}</span>
+                    <span class="text-slate-500 text-[10px]">ماندگاری نشست: فعال ✓</span>
+                `;
+            }
+        }
+
         const savedCfg = localStorage.getItem('tilo_fb_config');
         if (savedCfg) {
-            state.firebaseConfigInput = savedCfg;
             setupPersistentFirebase(savedCfg);
         }
     }
