@@ -2,12 +2,8 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#0f172a">
-    <title>tilo | دستیار هوشمند مطالعه و تحلیل کنکور</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>tilo | دستیار هوشمند مطالعه</title>
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.0.0/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,310 +14,125 @@
                 extend: {
                     fontFamily: { sans: ['Vazirmatn', 'sans-serif'] },
                     colors: {
-                        bgBase: '#0f172a', bgSurface: '#1e293b', bgElevated: '#263349',
-                        primary: '#6366f1', primarySoft: '#818cf8', tealSoft: '#2dd4bf',
-                        sage: '#34d399', amberSoft: '#fbbf24', roseSoft: '#f87171'
+                        bgBase: '#0f172a', bgSurface: '#1e293b', primary: '#6366f1', 
+                        primarySoft: '#818cf8', tealSoft: '#2dd4bf', sage: '#34d399', amberSoft: '#fbbf24', roseSoft: '#f87171'
                     }
                 }
             }
         }
     </script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         window.FirebaseSDK = { initializeApp, getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, getFirestore, doc, setDoc, getDoc };
     </script>
-
     <style>
-        body {
-            background-color: #0f172a;
-            background-image: 
-                radial-gradient(at 10% 10%, rgba(99, 102, 241, 0.08) 0px, transparent 45%),
-                radial-gradient(at 90% 90%, rgba(45, 212, 191, 0.07) 0px, transparent 45%);
-            background-attachment: fixed;
-            color: #e2e8f0;
-            -webkit-tap-highlight-color: transparent;
-        }
+        body { background-color: #0f172a; color: #e2e8f0; font-family: 'Vazirmatn', sans-serif; }
         [v-cloak] { display: none; }
-        .soft-card {
-            background: rgba(30, 41, 59, 0.78);
-            backdrop-filter: blur(14px);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.2);
-        }
-        .input-calm {
-            background: #172033;
-            border: 1px solid rgba(255, 255, 255, 0.09);
-            color: #f1f5f9;
-            border-radius: 0.85rem;
-            padding: 0.7rem 0.95rem;
-            width: 100%;
-            transition: all 0.2s ease;
-            outline: none;
-        }
-        .input-calm:focus {
-            border-color: #818cf8;
-            box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.18);
-        }
-        .btn-calm {
-            padding: 0.7rem 1.2rem;
-            border-radius: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.18s ease;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-        .btn-calm:active { transform: scale(0.97); }
-        ::-webkit-scrollbar { width: 5px; height: 5px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-        body > div:not(#app) { display: none !important; }
+        .soft-card { background: rgba(30, 41, 59, 0.78); border: 1px solid rgba(255, 255, 255, 0.06); }
+        .input-calm { background: #172033; border: 1px solid rgba(255, 255, 255, 0.09); color: #f1f5f9; border-radius: 0.85rem; padding: 0.7rem 0.95rem; width: 100%; outline: none; }
+        .btn-calm { padding: 0.7rem 1.2rem; border-radius: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
     </style>
 </head>
-<body class="font-sans antialiased h-screen flex flex-col md:flex-row overflow-hidden select-none">
+<body class="h-screen flex flex-col md:flex-row overflow-hidden">
     <div id="app" class="w-full h-full flex flex-col md:flex-row max-w-7xl mx-auto relative" v-cloak>
         
-        <!-- Onboarding Modal -->
-        <div v-if="showWelcomeModal" class="fixed inset-0 z-[100000] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-            <div class="soft-card bg-[#162032] w-full max-w-md rounded-3xl p-6 md:p-8 border border-indigo-500/20 shadow-2xl text-center space-y-5">
-                <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary to-tealSoft mx-auto flex items-center justify-center shadow-lg shadow-primary/25">
-                    <i class="fas fa-graduation-cap text-white text-3xl"></i>
-                </div>
-                <div>
-                    <h2 class="text-2xl font-black text-white">به <span class="text-tealSoft">tilo</span> خوش آمدید</h2>
-                    <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">دستیار هوشمند برنامه‌ریزی، تایمر مهندسی و تحلیلگر عملکرد مطالعاتی کنکور</p>
-                </div>
-                <div class="bg-slate-900/70 p-4 rounded-2xl border border-slate-800 text-right space-y-3">
-                    <div>
-                        <label class="block text-xs text-slate-300 mb-1.5 font-bold">نام شما:</label>
-                        <input type="text" v-model="settings.userName" placeholder="مثلاً: بنیامین" class="input-calm text-sm text-center font-bold">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-300 mb-1.5 font-bold">هدف مطالعه روزانه (دقیقه):</label>
-                        <div class="grid grid-cols-3 gap-2">
-                            <button type="button" @click="settings.dailyGoal = 240" :class="settings.dailyGoal === 240 ? 'bg-primary text-white' : 'bg-slate-800 text-slate-300'" class="py-2 rounded-xl text-xs font-bold">۴ ساعت</button>
-                            <button type="button" @click="settings.dailyGoal = 360" :class="settings.dailyGoal === 360 ? 'bg-primary text-white' : 'bg-slate-800 text-slate-300'" class="py-2 rounded-xl text-xs font-bold">۶ ساعت</button>
-                            <button type="button" @click="settings.dailyGoal = 480" :class="settings.dailyGoal === 480 ? 'bg-primary text-white' : 'bg-slate-800 text-slate-300'" class="py-2 rounded-xl text-xs font-bold">۸ ساعت</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="space-y-2.5 pt-1">
-                    <button @click="completeWelcome" class="btn-calm bg-gradient-to-r from-primary to-tealSoft text-slate-950 font-black w-full py-3.5 text-sm shadow-lg shadow-primary/20">
-                        <i class="fas fa-rocket"></i> ورود به داشبورد من
-                    </button>
-                    <button v-if="authInstance" @click="loginWithGoogle" class="btn-calm bg-white text-slate-900 hover:bg-slate-100 w-full py-3 text-xs font-extrabold">
-                        <i class="fab fa-google text-rose-500 text-sm"></i> اتصال مستقیم به حساب Google
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Navigation Menu -->
-        <nav class="soft-card w-full md:w-60 md:h-full flex md:flex-col justify-around md:justify-start p-2 md:p-4 order-last md:order-first z-50 fixed md:relative bottom-0 left-0 right-0 border-t md:border-t-0 md:border-l border-slate-800/80">
+        <!-- منوی پایین و کنار -->
+        <nav class="soft-card w-full md:w-60 md:h-full flex md:flex-col justify-around md:justify-start p-3 order-last md:order-first z-50 fixed md:relative bottom-0 border-t md:border-t-0 md:border-l border-slate-800">
             <div class="hidden md:flex items-center gap-3 mb-6 px-2 pt-1">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-tealSoft flex items-center justify-center shadow-md">
-                    <i class="fas fa-graduation-cap text-slate-950 text-lg"></i>
-                </div>
-                <div>
-                    <h1 class="text-xl font-black tracking-tight text-white">tilo</h1>
-                    <span class="text-[11px] text-tealSoft font-medium">{{ settings.userName || 'نسخه کنکور ریاضی' }}</span>
-                </div>
+                <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center font-black text-white">t</div>
+                <div><h1 class="text-lg font-black text-white">tilo</h1><span class="text-[11px] text-tealSoft">نسخه پایه پایدار</span></div>
             </div>
-            <button @click="currentTab = 'dashboard'" :class="navClass('dashboard')"><i class="fas fa-chart-pie text-base md:w-6"></i><span class="text-[10px] md:text-sm mt-1 md:mt-0">داشبورد و تحلیل</span></button>
-            <button @click="currentTab = 'parts'" :class="navClass('parts')" class="relative"><i class="fas fa-layer-group text-base md:w-6"></i><span class="text-[10px] md:text-sm mt-1 md:mt-0">پارت‌ها</span><span v-if="pendingParts.length > 0" class="absolute top-1 right-2 md:top-auto md:left-3 bg-primary text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">{{ pendingParts.length }}</span></button>
-            <button @click="currentTab = 'timer'" :class="navClass('timer')" class="relative"><i class="fas fa-stopwatch text-base md:w-6"></i><span class="text-[10px] md:text-sm mt-1 md:mt-0">تایمر حرفه‌ای</span><span v-if="timer.active" class="absolute top-1.5 right-3 w-2.5 h-2.5 bg-tealSoft rounded-full animate-ping"></span></button>
-            <button @click="currentTab = 'calendar'" :class="navClass('calendar')"><i class="fas fa-calendar-week text-base md:w-6"></i><span class="text-[10px] md:text-sm mt-1 md:mt-0">برنامه هفتگی</span></button>
-            <button @click="currentTab = 'archive'" :class="navClass('archive')"><i class="fas fa-folder-open text-base md:w-6"></i><span class="text-[10px] md:text-sm mt-1 md:mt-0">آرشیو آموزشی</span></button>
-            <button @click="currentTab = 'calculator'" :class="navClass('calculator')"><i class="fas fa-percentage text-base md:w-6"></i><span class="text-[10px] md:text-sm mt-1 md:mt-0">درصدگیر</span></button>
-            <button @click="currentTab = 'settings'" :class="navClass('settings')" class="md:mt-auto"><i class="fas fa-sliders-h text-base md:w-6"></i><span class="text-[10px] md:text-sm mt-1 md:mt-0">اکانت و تنظیمات</span></button>
+            <button @click="currentTab = 'dashboard'" :class="navClass('dashboard')"><i class="fas fa-chart-pie w-6"></i><span>داشبورد</span></button>
+            <button @click="currentTab = 'parts'" :class="navClass('parts')"><i class="fas fa-layer-group w-6"></i><span>پارت‌ها</span></button>
+            <button @click="currentTab = 'timer'" :class="navClass('timer')"><i class="fas fa-stopwatch w-6"></i><span>تایمر</span></button>
+            <button @click="currentTab = 'calendar'" :class="navClass('calendar')"><i class="fas fa-calendar-week w-6"></i><span>برنامه</span></button>
+            <button @click="currentTab = 'settings'" :class="navClass('settings')" class="md:mt-auto"><i class="fas fa-sliders-h w-6"></i><span>تنظیمات و اکانت</span></button>
         </nav>
 
-        <!-- Main Content Area -->
-        <main class="flex-1 overflow-y-auto p-4 md:p-7 pb-28 md:pb-8">
-            <header class="flex flex-wrap justify-between items-center gap-3 mb-6 bg-slate-800/40 p-3.5 rounded-2xl border border-slate-800">
-                <div class="flex items-center gap-3">
-                    <div @click="currentTab = 'settings'" class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center cursor-pointer hover:border-primarySoft transition">
-                        <i class="fas fa-user-astronaut text-tealSoft"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-base md:text-xl font-extrabold text-white flex items-center gap-2">
-                            <span>{{ tabTitle }}</span>
-                            <span v-if="settings.userName" class="text-xs font-normal text-slate-400 hidden sm:inline">| سلام {{ settings.userName }} 👋</span>
-                        </h2>
-                        <p class="text-slate-400 text-[11px] md:text-xs mt-0.5">{{ currentDateStr }}</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button @click="currentTab = 'settings'" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900/70 border border-slate-700/70 text-[11px]">
-                        <span class="w-2 h-2 rounded-full" :class="cloudStatus.class"></span>
-                        <span class="text-slate-300">{{ currentUser ? currentUser.displayName || 'اکانت متصل' : cloudStatus.text }}</span>
-                    </button>
-                    <button v-if="currentTab !== 'parts'" @click="currentTab = 'parts'" class="btn-calm bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs py-2 px-3 border border-slate-700">
-                        <i class="fas fa-plus text-primarySoft"></i> پارت جدید
-                    </button>
-                </div>
+        <!-- محتوای اصلی -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-7 pb-28">
+            <header class="flex justify-between items-center mb-6 bg-slate-800/40 p-3.5 rounded-2xl border border-slate-800">
+                <h2 class="text-lg font-extrabold text-white">{{ tabTitle }}</h2>
+                <span class="text-xs text-tealSoft">{{ currentUser ? currentUser.displayName || 'متصل به گوگل' : 'حالت آفلاین' }}</span>
             </header>
 
-            <!-- Dashboard Tab -->
-            <div v-show="currentTab === 'dashboard'" class="space-y-6">
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-                    <div class="soft-card p-4 rounded-2xl border-r-4 border-r-primarySoft">
-                        <div class="flex justify-between items-start"><p class="text-slate-400 text-xs">مطالعه امروز</p><i class="fas fa-clock text-primarySoft/70"></i></div>
-                        <p class="text-xl md:text-2xl font-black text-white mt-2">{{ formatMinutes(todayStats.totalTime) }}</p>
-                        <div class="w-full bg-slate-900 h-1.5 rounded-full mt-2 overflow-hidden"><div class="bg-gradient-to-r from-primary to-tealSoft h-full rounded-full" :style="{width: todayStats.goalProgress + '%'}"></div></div>
-                        <p class="text-[10px] text-slate-400 mt-1">هدف: {{ formatMinutes(settings.dailyGoal) }} ({{ todayStats.goalProgress }}%)</p>
-                    </div>
-                    <div class="soft-card p-4 rounded-2xl border-r-4 border-r-tealSoft">
-                        <div class="flex justify-between items-start"><p class="text-slate-400 text-xs">تست و تشریحی امروز</p><i class="fas fa-pen-nib text-tealSoft/70"></i></div>
-                        <p class="text-xl md:text-2xl font-black text-white mt-2">{{ todayStats.totalTests }} <span class="text-xs font-normal text-slate-400">تست</span></p>
-                        <p class="text-[11px] text-slate-400 mt-1.5"><span class="text-sage">{{ todayStats.correct }} درست</span> • <span class="text-roseSoft">{{ todayStats.wrong }} غلط</span></p>
-                    </div>
-                    <div class="soft-card p-4 rounded-2xl border-r-4 border-r-sage">
-                        <div class="flex justify-between items-start"><p class="text-slate-400 text-xs">درصد خالص امروز</p><i class="fas fa-bullseye text-sage/70"></i></div>
-                        <p class="text-xl md:text-2xl font-black text-sage mt-2" dir="ltr">{{ todayStats.netScore }}</p>
-                        <p class="text-[11px] text-slate-400 mt-1.5">دقت پاسخ‌گویی: {{ todayStats.accuracy }}</p>
-                    </div>
-                    <div class="soft-card p-4 rounded-2xl border-r-4 border-r-amberSoft">
-                        <div class="flex justify-between items-start"><p class="text-slate-400 text-xs">پارت‌های امروز</p><i class="fas fa-check-double text-amberSoft/70"></i></div>
-                        <p class="text-xl md:text-2xl font-black text-white mt-2">{{ todayCompleted.length }} <span class="text-xs font-normal text-slate-400">انجام‌شده</span></p>
-                        <p class="text-[11px] text-amberSoft mt-1.5">{{ pendingParts.length }} پارت در صف انتظار</p>
+            <!-- تب داشبورد -->
+            <div v-show="currentTab === 'dashboard'" class="space-y-4">
+                <div class="soft-card p-4 rounded-2xl">
+                    <p class="text-sm text-slate-400">خلاصه وضعیت امروز</p>
+                    <p class="text-2xl font-black text-white mt-1">{{ todayCompleted.length }} پارت تکمیل‌شده</p>
+                </div>
+            </div>
+
+            <!-- تب پارت‌ها -->
+            <div v-show="currentTab === 'parts'" class="space-y-4 max-w-xl mx-auto">
+                <div class="soft-card p-5 rounded-2xl space-y-3">
+                    <h3 class="font-bold text-white text-sm">افزودن پارت مطالعه</h3>
+                    <input type="text" v-model="newPartTopic" class="input-calm text-xs" placeholder="عنوان مبحث...">
+                    <button @click="addPart" class="btn-calm bg-primary text-white text-xs w-full">افزودن پارت</button>
+                </div>
+                <div class="space-y-2">
+                    <div v-for="p in parts" :key="p.id" class="soft-card p-3 rounded-xl flex justify-between items-center">
+                        <span class="text-sm font-bold text-white">{{ p.topic }}</span>
+                        <button @click="deletePart(p.id)" class="text-roseSoft text-xs"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
             </div>
 
-            <!-- Parts Management Tab -->
-            <div v-show="currentTab === 'parts'" class="space-y-6 max-w-4xl mx-auto">
-                <div class="soft-card p-5 md:p-6 rounded-3xl border border-primary/20">
-                    <h3 class="text-base md:text-lg font-extrabold text-white mb-4"><i class="fas fa-plus-circle text-primarySoft"></i> تعریف پارت مطالعه جدید</h3>
-                    <form @submit.prevent="createNewPart" class="space-y-4">
-                        <div>
-                            <label class="block text-xs text-slate-300 mb-1.5 font-medium">مبحث دقیق *</label>
-                            <input type="text" v-model="newPart.topic" required class="input-calm text-xs md:text-sm" placeholder="مثلاً: مشتق">
-                        </div>
-                        <button type="submit" class="btn-calm bg-primary text-white text-xs w-full py-3">افزودن به لیست پارت‌ها</button>
-                    </form>
-                </div>
-            </div>
+            <!-- تب تایمر و تقویم (جایگاه ثابت) -->
+            <div v-show="currentTab === 'timer'" class="text-center py-10 text-slate-400">بخش تایمر مطالعه</div>
+            <div v-show="currentTab === 'calendar'" class="text-center py-10 text-slate-400">بخش برنامه هفتگی</div>
 
-            <!-- Other Tabs Placeholder to prevent missing references -->
-            <div v-show="currentTab === 'timer'" class="max-w-xl mx-auto text-center py-10 text-slate-400">بخش تایمر حرفه‌ای</div>
-            <div v-show="currentTab === 'calendar'" class="max-w-xl mx-auto text-center py-10 text-slate-400">برنامه هفتگی</div>
-            <div v-show="currentTab === 'archive'" class="max-w-xl mx-auto text-center py-10 text-slate-400">آرشیو آموزشی</div>
-            <div v-show="currentTab === 'calculator'" class="max-w-xl mx-auto text-center py-10 text-slate-400">درصدگیر کنکور</div>
-            
-            <!-- Settings Tab -->
-            <div v-show="currentTab === 'settings'" class="max-w-xl mx-auto space-y-5">
-                <div class="soft-card p-5 rounded-3xl space-y-4 border border-primary/30">
-                    <h3 class="font-bold text-white text-sm">حساب کاربری و فضای ابری (Firebase)</h3>
-                    <div v-if="currentUser" class="flex items-center justify-between bg-slate-900/80 p-3.5 rounded-2xl">
-                        <p class="font-bold text-white text-sm">{{ currentUser.email }}</p>
-                        <button @click="logoutGoogle" class="btn-calm bg-roseSoft/20 text-roseSoft text-xs py-2 px-3">خروج</button>
+            <!-- تب تنظیمات و فایربیس -->
+            <div v-show="currentTab === 'settings'" class="max-w-xl mx-auto space-y-4">
+                <div class="soft-card p-5 rounded-3xl space-y-3">
+                    <h3 class="font-bold text-white text-sm">مدیریت حساب گوگل و ابری</h3>
+                    <div v-if="currentUser" class="flex justify-between items-center bg-slate-900 p-3 rounded-xl">
+                        <span class="text-xs text-white">{{ currentUser.email }}</span>
+                        <button @click="logoutGoogle" class="btn-calm bg-roseSoft/20 text-roseSoft text-xs py-1 px-3">خروج</button>
                     </div>
-                    <div v-else class="space-y-3">
-                        <button @click="loginWithGoogle" class="btn-calm bg-white text-slate-950 w-full py-3 text-xs font-extrabold">ورود با گوگل</button>
-                        <details class="text-xs text-slate-400 bg-slate-950/60 p-3 rounded-xl">
-                            <summary class="cursor-pointer font-bold text-indigo-300">تنظیم کانفیگ Firebase</summary>
-                            <textarea v-model="firebaseConfigInput" rows="3" class="input-calm text-xs font-mono mt-2" placeholder='{"apiKey": "..."}'></textarea>
-                            <button @click="saveFirebaseConfig" class="btn-calm bg-primary text-white text-xs py-2 mt-2 w-full">ذخیره کانفیگ</button>
-                        </details>
+                    <div v-else class="space-y-2">
+                        <button @click="loginWithGoogle" class="btn-calm bg-white text-slate-950 text-xs w-full font-bold">ورود با گوگل</button>
+                        <textarea v-model="firebaseConfigInput" rows="2" class="input-calm text-[10px] font-mono" placeholder="کد کانفیگ فایربیس..."></textarea>
+                        <button @click="saveConfig" class="btn-calm bg-primary text-white text-xs w-full">ذخیره کانفیگ</button>
                     </div>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- Vue App Logic -->
     <script>
         const { createApp, ref, computed, onMounted } = Vue;
         createApp({
             setup() {
                 const currentTab = ref('dashboard');
-                const showWelcomeModal = ref(false);
-                const dropdownOpen = ref(false);
-                const currentDateStr = ref('امروز');
-                const todayISO = '2026-06-06';
-
                 const parts = ref([]);
-                const settings = ref({ userName: 'بنیامین', dailyGoal: 360, negativeMarkRatio: 3, onboarded: true });
+                const newPartTopic = ref('');
                 const currentUser = ref(null);
                 const authInstance = ref(null);
-                let dbInstance = null;
                 const firebaseConfigInput = ref('');
-                const cloudStatus = ref({ text: 'آفلاین', class: 'bg-amberSoft' });
 
-                const newPart = ref({ subjects: [], topic: '', plannedTime: 60, type: 'تست آموزشی' });
+                const todayCompleted = computed(() => parts.value.filter(p => p.status === 'completed'));
+                const tabTitle = computed(() => ({ dashboard: 'داشبورد', parts: 'پارت‌ها', timer: 'تایمر', calendar: 'برنامه', settings: 'تنظیمات' }[currentTab.value]));
+                const navClass = (tab) => ['flex flex-col md:flex-row items-center p-2 rounded-xl transition text-xs', currentTab.value === tab ? 'bg-primary/20 text-primarySoft font-bold' : 'text-slate-400'];
 
-                const pendingParts = computed(() => parts.value.filter(p => p.status === 'pending'));
-                const completedParts = computed(() => parts.value.filter(p => p.status === 'completed'));
-                const todayCompleted = computed(() => completedParts.value.filter(p => p.dateISO === todayISO));
-
-                const todayStats = computed(() => {
-                    let totalTime = 0, totalTests = 0, correct = 0, wrong = 0;
-                    todayCompleted.value.forEach(p => {
-                        totalTime += Number(p.realTime || 0);
-                        if (p.tests) {
-                            correct += Number(p.tests.correct || 0);
-                            wrong += Number(p.tests.wrong || 0);
-                            totalTests += Number(p.tests.total || 0);
-                        }
-                    });
-                    const goalProgress = settings.value.dailyGoal > 0 ? Math.min(100, Math.round((totalTime / settings.value.dailyGoal) * 100)) : 0;
-                    const accuracy = (correct + wrong) > 0 ? ((correct / (correct + wrong)) * 100).toFixed(1) + '%' : '—';
-                    let netScore = totalTests > 0 ? (((correct - (wrong / 3)) / totalTests) * 100).toFixed(1) + '%' : '—';
-                    return { totalTime, totalTests, correct, wrong, goalProgress, accuracy, netScore };
-                });
-
-                const tabTitle = computed(() => ({
-                    dashboard: 'داشبورد و تحلیل عملکرد',
-                    parts: 'مدیریت پارت‌ها',
-                    timer: 'تایمر مهندسی مطالعه',
-                    calendar: 'برنامه هفتگی درسی',
-                    archive: 'آرشیو جزوات',
-                    calculator: 'محاسبه‌گر درصد',
-                    settings: 'تنظیمات'
-                }[currentTab.value]));
-
-                const navClass = (tab) => [
-                    'flex flex-col md:flex-row items-center p-2 md:px-3.5 md:py-2.5 rounded-xl transition font-semibold md:mb-1',
-                    currentTab.value === tab ? 'bg-primary/20 text-primarySoft' : 'text-slate-400 hover:bg-slate-800/60'
-                ];
-
-                const formatMinutes = (m) => m < 60 ? `${m} دقیقه` : `${Math.floor(m / 60)} ساعت و ثبت‌شده`;
-
-                const completeWelcome = () => { showWelcomeModal.value = false; };
-
-                const saveAll = () => {
+                const addPart = () => {
+                    if (!newPartTopic.value.trim()) return;
+                    parts.value.unshift({ id: Date.now(), topic: newPartTopic.value, status: 'pending' });
+                    newPartTopic.value = '';
                     localStorage.setItem('sp_pro_parts', JSON.stringify(parts.value));
-                    localStorage.setItem('sp_pro_settings', JSON.stringify(settings.value));
                 };
 
-                const loadAll = () => {
-                    const p = localStorage.getItem('sp_pro_parts');
-                    if (p) parts.value = JSON.parse(p);
-                };
-
-                const createNewPart = () => {
-                    if (!newPart.value.topic) return;
-                    parts.value.unshift({
-                        id: Date.now(),
-                        dateISO: todayISO,
-                        topic: newPart.value.topic,
-                        plannedTime: 60,
-                        status: 'pending',
-                        tests: { correct: 0, wrong: 0, total: 0 }
-                    });
-                    saveAll();
-                    newPart.value.topic = '';
+                const deletePart = (id) => {
+                    parts.value = parts.value.filter(p => p.id !== id);
+                    localStorage.setItem('sp_pro_parts', JSON.stringify(parts.value));
                 };
 
                 const loginWithGoogle = async () => {
-                    if (!authInstance.value) return alert('ابتدا کانفیگ فایربیس را وارد کنید.');
+                    if (!authInstance.value) return alert('ابتدا کانفیگ را وارد کنید.');
                     const provider = new window.FirebaseSDK.GoogleAuthProvider();
                     await window.FirebaseSDK.signInWithPopup(authInstance.value, provider);
                 };
@@ -333,38 +144,32 @@
                     }
                 };
 
-                const saveFirebaseConfig = () => {
+                const saveConfig = () => {
                     try {
                         const cfg = JSON.parse(firebaseConfigInput.value);
                         localStorage.setItem('tilo_fb_config', firebaseConfigInput.value);
                         const app = window.FirebaseSDK.initializeApp(cfg);
                         authInstance.value = window.FirebaseSDK.getAuth(app);
-                        dbInstance = window.FirebaseSDK.getFirestore(app);
                         window.FirebaseSDK.onAuthStateChanged(authInstance.value, (u) => { currentUser.value = u; });
-                        alert('فایربیس متصل شد.');
-                    } catch { alert('JSON نامعتبر است.'); }
+                        alert('متصل شد!');
+                    } catch { alert('فرمت JSON اشتباه است.'); }
                 };
 
                 onMounted(() => {
-                    loadAll();
+                    const saved = localStorage.getItem('sp_pro_parts');
+                    if (saved) parts.value = JSON.parse(saved);
                     const cfg = localStorage.getItem('tilo_fb_config');
-                    if (cfg) {
-                        firebaseConfigInput.value = cfg;
-                        saveFirebaseConfig();
-                    }
+                    if (cfg) { firebaseConfigInput.value = cfg; saveConfig(); }
                 });
 
                 return {
-                    currentTab, tabTitle, currentDateStr, showWelcomeModal, completeWelcome,
-                    cloudStatus, authInstance, currentUser, firebaseConfigInput,
-                    parts, pendingParts, todayCompleted, todayStats, newPart,
-                    navClass, formatMinutes, createNewPart,
-                    loginWithGoogle, logoutGoogle, saveFirebaseConfig
+                    currentTab, parts, newPartTopic, currentUser, firebaseConfigInput,
+                    todayCompleted, tabTitle, navClass, addPart, deletePart,
+                    loginWithGoogle, logoutGoogle, saveConfig
                 };
             }
         }).mount('#app');
     </script>
-    <!-- ماژول فضای ابریرحله اول -->
     <script src="./tilo-cloud.js"></script>
 </body>
 </html>
