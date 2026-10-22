@@ -42,7 +42,7 @@
     <!-- Firebase SDK همراه با تنظیم ماندگاری لاگین -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signInAnonymously, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         
         window.FirebaseSDK = { 
@@ -50,7 +50,6 @@
             getAuth, 
             GoogleAuthProvider, 
             signInWithPopup, 
-            signInAnonymously,
             signOut, 
             onAuthStateChanged, 
             setPersistence, 
@@ -109,59 +108,6 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
         body > div:not(#app) { display: none !important; }
-
-        /* جلوگیری از بیرون‌زدن محتوا از کارت‌ها و مودال‌ها */
-        .soft-card, .input-calm, main, nav {
-            box-sizing: border-box;
-            max-width: 100%;
-        }
-        .soft-card { overflow: hidden; word-break: break-word; }
-        .tilo-scroll {
-            overflow-x: hidden;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            max-height: min(60vh, 420px);
-        }
-        .tilo-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            padding: 0.35rem 0.7rem;
-            border-radius: 999px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(15, 23, 42, 0.7);
-            white-space: nowrap;
-        }
-        .tilo-chip.active {
-            background: rgba(99, 102, 241, 0.25);
-            border-color: rgba(129, 140, 248, 0.45);
-            color: #c7d2fe;
-        }
-        .tilo-life {
-            border-color: rgba(251, 191, 36, 0.35) !important;
-        }
-        /* محدود کردن dropdown تا از کادر بیرون نزند */
-        .tilo-dropdown-panel {
-            max-height: min(50vh, 280px);
-            overflow-y: auto;
-            overflow-x: hidden;
-            overscroll-behavior: contain;
-        }
-        /* متن‌های طولانی */
-        .tilo-truncate {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            max-width: 100%;
-        }
-        input, select, textarea, button { max-width: 100%; }
-        /* موبایل: فاصله امن از نوار پایین */
-        @media (max-width: 768px) {
-            main { padding-bottom: 6.5rem !important; }
-            .soft-card { border-radius: 1.1rem; }
-        }
     </style>
 </head>
 <body class="font-sans antialiased h-screen flex flex-col md:flex-row overflow-hidden select-none">
@@ -180,34 +126,19 @@
                     </p>
                 </div>
 
-                <div class="bg-slate-900/70 p-4 rounded-2xl border border-slate-800 text-right space-y-3.5 max-h-[60vh] overflow-y-auto">
+                <div class="bg-slate-900/70 p-4 rounded-2xl border border-slate-800 text-right space-y-3">
                     <div>
-                        <label class="block text-xs text-slate-300 mb-1.5 font-bold">نام شما</label>
+                        <label class="block text-xs text-slate-300 mb-1.5 font-bold">نام شما (برای نمایش در داشبورد):</label>
                         <input type="text" v-model="settings.userName" placeholder="مثلاً: بنیامین" class="input-calm text-sm text-center font-bold">
                     </div>
                     <div>
-                        <label class="block text-xs text-slate-300 mb-1.5 font-bold">رشته تحصیلی</label>
+                        <label class="block text-xs text-slate-300 mb-1.5 font-bold">هدف مطالعه روزانه (دقیقه):</label>
                         <div class="grid grid-cols-3 gap-2">
-                            <button type="button" @click="settings.major = 'ریاضی'" :class="settings.major === 'ریاضی' ? 'bg-primary text-white' : 'bg-slate-800 text-slate-300'" class="py-2 rounded-xl text-xs font-bold">ریاضی</button>
-                            <button type="button" @click="settings.major = 'تجربی'" :class="settings.major === 'تجربی' ? 'bg-primary text-white' : 'bg-slate-800 text-slate-300'" class="py-2 rounded-xl text-xs font-bold">تجربی</button>
-                            <button type="button" @click="settings.major = 'انسانی'" :class="settings.major === 'انسانی' ? 'bg-primary text-white' : 'bg-slate-800 text-slate-300'" class="py-2 rounded-xl text-xs font-bold">انسانی</button>
+                            <button type="button" @click="settings.dailyGoal = 240" :class="settings.dailyGoal === 240 ? 'bg-primary text-white' : 'bg-slate-800 text-slate-300'" class="py-2 rounded-xl text-xs font-bold">۴ ساعت (۲۴۰)</button>
+                            <button type="button" @click="settings.dailyGoal = 360" :class="settings.dailyGoal === 360 ? 'bg-primary text-white' : 'bg-slate-800 text-slate-300'" class="py-2 rounded-xl text-xs font-bold">۶ ساعت (۳۶۰)</button>
+                            <button type="button" @click="settings.dailyGoal = 480" :class="settings.dailyGoal === 480 ? 'bg-primary text-white' : 'bg-slate-800 text-slate-300'" class="py-2 rounded-xl text-xs font-bold">۸ ساعت (۴۸۰)</button>
                         </div>
                     </div>
-                    <div>
-                        <label class="block text-xs text-slate-300 mb-1.5 font-bold">مقطع / پایه</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <button type="button" v-for="g in gradeOptions" :key="g" @click="settings.grade = g" :class="settings.grade === g ? 'bg-tealSoft text-slate-950' : 'bg-slate-800 text-slate-300'" class="py-2 rounded-xl text-[11px] font-bold">{{ g }}</button>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-300 mb-1.5 font-bold">هدف مطالعه روزانه</label>
-                        <div class="grid grid-cols-3 gap-2">
-                            <button type="button" @click="settings.dailyGoal = 240" :class="settings.dailyGoal === 240 ? 'bg-primary text-white' : 'bg-slate-800 text-slate-300'" class="py-2 rounded-xl text-xs font-bold">۴ ساعت</button>
-                            <button type="button" @click="settings.dailyGoal = 360" :class="settings.dailyGoal === 360 ? 'bg-primary text-white' : 'bg-slate-800 text-slate-300'" class="py-2 rounded-xl text-xs font-bold">۶ ساعت</button>
-                            <button type="button" @click="settings.dailyGoal = 480" :class="settings.dailyGoal === 480 ? 'bg-primary text-white' : 'bg-slate-800 text-slate-300'" class="py-2 rounded-xl text-xs font-bold">۸ ساعت</button>
-                        </div>
-                    </div>
-                    <p class="text-[10px] text-slate-500 leading-relaxed">همه داده‌ها روی همین دستگاه ذخیره می‌شود و بدون اینترنت هم کار می‌کند. همگام‌سازی با کد اختیاری است.</p>
                 </div>
 
                 <div class="space-y-2.5 pt-1">
@@ -229,7 +160,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-black tracking-tight text-white">tilo</h1>
-                    <span class="text-[11px] text-tealSoft font-medium">{{ settings.userName || 'tilo' }}{{ settings.major ? ' · ' + settings.major : '' }}</span>
+                    <span class="text-[11px] text-tealSoft font-medium">{{ settings.userName || 'نسخه کنکور ریاضی' }}</span>
                 </div>
             </div>
 
@@ -309,20 +240,6 @@
 
             <!-- ==================== ۱. تب داشبورد اصلی ==================== -->
             <div v-show="currentTab === 'dashboard'" class="space-y-6">
-
-                <!-- شروع سریع -->
-                <div class="soft-card p-3.5 rounded-2xl border border-primary/20 flex flex-wrap items-center gap-2 justify-between">
-                    <div class="text-right">
-                        <p class="text-xs font-bold text-white">شروع سریع مطالعه</p>
-                        <p class="text-[10px] text-slate-400">بدون فرم طولانی — مستقیم برو سر تایمر</p>
-                    </div>
-                    <div class="flex flex-wrap gap-2">
-                        <button type="button" @click="quickStartMinutes(25)" class="tilo-chip hover:border-primarySoft/50">۲۵ دقیقه</button>
-                        <button type="button" @click="quickStartMinutes(50)" class="tilo-chip hover:border-tealSoft/50">۵۰ دقیقه</button>
-                        <button type="button" @click="quickStartMinutes(90)" class="tilo-chip hover:border-sage/50">۹۰ دقیقه</button>
-                        <button type="button" @click="currentTab = 'parts'" class="tilo-chip active">پارت کامل</button>
-                    </div>
-                </div>
                 
                 <!-- ۴ کارت شاخص‌های امروز -->
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -335,8 +252,7 @@
                         <div class="w-full bg-slate-900 h-1.5 rounded-full mt-2 overflow-hidden">
                             <div class="bg-gradient-to-r from-primary to-tealSoft h-full rounded-full" :style="{width: todayStats.goalProgress + '%'}"></div>
                         </div>
-                        <p class="text-[10px] text-slate-400 mt-1">هدف مطالعه: {{ formatMinutes(settings.dailyGoal) }} ({{ todayStats.goalProgress }}%)</p>
-                        <p v-if="todayStats.lifeTime > 0" class="text-[10px] text-amberSoft mt-0.5">غیردرسی امروز: {{ formatMinutes(todayStats.lifeTime) }}</p>
+                        <p class="text-[10px] text-slate-400 mt-1">هدف: {{ formatMinutes(settings.dailyGoal) }} ({{ todayStats.goalProgress }}%)</p>
                     </div>
 
                     <div class="soft-card p-4 rounded-2xl border-r-4 border-r-tealSoft">
@@ -559,7 +475,7 @@
                     <form @submit.prevent="createNewPart" class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="relative">
-                                <label class="block text-xs text-slate-300 mb-1.5 font-medium">انتخاب درس یا فعالیت *</label>
+                                <label class="block text-xs text-slate-300 mb-1.5 font-medium">انتخاب درس (امکان انتخاب چندگانه) *</label>
                                 <button type="button" @click="dropdownOpen = !dropdownOpen" class="input-calm flex justify-between items-center text-right">
                                     <span class="truncate text-xs md:text-sm" :class="newPart.subjects.length ? 'text-white font-bold' : 'text-slate-400'">
                                         {{ newPart.subjects.length ? newPart.subjects.join(' ، ') : 'روی فلش بزنید و درس‌ها را انتخاب کنید...' }}
@@ -843,7 +759,7 @@
                                 </span>
                                 <i class="fas fa-chevron-down text-tealSoft"></i>
                             </button>
-                            <div v-if="timerDropdownOpen" class="absolute z-50 left-0 right-0 mt-2 soft-card bg-[#162032] rounded-2xl p-3 tilo-dropdown-panel border border-slate-700 shadow-2xl">
+                            <div v-if="timerDropdownOpen" class="absolute z-50 left-0 right-0 mt-2 soft-card bg-[#162032] rounded-2xl p-3 max-h-60 overflow-y-auto border border-slate-700 shadow-2xl">
                                 <div class="flex justify-between items-center pb-2 mb-2 border-b border-slate-700">
                                     <span class="text-xs text-slate-400">{{ timer.quickSubjects.length }} درس</span>
                                     <button type="button" @click="timerDropdownOpen = false" class="text-xs bg-primary text-white px-2.5 py-1 rounded-lg">تأیید</button>
@@ -1114,55 +1030,6 @@
                     </div>
                 </div>
 
-                <!-- همگام‌سازی با کد بین دستگاه‌ها -->
-                <div class="soft-card p-5 rounded-3xl space-y-4 border border-tealSoft/30">
-                    <div class="border-b border-slate-800 pb-3">
-                        <h3 class="font-bold text-white text-sm md:text-base flex items-center gap-2">
-                            <i class="fas fa-link text-tealSoft"></i> همگام‌سازی با کد (موبایل ↔ کامپیوتر)
-                        </h3>
-                        <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
-                            یک کد بساز یا کد دستگاه دیگر را وارد کن تا پارت‌ها، تایمر، برنامه و تنظیمات بین دستگاه‌ها یکی شوند.
-                            یک‌بار اتصال Firebase لازم است (رایگان).
-                        </p>
-                    </div>
-
-                    <div v-if="activeShareCode" class="bg-slate-900/80 p-4 rounded-2xl border border-tealSoft/40 text-center space-y-2">
-                        <p class="text-xs text-slate-400">کد فعال این دستگاه</p>
-                        <p class="text-3xl font-black tracking-[0.35em] text-tealSoft" dir="ltr">{{ activeShareCode }}</p>
-                        <p class="text-[11px] text-slate-500">همین کد را در دستگاه دیگر وارد کن</p>
-                        <div class="flex flex-wrap gap-2 justify-center pt-1">
-                            <button type="button" @click="copyShareCode" class="btn-calm bg-tealSoft/20 text-tealSoft text-xs py-2 px-3">کپی کد</button>
-                            <button type="button" @click="pushShareCodeNow" class="btn-calm bg-primary/20 text-indigo-300 text-xs py-2 px-3">ارسال الان به ابر</button>
-                            <button type="button" @click="pullShareCodeNow" class="btn-calm bg-sage/20 text-sage text-xs py-2 px-3">دریافت از ابر</button>
-                            <button type="button" @click="disconnectShareCode" class="btn-calm bg-roseSoft/20 text-roseSoft text-xs py-2 px-3">قطع کد</button>
-                        </div>
-                        <p class="text-[10px] text-slate-500">وضعیت: {{ shareSyncStatus }}</p>
-                    </div>
-
-                    <div v-else class="space-y-3">
-                        <button type="button" @click="createShareCode" class="btn-calm bg-gradient-to-r from-primary to-tealSoft text-slate-950 font-black w-full py-3 text-sm">
-                            <i class="fas fa-plus-circle"></i> ساخت کد جدید برای این دستگاه
-                        </button>
-                        <div class="flex gap-2">
-                            <input type="text" v-model="shareCodeInput" maxlength="8" placeholder="کد ۶ رقمی دستگاه دیگر" dir="ltr" class="input-calm text-sm text-center font-black tracking-widest uppercase">
-                            <button type="button" @click="joinShareCode" class="btn-calm bg-primary text-white text-xs px-4 shrink-0 font-bold">اتصال</button>
-                        </div>
-                    </div>
-
-                    <details class="text-xs text-slate-400 bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-                        <summary class="cursor-pointer font-bold text-indigo-300">اگر هنوز Firebase را وصل نکرده‌ای (یک‌بار، رایگان)</summary>
-                        <ol class="list-decimal pr-4 mt-2 space-y-1.5 leading-relaxed text-slate-400">
-                            <li>برو به <span dir="ltr" class="text-tealSoft">console.firebase.google.com</span> و با گوگل وارد شو.</li>
-                            <li>پروژه جدید بساز (نام دلخواه، پلن Spark رایگان).</li>
-                            <li>Authentication → Sign-in method → Anonymous و Google را فعال کن.</li>
-                            <li>Firestore Database → Create database → حالت production.</li>
-                            <li>در Rules این متن را بگذار و Publish کن (پایین همین پیام در راهنما هست).</li>
-                            <li>Project settings → Your apps → Web app → کانفیگ JSON را کپی کن.</li>
-                            <li>همان JSON را در بخش «تنظیم کد اتصال Firebase» بالاتر بچسبان و ذخیره کن.</li>
-                        </ol>
-                    </details>
-                </div>
-
                 <div class="soft-card p-5 rounded-3xl space-y-4">
                     <h3 class="font-bold text-white border-b border-slate-800 pb-2 text-sm md:text-base">شخصی‌سازی پروفایل و تایمر</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1173,20 +1040,6 @@
                         <div>
                             <label class="block text-xs text-slate-300 mb-1">هدف مطالعه روزانه (دقیقه)</label>
                             <input type="number" v-model.number="settings.dailyGoal" @change="saveAll" class="input-calm text-xs">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-slate-300 mb-1">رشته</label>
-                            <select v-model="settings.major" @change="onMajorOrGradeChange" class="input-calm text-xs">
-                                <option value="ریاضی">ریاضی</option>
-                                <option value="تجربی">تجربی</option>
-                                <option value="انسانی">انسانی</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs text-slate-300 mb-1">مقطع</label>
-                            <select v-model="settings.grade" @change="onMajorOrGradeChange" class="input-calm text-xs">
-                                <option v-for="g in gradeOptions" :key="g" :value="g">{{ g }}</option>
-                            </select>
                         </div>
                     </div>
                     <div>
@@ -1230,7 +1083,7 @@
                     <h3 class="font-extrabold text-white text-base flex items-center gap-2">
                         <i class="fas fa-check-circle text-sage"></i> {{ completingPart.isEditMode ? 'ویرایش اطلاعات پارت' : 'ثبت و تکمیل پارت' }}
                     </h3>
-                    <button @click="closeCompleteModal" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+                    <button @click="completingPart = null" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
                 </div>
 
                 <div class="grid grid-cols-2 gap-2">
@@ -1353,67 +1206,39 @@
                 const currentDateStr = ref(getTehranFullDateStr());
                 const todayISO = getTehranDateISO();
 
-                const gradeOptions = ['دهم', 'یازدهم', 'دوازدهم', 'فارغ‌التحصیل / پشت‌کنکوری'];
-
-                const lifeActivityItems = ['استراحت و بازیابی', 'ورزش', 'خواب کوتاه / چرت', 'تغذیه و وعده غذایی', 'امور شخصی', 'خانواده و کارهای خانه', 'رفت‌وآمد'];
-
-                const buildSubjectGroups = (major, grade) => {
-                    const m = major || 'ریاضی';
-                    const g = grade || 'دوازدهم';
-                    const general = {
-                        category: 'عمومی و نهایی',
-                        items: ['ادبیات فارسی', 'عربی', 'دینی و معارف', 'زبان انگلیسی']
-                    };
-                    const life = { category: 'غیردرسی / زندگی', items: [...lifeActivityItems] };
-                    let specialized = [];
-                    if (m === 'تجربی') {
-                        specialized = [
-                            { category: 'تخصصی تجربی', items: ['زیست‌شناسی', 'شیمی', 'فیزیک', 'ریاضی تجربی', 'زمین‌شناسی'] }
-                        ];
-                    } else if (m === 'انسانی') {
-                        specialized = [
-                            { category: 'تخصصی انسانی', items: ['ادبیات اختصاصی', 'عربی اختصاصی', 'فلسفه و منطق', 'روان‌شناسی', 'علوم اجتماعی', 'اقتصاد', 'تاریخ', 'جغرافیا', 'ریاضی و آمار'] }
-                        ];
-                    } else {
-                        specialized = [
-                            { category: 'تخصصی ریاضی', items: ['حسابان', 'هندسه', 'گسسته', 'آمار و احتمال', 'فیزیک', 'شیمی'] }
-                        ];
+                const defaultSubjectGroups = [
+                    {
+                        category: 'پایه دهم (ریاضی فیزیک)',
+                        items: ['ریاضی ۱ (دهم)', 'فیزیک ۱ (دهم)', 'شیمی ۱ (دهم)', 'هندسه ۱ (دهم)']
+                    },
+                    {
+                        category: 'پایه یازدهم (ریاضی فیزیک)',
+                        items: ['حسابان ۱ (یازدهم)', 'فیزیک ۲ (یازدهم)', 'شیمی ۲ (یازدهم)', 'هندسه ۲ (یازدهم)', 'آمار و احتمال (یازدهم)']
+                    },
+                    {
+                        category: 'پایه دوازدهم (ریاضی فیزیک)',
+                        items: ['حسابان ۲ (دوازدهم)', 'فیزیک ۳ (دوازدهم)', 'شیمی ۳ (دوازدهم)', 'هندسه ۳ (دوازدهم)', 'ریاضیات گسسته (دوازدهم)']
+                    },
+                    {
+                        category: 'دروس عمومی و امتحانات نهایی',
+                        items: ['ادبیات فارسی', 'عربی', 'دینی و معارف', 'زبان انگلیسی', 'هویت و سلامت']
                     }
-                    // برچسب پایه فقط برای نمایش
-                    specialized = specialized.map(s => ({
-                        category: s.category + (g ? ` · ${g}` : ''),
-                        items: s.items
-                    }));
-                    return [...specialized, general, life];
-                };
+                ];
 
-                const defaultSubjectGroups = buildSubjectGroups('ریاضی', 'دوازدهم');
                 const subjectGroups = ref(defaultSubjectGroups);
-                const partCategories = ref(['کنکوری', 'امتحان نهایی', 'مرور و جمع‌بندی', 'آزمون آزمایشی', 'جبرانی', 'غیردرسی / بازیابی', 'ورزش و سلامت']);
+                const partCategories = ref(['کنکوری', 'امتحان نهایی', 'مرور و جمع‌بندی', 'آزمون آزمایشی', 'جبرانی']);
                 const filterCategory = ref('');
-                const openSubjectGroups = ref({}); // برای باز/بسته شدن دسته‌ها در dropdown
 
                 const parts = ref([]);
                 const schedule = ref([]);
                 const archive = ref([]);
-                const settings = ref({
-                    userName: '',
-                    dailyGoal: 360,
-                    negativeMarkRatio: 3,
-                    breakDuration: 15,
-                    onboarded: false,
-                    major: 'ریاضی',
-                    grade: 'دوازدهم'
-                });
+                const settings = ref({ userName: '', dailyGoal: 360, negativeMarkRatio: 3, breakDuration: 15, onboarded: false });
 
                 const currentUser = ref(null);
                 const authInstance = ref(null);
                 let dbInstance = null;
                 const syncState = ref('local');
                 const firebaseConfigInput = ref('');
-                const activeShareCode = ref(localStorage.getItem('tilo_share_code') || '');
-                const shareCodeInput = ref('');
-                const shareSyncStatus = ref('آماده');
 
                 const cloudStatus = computed(() => {
                     if (!currentUser.value) return { text: 'حافظه محلی (آفلاین)', class: 'bg-amberSoft' };
@@ -1427,10 +1252,9 @@
                     subjects: [],
                     topic: '',
                     description: '',
-                    type: 'مطالعه و تست',
+                    type: 'تست آموزشی',
                     category: 'کنکوری',
                     plannedTime: 60,
-                    isLife: false,
                     subParts: [{ title: 'بخش اول', timeRange: '', duration: 60 }]
                 });
                 const newPart = ref(getEmptyPartForm());
@@ -1470,7 +1294,6 @@
                 let intervalId = null;
 
                 const completingPart = ref(null);
-                const pendingSession = ref(null);
                 const detailPart = ref(null);
                 const calc = ref({ c: 0, w: 0, u: 0 });
 
@@ -1552,23 +1375,18 @@
                 });
 
                 const todayStats = computed(() => {
-                    let totalTime = 0, lifeTime = 0, totalTests = 0, descriptive = 0, correct = 0, wrong = 0;
+                    let totalTime = 0, totalTests = 0, descriptive = 0, correct = 0, wrong = 0;
                     todayCompleted.value.forEach(p => {
-                        const rt = Number(p.realTime || 0);
-                        if (p.isLife) lifeTime += rt;
-                        else totalTime += rt;
+                        totalTime += Number(p.realTime || 0);
                         descriptive += Number(p.descriptiveCount || 0);
-                        if (p.tests && !p.isLife) {
+                        if (p.tests) {
                             correct += Number(p.tests.correct || 0);
                             wrong += Number(p.tests.wrong || 0);
                             totalTests += Number(p.tests.total || 0);
                         }
                     });
                     pendingParts.value.forEach(p => {
-                        if (p.dateISO === todayISO && p.realTime > 0) {
-                            if (p.isLife) lifeTime += Number(p.realTime);
-                            else totalTime += Number(p.realTime);
-                        }
+                        if (p.dateISO === todayISO && p.realTime > 0) totalTime += Number(p.realTime);
                     });
 
                     const goalProgress = settings.value.dailyGoal > 0 ? Math.min(100, Math.round((totalTime / settings.value.dailyGoal) * 100)) : 0;
@@ -1581,8 +1399,7 @@
                         const raw = ratio > 0 ? ((correct - (wrong / ratio)) / totalTests) * 100 : (correct / totalTests) * 100;
                         netScore = raw.toFixed(1) + '%';
                     }
-                    return { totalTime, lifeTime, totalTests, descriptive, correct, wrong, goalProgress, accuracy, netScore };
-                };
+                    return { totalTime, totalTests, descriptive, correct, wrong, goalProgress, accuracy, netScore };
                 });
 
                 const chartSeriesData = computed(() => {
@@ -1762,9 +1579,7 @@
 
                     const subMap = {};
                     rangeParts.forEach(p => {
-                        if (p.isLife) return;
                         (p.subjects || []).forEach(sub => {
-                            if (typeof isLifeSubject === 'function' && isLifeSubject(sub)) return;
                             if (!subMap[sub]) subMap[sub] = { time: 0, tests: 0, correct: 0, wrong: 0 };
                             subMap[sub].time += Number(p.realTime || 0);
                             if (p.tests) {
@@ -1796,7 +1611,7 @@
 
                     let recommendation = '';
                     if (stats.totalMinutes > 0 && stats.totalTests === 0) {
-                        recommendation = 'شما زمان خوبی برای مطالعه گذاشته‌اید اما تستی ثبت نکرده‌اید. برای تثبیت مطالب کنکور، بعد از هر پارت درس‌نامه حداقل ۱۵ تا ۲۰ تست آموزشی ثبت کنید.';
+                        recommendation = 'شما زمان خوبی برای مطالعه گذاشته‌اید اما تستی ثبت نکرده‌اید. برای تثبیت مطالب کنکور ریاضی، حتماً بعد از هر پارت درس‌نامه، حداقل ۱۵ تا ۲۰ تست آموزشی حل کنید.';
                     } else if (stats.totalWrong > stats.totalCorrect && stats.totalTests > 10) {
                         recommendation = 'تعداد تست‌های غلط شما بالاست. عجله در تست‌زنی را کم کنید، روی درک عمیق مفاهیم تمرکز کنید و از زدن گزینه‌های شک‌دار پرهیز نمایید.';
                     } else {
@@ -1861,83 +1676,9 @@
                 };
 
                 const completeWelcome = () => {
-                    if (!settings.value.userName || !settings.value.userName.trim()) {
-                        alert('لطفاً نام خود را وارد کنید.');
-                        return;
-                    }
-                    if (!settings.value.major) settings.value.major = 'ریاضی';
-                    if (!settings.value.grade) settings.value.grade = 'دوازدهم';
-                    subjectGroups.value = buildSubjectGroups(settings.value.major, settings.value.grade);
                     settings.value.onboarded = true;
                     showWelcomeModal.value = false;
                     saveAll();
-                };
-
-                const onMajorOrGradeChange = () => {
-                    // فقط اگر کاربر هنوز دروس پیش‌فرض را عوض نکرده، لیست را به‌روز کن
-                    subjectGroups.value = buildSubjectGroups(settings.value.major, settings.value.grade);
-                    saveAll();
-                };
-
-                const isLifeSubject = (name) => lifeActivityItems.includes(name);
-
-                const toggleSubjectGroup = (idx) => {
-                    openSubjectGroups.value = {
-                        ...openSubjectGroups.value,
-                        [idx]: !openSubjectGroups.value[idx]
-                    };
-                };
-
-                const quickStartMinutes = (mins) => {
-                    timer.value.mode = 'quick';
-                    timer.value.style = 'countdown';
-                    timer.value.quickTarget = mins;
-                    timer.value.autoStop = true;
-                    if (!timer.value.quickSubjects.length) {
-                        // آخرین درس مطالعاتی یا اولین درس تخصصی
-                        const last = completedParts.value.find(p => !p.isLife);
-                        if (last && last.subjects && last.subjects.length) {
-                            timer.value.quickSubjects = [...last.subjects];
-                            timer.value.quickTopic = last.topic || 'شروع سریع';
-                        } else {
-                            const firstGroup = subjectGroups.value.find(g => !g.category.includes('غیردرسی'));
-                            const sub = firstGroup && firstGroup.items[0] ? firstGroup.items[0] : 'مطالعه آزاد';
-                            timer.value.quickSubjects = [sub];
-                            timer.value.quickTopic = 'شروع سریع';
-                        }
-                    }
-                    saveTimer();
-                    currentTab.value = 'timer';
-                };
-
-
-                /** ادغام امن دو آرایه بر اساس id — جلوی از دست رفتن داده محلی/ابری */
-                const mergeItemsById = (localArr = [], cloudArr = []) => {
-                    const map = new Map();
-                    (Array.isArray(cloudArr) ? cloudArr : []).forEach(item => {
-                        if (item && item.id !== undefined && item.id !== null) {
-                            map.set(String(item.id), item);
-                        }
-                    });
-                    (Array.isArray(localArr) ? localArr : []).forEach(localItem => {
-                        if (!localItem || localItem.id === undefined || localItem.id === null) return;
-                        const key = String(localItem.id);
-                        const existing = map.get(key);
-                        if (!existing) {
-                            map.set(key, localItem);
-                            return;
-                        }
-                        const localTime = Number(localItem.updatedAt || localItem.completedAt || 0);
-                        const cloudTime = Number(existing.updatedAt || existing.completedAt || 0);
-                        if (localItem.status === 'completed' && existing.status !== 'completed') {
-                            map.set(key, localItem);
-                        } else if (localTime > cloudTime) {
-                            map.set(key, localItem);
-                        } else if ((Number(localItem.realTime) || 0) > (Number(existing.realTime) || 0)) {
-                            map.set(key, localItem);
-                        }
-                    });
-                    return Array.from(map.values()).sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
                 };
 
                 const saveAll = () => {
@@ -1949,10 +1690,6 @@
                     updateMainChart();
                     if (currentUser.value && dbInstance) {
                         syncToCloud();
-                    }
-                    // اگر کد همگام‌سازی فعال است، خودکار به ابر بفرست
-                    if (activeShareCode.value && dbInstance) {
-                        pushShareCodeNow(true);
                     }
                 };
                 const saveTimer = () => localStorage.setItem('sp_pro_timer', JSON.stringify(timer.value));
@@ -1967,11 +1704,7 @@
 
                     if (p) parts.value = JSON.parse(p);
                     if (s) settings.value = { ...settings.value, ...JSON.parse(s) };
-                    if (sub) {
-                        try { subjectGroups.value = JSON.parse(sub); } catch (_) {}
-                    } else if (settings.value.major) {
-                        subjectGroups.value = buildSubjectGroups(settings.value.major, settings.value.grade);
-                    }
+                    if (sub) subjectGroups.value = JSON.parse(sub);
                     if (sch) schedule.value = JSON.parse(sch);
                     if (arc) archive.value = JSON.parse(arc);
 
@@ -1987,18 +1720,6 @@
                     }
                     if (!timer.value.selectedPartId && pendingParts.value.length > 0) {
                         timer.value.selectedPartId = pendingParts.value[0].id;
-                    }
-
-                    // بازیابی جلسهٔ تایمر که هنوز در مودال تأیید نشده
-                    const pendingRaw = localStorage.getItem('sp_pro_pending_session');
-                    if (pendingRaw) {
-                        try {
-                            const ps = JSON.parse(pendingRaw);
-                            pendingSession.value = ps;
-                            completingPart.value = ps;
-                        } catch (_) {
-                            localStorage.removeItem('sp_pro_pending_session');
-                        }
                     }
 
                     const savedFbConfig = localStorage.getItem('tilo_fb_config');
@@ -2038,161 +1759,6 @@
                         });
                     } catch (e) {
                         console.warn('Firebase Init Warning:', e);
-                    }
-                };
-
-
-                const randomShareCode = () => {
-                    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-                    let out = '';
-                    for (let i = 0; i < 6; i++) out += chars[Math.floor(Math.random() * chars.length)];
-                    return out;
-                };
-
-                const ensureDbReady = async () => {
-                    if (!window.FirebaseSDK) {
-                        alert('کتابخانه ابر بارگذاری نشده. صفحه را رفرش کن.');
-                        return false;
-                    }
-                    if (!dbInstance || !authInstance.value) {
-                        const raw = localStorage.getItem('tilo_fb_config') || firebaseConfigInput.value;
-                        if (!raw || !raw.trim()) {
-                            alert('اول یک‌بار کانفیگ Firebase را در بخش حساب کاربری وارد و ذخیره کن (راهنما داخل همین صفحه است).');
-                            return false;
-                        }
-                        try {
-                            initFirebase(raw.trim());
-                        } catch (e) {
-                            alert('کانفیگ Firebase نامعتبر است.');
-                            return false;
-                        }
-                    }
-                    if (!dbInstance || !authInstance.value) {
-                        alert('اتصال ابر برقرار نشد. کانفیگ را بررسی کن.');
-                        return false;
-                    }
-                    // اگر کاربر گوگل نیست، ورود ناشناس برای دسترسی به کد اشتراک
-                    if (!authInstance.value.currentUser) {
-                        try {
-                            await window.FirebaseSDK.signInAnonymously(authInstance.value);
-                        } catch (e) {
-                            console.warn(e);
-                            alert('ورود ناشناس ممکن نشد. در Firebase، Sign-in method → Anonymous را فعال کن.\\n' + (e.message || ''));
-                            return false;
-                        }
-                    }
-                    return true;
-                };
-
-                const buildSharePayload = () => ({
-                    parts: parts.value,
-                    settings: settings.value,
-                    subjectGroups: subjectGroups.value,
-                    schedule: schedule.value,
-                    archive: archive.value,
-                    updatedAt: Date.now(),
-                    version: 1
-                });
-
-                const pushShareCodeNow = async (silent = false) => {
-                    if (!activeShareCode.value) return;
-                    if (!(await ensureDbReady())) return;
-                    try {
-                        shareSyncStatus.value = 'در حال ارسال...';
-                        const refDoc = window.FirebaseSDK.doc(dbInstance, 'tilo_codes', activeShareCode.value);
-                        await window.FirebaseSDK.setDoc(refDoc, buildSharePayload(), { merge: true });
-                        shareSyncStatus.value = 'ارسال شد · ' + new Date().toLocaleTimeString('fa-IR');
-                        if (!silent) alert('اطلاعات با موفقیت روی ابر با این کد ذخیره شد.');
-                    } catch (e) {
-                        console.warn(e);
-                        shareSyncStatus.value = 'خطا در ارسال';
-                        if (!silent) alert('ارسال ناموفق. قوانین Firestore را طبق راهنما تنظیم کن.\\n' + (e.message || ''));
-                    }
-                };
-
-                const pullShareCodeNow = async (silent = false) => {
-                    if (!activeShareCode.value) return;
-                    if (!(await ensureDbReady())) return;
-                    try {
-                        shareSyncStatus.value = 'در حال دریافت...';
-                        const refDoc = window.FirebaseSDK.doc(dbInstance, 'tilo_codes', activeShareCode.value);
-                        const snap = await window.FirebaseSDK.getDoc(refDoc);
-                        if (!snap.exists()) {
-                            shareSyncStatus.value = 'کدی روی ابر نیست';
-                            if (!silent) alert('هنوز داده‌ای با این کد روی ابر نیست. اول از دستگاه اصلی «ارسال الان» بزن.');
-                            return;
-                        }
-                        const data = snap.data();
-                        if (Array.isArray(data.parts)) {
-                            parts.value = mergeItemsById(parts.value, data.parts);
-                        }
-                        if (Array.isArray(data.schedule)) {
-                            schedule.value = mergeItemsById(schedule.value, data.schedule);
-                        }
-                        if (Array.isArray(data.archive)) {
-                            archive.value = mergeItemsById(archive.value, data.archive);
-                        }
-                        if (data.settings && typeof data.settings === 'object') {
-                            settings.value = { ...data.settings, ...settings.value };
-                        }
-                        if (Array.isArray(data.subjectGroups) && data.subjectGroups.length) {
-                            if (!subjectGroups.value || subjectGroups.value.length === 0) {
-                                subjectGroups.value = data.subjectGroups;
-                            }
-                        }
-                        // ذخیره محلی بدون حلقهٔ دوباره push اجباری فوری
-                        localStorage.setItem('sp_pro_parts', JSON.stringify(parts.value));
-                        localStorage.setItem('sp_pro_settings', JSON.stringify(settings.value));
-                        localStorage.setItem('sp_pro_subjects', JSON.stringify(subjectGroups.value));
-                        localStorage.setItem('tilo_schedule', JSON.stringify(schedule.value));
-                        localStorage.setItem('tilo_archive', JSON.stringify(archive.value));
-                        updateMainChart();
-                        shareSyncStatus.value = 'دریافت شد · ' + new Date().toLocaleTimeString('fa-IR');
-                        if (!silent) alert('اطلاعات از ابر دریافت و ادغام شد.');
-                    } catch (e) {
-                        console.warn(e);
-                        shareSyncStatus.value = 'خطا در دریافت';
-                        if (!silent) alert('دریافت ناموفق.\\n' + (e.message || ''));
-                    }
-                };
-
-                const createShareCode = async () => {
-                    if (!(await ensureDbReady())) return;
-                    const code = randomShareCode();
-                    activeShareCode.value = code;
-                    localStorage.setItem('tilo_share_code', code);
-                    await pushShareCodeNow(true);
-                    shareSyncStatus.value = 'کد ساخته شد';
-                    alert('کد شما: ' + code + '\\n\\nهمین کد را در گوشی/لپ‌تاپ دیگر وارد کن.');
-                };
-
-                const joinShareCode = async () => {
-                    const code = (shareCodeInput.value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-                    if (code.length < 4) {
-                        alert('کد معتبر وارد کن (حداقل ۴ کاراکتر).');
-                        return;
-                    }
-                    if (!(await ensureDbReady())) return;
-                    activeShareCode.value = code;
-                    localStorage.setItem('tilo_share_code', code);
-                    shareCodeInput.value = '';
-                    await pullShareCodeNow(false);
-                };
-
-                const disconnectShareCode = () => {
-                    if (!confirm('ارتباط این دستگاه با کد قطع شود؟ (دادهٔ محلی پاک نمی‌شود)')) return;
-                    activeShareCode.value = '';
-                    localStorage.removeItem('tilo_share_code');
-                    shareSyncStatus.value = 'قطع شد';
-                };
-
-                const copyShareCode = async () => {
-                    if (!activeShareCode.value) return;
-                    try {
-                        await navigator.clipboard.writeText(activeShareCode.value);
-                        alert('کد کپی شد: ' + activeShareCode.value);
-                    } catch {
-                        prompt('کد را کپی کن:', activeShareCode.value);
                     }
                 };
 
@@ -2254,51 +1820,36 @@
                         const snap = await window.FirebaseSDK.getDoc(refDoc);
                         if (snap.exists()) {
                             const data = snap.data();
-                            // ادغام امن — دیگر بر اساس length جایگزین نمی‌کنیم
-                            if (Array.isArray(data.parts)) {
-                                parts.value = mergeItemsById(parts.value, data.parts);
-                            }
-                            if (Array.isArray(data.schedule)) {
-                                schedule.value = mergeItemsById(schedule.value, data.schedule);
-                            }
-                            if (Array.isArray(data.archive)) {
-                                archive.value = mergeItemsById(archive.value, data.archive);
-                            }
-                            if (data.settings && typeof data.settings === 'object') {
-                                settings.value = { ...data.settings, ...settings.value };
-                            }
-                            if (Array.isArray(data.subjectGroups) && data.subjectGroups.length) {
-                                if (!subjectGroups.value || subjectGroups.value.length === 0) {
-                                    subjectGroups.value = data.subjectGroups;
-                                }
-                            }
+                            if (data.parts && data.parts.length >= parts.value.length) parts.value = data.parts;
+                            if (data.settings) settings.value = { ...settings.value, ...data.settings };
+                            if (data.subjectGroups) subjectGroups.value = data.subjectGroups;
+                            if (data.schedule) schedule.value = data.schedule;
+                            if (data.archive) archive.value = data.archive;
                             saveAll();
                         } else {
                             await syncToCloud();
                         }
                         syncState.value = 'saved';
-                    } catch (err) {
-                        console.warn('loadFromCloud error:', err);
+                    } catch {
                         syncState.value = 'error';
                     }
                 };
 
                 const createNewPart = () => {
                     if (newPart.value.subjects.length === 0) {
-                        alert('لطفاً حداقل یک مورد (درس یا فعالیت غیردرسی) را انتخاب کنید.');
+                        alert('لطفاً حداقل یک درس را از لیست انتخاب کنید.');
                         dropdownOpen.value = true;
                         return;
                     }
-                    const life = newPart.value.subjects.some(s => isLifeSubject(s)) || newPart.value.isLife || (newPart.value.category || '').includes('غیردرسی') || (newPart.value.category || '').includes('ورزش');
                     const partObj = {
                         id: Date.now(),
                         dateISO: todayISO,
                         dateStr: getTehranShortDateStr(),
                         subjects: [...newPart.value.subjects],
-                        topic: newPart.value.topic.trim() || (life ? 'فعالیت غیردرسی' : ''),
+                        topic: newPart.value.topic.trim(),
                         description: (newPart.value.description || '').trim(),
-                        type: life ? 'غیردرسی' : newPart.value.type,
-                        category: newPart.value.category || (life ? 'غیردرسی / بازیابی' : 'کنکوری'),
+                        type: newPart.value.type,
+                        category: newPart.value.category || 'کنکوری',
                         plannedTime: newPart.value.plannedTime || 60,
                         subParts: JSON.parse(JSON.stringify(newPart.value.subParts || [])),
                         realTime: 0,
@@ -2307,9 +1858,7 @@
                         descriptiveCount: 0,
                         status: 'pending',
                         tests: { correct: 0, wrong: 0, unanswered: 0, total: 0 },
-                        notes: '',
-                        isLife: life,
-                        updatedAt: Date.now()
+                        notes: ''
                     };
                     parts.value.unshift(partObj);
                     saveAll();
@@ -2334,12 +1883,10 @@
                         category: newPart.value.category || 'کنکوری',
                         plannedTime: newPart.value.plannedTime || 60,
                         subParts: JSON.parse(JSON.stringify(newPart.value.subParts || [])),
-                        realTime: 0,
+                        realTime: newPart.value.plannedTime || 60,
                         descriptiveCount: 0,
                         tests: { correct: 0, wrong: 0, unanswered: 0, total: 0 },
-                        notes: '',
-                        isLife: (newPart.value.subjects || []).some(s => isLifeSubject(s)) || !!newPart.value.isLife,
-                        updatedAt: Date.now()
+                        notes: ''
                     };
                 };
 
@@ -2427,20 +1974,18 @@
                     const pauseMins = Math.round((timer.value.totalPaused || 0) / 60000);
                     const endTehran = getTehranTimeStr();
 
-                    let draft = null;
                     if (timer.value.mode === 'part') {
                         const targetPart = parts.value.find(p => p.id === timer.value.selectedPartId);
                         if (targetPart) {
-                            draft = JSON.parse(JSON.stringify(targetPart));
-                            draft.realTime = (Number(targetPart.realTime) || 0) + sessionMinutes;
-                            draft.pauseCount = (Number(targetPart.pauseCount) || 0) + (timer.value.pauseCount || 0);
-                            draft.pauseMinutes = (Number(targetPart.pauseMinutes) || 0) + pauseMins;
-                            draft.startTehranStr = targetPart.startTehranStr || timer.value.startTehranStr;
-                            draft.endTehranStr = endTehran;
-                            draft.updatedAt = Date.now();
+                            completingPart.value = JSON.parse(JSON.stringify(targetPart));
+                            completingPart.value.realTime = (Number(targetPart.realTime) || 0) + sessionMinutes;
+                            completingPart.value.pauseCount = (Number(targetPart.pauseCount) || 0) + (timer.value.pauseCount || 0);
+                            completingPart.value.pauseMinutes = (Number(targetPart.pauseMinutes) || 0) + pauseMins;
+                            completingPart.value.startTehranStr = targetPart.startTehranStr || timer.value.startTehranStr;
+                            completingPart.value.endTehranStr = endTehran;
                         }
                     } else {
-                        draft = {
+                        completingPart.value = {
                             id: Date.now(),
                             isNewDirect: true,
                             dateISO: todayISO,
@@ -2458,18 +2003,9 @@
                             endTehranStr: endTehran,
                             descriptiveCount: 0,
                             tests: { correct: 0, wrong: 0, unanswered: 0, total: 0 },
-                            notes: '',
-                            status: 'pending',
-                            updatedAt: Date.now()
+                            notes: ''
                         };
                     }
-
-                    if (!draft) return;
-
-                    // نگه داشتن جلسه تا تأیید کاربر در مودال (حتی بعد از رفرش)
-                    pendingSession.value = draft;
-                    localStorage.setItem('sp_pro_pending_session', JSON.stringify(draft));
-                    completingPart.value = draft;
 
                     timer.value.active = false;
                     timer.value.running = false;
@@ -2481,21 +2017,8 @@
 
                 const openCompleteModal = (part) => {
                     completingPart.value = JSON.parse(JSON.stringify(part));
-                    // فقط اگر realTime اصلاً تعریف نشده باشد پیش‌فرض بگذار؛ صفر یعنی کاربر باید وارد کند
-                    if (completingPart.value.realTime === undefined || completingPart.value.realTime === null) {
-                        completingPart.value.realTime = completingPart.value.plannedTime || 60;
-                    }
+                    if (!completingPart.value.realTime) completingPart.value.realTime = completingPart.value.plannedTime || 60;
                     if (!completingPart.value.category) completingPart.value.category = 'کنکوری';
-                };
-
-                const closeCompleteModal = () => {
-                    if (pendingSession.value) {
-                        if (!confirm('زمان این جلسه هنوز ذخیره نشده. خارج شوی؟ (تا وقتی تأیید نکنی، بعد از رفرش هم یادآوری می‌شود)')) {
-                            return;
-                        }
-                        // pendingSession در localStorage می‌ماند تا بعداً ثبت شود
-                    }
-                    completingPart.value = null;
                 };
 
                 const openEditModal = (part) => {
@@ -2536,11 +2059,8 @@
                         }
                     }
 
-                    cp.updatedAt = Date.now();
                     saveAll();
                     completingPart.value = null;
-                    pendingSession.value = null;
-                    localStorage.removeItem('sp_pro_pending_session');
 
                     if (pendingParts.value.length > 0) {
                         timer.value.selectedPartId = pendingParts.value[0].id;
@@ -2595,24 +2115,12 @@
                 };
 
                 const sendScheduleToParts = (item) => {
-                    const subject = (item.subject || '').trim();
-                    const topic = (item.topic || '').trim();
-                    const already = parts.value.some(p =>
-                        p.dateISO === todayISO &&
-                        p.status !== 'trashed' &&
-                        (p.subjects || []).includes(subject) &&
-                        (p.topic || '').trim() === topic
-                    );
-                    if (already) {
-                        alert('این مورد امروز قبلاً به پارت‌ها اضافه شده است.');
-                        return;
-                    }
                     const partObj = {
                         id: Date.now(),
                         dateISO: todayISO,
                         dateStr: getTehranShortDateStr(),
-                        subjects: subject ? [subject] : [],
-                        topic: topic,
+                        subjects: [item.subject],
+                        topic: item.topic,
                         description: `از برنامه هفتگی (${item.day})`,
                         type: 'مطالعه و تست',
                         category: 'کنکوری',
@@ -2621,9 +2129,7 @@
                         realTime: 0,
                         status: 'pending',
                         tests: { correct: 0, wrong: 0, unanswered: 0, total: 0 },
-                        notes: '',
-                        updatedAt: Date.now(),
-                        fromScheduleId: item.id
+                        notes: ''
                     };
                     parts.value.unshift(partObj);
                     saveAll();
@@ -2686,45 +2192,19 @@
 
                 const importJSON = (e) => {
                     const file = e.target.files[0];
-                    if (!file) return;
-                    if (!confirm('آیا مطمئن هستید؟ اطلاعات فعلی با فایل پشتیبان ادغام می‌شود (حذف کور انجام نمی‌شود).')) {
-                        e.target.value = '';
-                        return;
-                    }
+                    if (!file || !confirm('آیا مطمئن هستید؟ اطلاعات فعلی با فایل پشتیبان ادغام/جایگزین می‌شود.')) return;
                     const reader = new FileReader();
                     reader.onload = (ev) => {
                         try {
                             const data = JSON.parse(ev.target.result);
-                            if (!data || typeof data !== 'object') {
-                                alert('فایل نامعتبر است.');
-                                return;
-                            }
-                            if (data.parts !== undefined && !Array.isArray(data.parts)) {
-                                alert('فیلد parts باید آرایه باشد.');
-                                return;
-                            }
-                            if (Array.isArray(data.parts)) {
-                                parts.value = mergeItemsById(parts.value, data.parts);
-                            }
-                            if (data.settings && typeof data.settings === 'object') {
-                                settings.value = { ...settings.value, ...data.settings };
-                            }
-                            if (Array.isArray(data.subjectGroups) && data.subjectGroups.length) {
-                                subjectGroups.value = data.subjectGroups;
-                            }
-                            if (Array.isArray(data.schedule)) {
-                                schedule.value = mergeItemsById(schedule.value, data.schedule);
-                            }
-                            if (Array.isArray(data.archive)) {
-                                archive.value = mergeItemsById(archive.value, data.archive);
-                            }
+                            if (data.parts) parts.value = data.parts;
+                            if (data.settings) settings.value = { ...settings.value, ...data.settings };
+                            if (data.subjectGroups) subjectGroups.value = data.subjectGroups;
+                            if (data.schedule) schedule.value = data.schedule;
+                            if (data.archive) archive.value = data.archive;
                             saveAll();
-                            alert('پشتیبان با موفقیت ادغام شد!');
-                        } catch (err) {
-                            console.error(err);
-                            alert('فایل پشتیبان معتبر نیست.');
-                        }
-                        e.target.value = '';
+                            alert('نسخه پشتیبان با موفقیت بازیابی شد!');
+                        } catch { alert('فایل پشتیبان معتبر نیست.'); }
                     };
                     reader.readAsText(file);
                 };
@@ -2738,14 +2218,11 @@
                 return {
                     currentTab, tabTitle, currentDateStr, showWelcomeModal, completeWelcome,
                     cloudStatus, authInstance, currentUser, firebaseConfigInput,
-                    activeShareCode, shareCodeInput, shareSyncStatus,
-                    createShareCode, joinShareCode, disconnectShareCode, copyShareCode, pushShareCodeNow, pullShareCodeNow,
                     subjectGroups, partCategories, filterCategory, dropdownOpen, timerDropdownOpen,
-                    gradeOptions, onMajorOrGradeChange, quickStartMinutes, openSubjectGroups, toggleSubjectGroup, isLifeSubject,
                     parts, pendingParts, completedParts, filteredCompletedParts, trashedParts, todayCompleted, weekCompletedParts, todayStats,
                     newPart, setPlannedTimePreset, addSubPartToNew,
                     timer, setTimerStyle, switchTimerMode, currentTargetMinutes, activeTimerInfo, formattedTimer, timerProgressPercent,
-                    completingPart, pendingSession, detailPart, closeCompleteModal,
+                    completingPart, detailPart,
                     chartDaysRange, chartMetric, rangeAnalytics, analysisReport, setCustomRange, setChartMetric, updateMainChart, runPerformanceAnalysis,
                     weekDays, selectedWeekDay, scheduleForm, currentDaySchedule,
                     archiveForm, archiveSearch, filteredArchive,
