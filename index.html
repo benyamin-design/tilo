@@ -1083,7 +1083,7 @@
                     <h3 class="font-extrabold text-white text-base flex items-center gap-2">
                         <i class="fas fa-check-circle text-sage"></i> {{ completingPart.isEditMode ? 'ویرایش اطلاعات پارت' : 'ثبت و تکمیل پارت' }}
                     </h3>
-                    <button @click="completingPart = null" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+                    <button @click="closeCompleteModal" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
                 </div>
 
                 <div class="grid grid-cols-2 gap-2">
@@ -1294,6 +1294,7 @@
                 let intervalId = null;
 
                 const completingPart = ref(null);
+                const pendingSession = ref(null);
                 const detailPart = ref(null);
                 const calc = ref({ c: 0, w: 0, u: 0 });
 
@@ -1681,6 +1682,36 @@
                     saveAll();
                 };
 
+
+                /** ادغام امن دو آرایه بر اساس id — جلوی از دست رفتن داده محلی/ابری */
+                const mergeItemsById = (localArr = [], cloudArr = []) => {
+                    const map = new Map();
+                    (Array.isArray(cloudArr) ? cloudArr : []).forEach(item => {
+                        if (item && item.id !== undefined && item.id !== null) {
+                            map.set(String(item.id), item);
+                        }
+                    });
+                    (Array.isArray(localArr) ? localArr : []).forEach(localItem => {
+                        if (!localItem || localItem.id === undefined || localItem.id === null) return;
+                        const key = String(localItem.id);
+                        const existing = map.get(key);
+                        if (!existing) {
+                            map.set(key, localItem);
+                            return;
+                        }
+                        const localTime = Number(localItem.updatedAt || localItem.completedAt || 0);
+                        const cloudTime = Number(existing.updatedAt || existing.completedAt || 0);
+                        if (localItem.status === 'completed' && existing.status !== 'completed') {
+                            map.set(key, localItem);
+                        } else if (localTime > cloudTime) {
+                            map.set(key, localItem);
+                        } else if ((Number(localItem.realTime) || 0) > (Number(existing.realTime) || 0)) {
+                            map.set(key, localItem);
+                        }
+                    });
+                    return Array.from(map.values()).sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
+                };
+
                 const saveAll = () => {
                     localStorage.setItem('sp_pro_parts', JSON.stringify(parts.value));
                     localStorage.setItem('sp_pro_settings', JSON.stringify(settings.value));
@@ -1720,6 +1751,18 @@
                     }
                     if (!timer.value.selectedPartId && pendingParts.value.length > 0) {
                         timer.value.selectedPartId = pendingParts.value[0].id;
+                    }
+
+                    // بازیابی جلسهٔ تایمر که هنوز در مودال تأیید نشده
+                    const pendingRaw = localStorage.getItem('sp_pro_pending_session');
+                    if (pendingRaw) {
+                        try {
+                            const ps = JSON.parse(pendingRaw);
+                            pendingSession.value = ps;
+                            completingPart.value = ps;
+                        } catch (_) {
+                            localStorage.removeItem('sp_pro_pending_session');
+                        }
                     }
 
                     const savedFbConfig = localStorage.getItem('tilo_fb_config');
@@ -1820,17 +1863,31 @@
                         const snap = await window.FirebaseSDK.getDoc(refDoc);
                         if (snap.exists()) {
                             const data = snap.data();
-                            if (data.parts && data.parts.length >= parts.value.length) parts.value = data.parts;
-                            if (data.settings) settings.value = { ...settings.value, ...data.settings };
-                            if (data.subjectGroups) subjectGroups.value = data.subjectGroups;
-                            if (data.schedule) schedule.value = data.schedule;
-                            if (data.archive) archive.value = data.archive;
+                            // ادغام امن — دیگر بر اساس length جایگزین نمی‌کنیم
+                            if (Array.isArray(data.parts)) {
+                                parts.value = mergeItemsById(parts.value, data.parts);
+                            }
+                            if (Array.isArray(data.schedule)) {
+                                schedule.value = mergeItemsById(schedule.value, data.schedule);
+                            }
+                            if (Array.isArray(data.archive)) {
+                                archive.value = mergeItemsById(archive.value, data.archive);
+                            }
+                            if (data.settings && typeof data.settings === 'object') {
+                                settings.value = { ...data.settings, ...settings.value };
+                            }
+                            if (Array.isArray(data.subjectGroups) && data.subjectGroups.length) {
+                                if (!subjectGroups.value || subjectGroups.value.length === 0) {
+                                    subjectGroups.value = data.subjectGroups;
+                                }
+                            }
                             saveAll();
                         } else {
                             await syncToCloud();
                         }
                         syncState.value = 'saved';
-                    } catch {
+                    } catch (err) {
+                        console.warn('loadFromCloud error:', err);
                         syncState.value = 'error';
                     }
                 };
@@ -1858,7 +1915,8 @@
                         descriptiveCount: 0,
                         status: 'pending',
                         tests: { correct: 0, wrong: 0, unanswered: 0, total: 0 },
-                        notes: ''
+                        notes: '',
+                        updatedAt: Date.now()
                     };
                     parts.value.unshift(partObj);
                     saveAll();
@@ -1883,10 +1941,11 @@
                         category: newPart.value.category || 'کنکوری',
                         plannedTime: newPart.value.plannedTime || 60,
                         subParts: JSON.parse(JSON.stringify(newPart.value.subParts || [])),
-                        realTime: newPart.value.plannedTime || 60,
+                        realTime: 0,
                         descriptiveCount: 0,
                         tests: { correct: 0, wrong: 0, unanswered: 0, total: 0 },
-                        notes: ''
+                        notes: '',
+                        updatedAt: Date.now()
                     };
                 };
 
@@ -1974,18 +2033,20 @@
                     const pauseMins = Math.round((timer.value.totalPaused || 0) / 60000);
                     const endTehran = getTehranTimeStr();
 
+                    let draft = null;
                     if (timer.value.mode === 'part') {
                         const targetPart = parts.value.find(p => p.id === timer.value.selectedPartId);
                         if (targetPart) {
-                            completingPart.value = JSON.parse(JSON.stringify(targetPart));
-                            completingPart.value.realTime = (Number(targetPart.realTime) || 0) + sessionMinutes;
-                            completingPart.value.pauseCount = (Number(targetPart.pauseCount) || 0) + (timer.value.pauseCount || 0);
-                            completingPart.value.pauseMinutes = (Number(targetPart.pauseMinutes) || 0) + pauseMins;
-                            completingPart.value.startTehranStr = targetPart.startTehranStr || timer.value.startTehranStr;
-                            completingPart.value.endTehranStr = endTehran;
+                            draft = JSON.parse(JSON.stringify(targetPart));
+                            draft.realTime = (Number(targetPart.realTime) || 0) + sessionMinutes;
+                            draft.pauseCount = (Number(targetPart.pauseCount) || 0) + (timer.value.pauseCount || 0);
+                            draft.pauseMinutes = (Number(targetPart.pauseMinutes) || 0) + pauseMins;
+                            draft.startTehranStr = targetPart.startTehranStr || timer.value.startTehranStr;
+                            draft.endTehranStr = endTehran;
+                            draft.updatedAt = Date.now();
                         }
                     } else {
-                        completingPart.value = {
+                        draft = {
                             id: Date.now(),
                             isNewDirect: true,
                             dateISO: todayISO,
@@ -2003,9 +2064,18 @@
                             endTehranStr: endTehran,
                             descriptiveCount: 0,
                             tests: { correct: 0, wrong: 0, unanswered: 0, total: 0 },
-                            notes: ''
+                            notes: '',
+                            status: 'pending',
+                            updatedAt: Date.now()
                         };
                     }
+
+                    if (!draft) return;
+
+                    // نگه داشتن جلسه تا تأیید کاربر در مودال (حتی بعد از رفرش)
+                    pendingSession.value = draft;
+                    localStorage.setItem('sp_pro_pending_session', JSON.stringify(draft));
+                    completingPart.value = draft;
 
                     timer.value.active = false;
                     timer.value.running = false;
@@ -2017,8 +2087,21 @@
 
                 const openCompleteModal = (part) => {
                     completingPart.value = JSON.parse(JSON.stringify(part));
-                    if (!completingPart.value.realTime) completingPart.value.realTime = completingPart.value.plannedTime || 60;
+                    // فقط اگر realTime اصلاً تعریف نشده باشد پیش‌فرض بگذار؛ صفر یعنی کاربر باید وارد کند
+                    if (completingPart.value.realTime === undefined || completingPart.value.realTime === null) {
+                        completingPart.value.realTime = completingPart.value.plannedTime || 60;
+                    }
                     if (!completingPart.value.category) completingPart.value.category = 'کنکوری';
+                };
+
+                const closeCompleteModal = () => {
+                    if (pendingSession.value) {
+                        if (!confirm('زمان این جلسه هنوز ذخیره نشده. خارج شوی؟ (تا وقتی تأیید نکنی، بعد از رفرش هم یادآوری می‌شود)')) {
+                            return;
+                        }
+                        // pendingSession در localStorage می‌ماند تا بعداً ثبت شود
+                    }
+                    completingPart.value = null;
                 };
 
                 const openEditModal = (part) => {
@@ -2059,8 +2142,11 @@
                         }
                     }
 
+                    cp.updatedAt = Date.now();
                     saveAll();
                     completingPart.value = null;
+                    pendingSession.value = null;
+                    localStorage.removeItem('sp_pro_pending_session');
 
                     if (pendingParts.value.length > 0) {
                         timer.value.selectedPartId = pendingParts.value[0].id;
@@ -2115,12 +2201,24 @@
                 };
 
                 const sendScheduleToParts = (item) => {
+                    const subject = (item.subject || '').trim();
+                    const topic = (item.topic || '').trim();
+                    const already = parts.value.some(p =>
+                        p.dateISO === todayISO &&
+                        p.status !== 'trashed' &&
+                        (p.subjects || []).includes(subject) &&
+                        (p.topic || '').trim() === topic
+                    );
+                    if (already) {
+                        alert('این مورد امروز قبلاً به پارت‌ها اضافه شده است.');
+                        return;
+                    }
                     const partObj = {
                         id: Date.now(),
                         dateISO: todayISO,
                         dateStr: getTehranShortDateStr(),
-                        subjects: [item.subject],
-                        topic: item.topic,
+                        subjects: subject ? [subject] : [],
+                        topic: topic,
                         description: `از برنامه هفتگی (${item.day})`,
                         type: 'مطالعه و تست',
                         category: 'کنکوری',
@@ -2129,7 +2227,9 @@
                         realTime: 0,
                         status: 'pending',
                         tests: { correct: 0, wrong: 0, unanswered: 0, total: 0 },
-                        notes: ''
+                        notes: '',
+                        updatedAt: Date.now(),
+                        fromScheduleId: item.id
                     };
                     parts.value.unshift(partObj);
                     saveAll();
@@ -2192,19 +2292,45 @@
 
                 const importJSON = (e) => {
                     const file = e.target.files[0];
-                    if (!file || !confirm('آیا مطمئن هستید؟ اطلاعات فعلی با فایل پشتیبان ادغام/جایگزین می‌شود.')) return;
+                    if (!file) return;
+                    if (!confirm('آیا مطمئن هستید؟ اطلاعات فعلی با فایل پشتیبان ادغام می‌شود (حذف کور انجام نمی‌شود).')) {
+                        e.target.value = '';
+                        return;
+                    }
                     const reader = new FileReader();
                     reader.onload = (ev) => {
                         try {
                             const data = JSON.parse(ev.target.result);
-                            if (data.parts) parts.value = data.parts;
-                            if (data.settings) settings.value = { ...settings.value, ...data.settings };
-                            if (data.subjectGroups) subjectGroups.value = data.subjectGroups;
-                            if (data.schedule) schedule.value = data.schedule;
-                            if (data.archive) archive.value = data.archive;
+                            if (!data || typeof data !== 'object') {
+                                alert('فایل نامعتبر است.');
+                                return;
+                            }
+                            if (data.parts !== undefined && !Array.isArray(data.parts)) {
+                                alert('فیلد parts باید آرایه باشد.');
+                                return;
+                            }
+                            if (Array.isArray(data.parts)) {
+                                parts.value = mergeItemsById(parts.value, data.parts);
+                            }
+                            if (data.settings && typeof data.settings === 'object') {
+                                settings.value = { ...settings.value, ...data.settings };
+                            }
+                            if (Array.isArray(data.subjectGroups) && data.subjectGroups.length) {
+                                subjectGroups.value = data.subjectGroups;
+                            }
+                            if (Array.isArray(data.schedule)) {
+                                schedule.value = mergeItemsById(schedule.value, data.schedule);
+                            }
+                            if (Array.isArray(data.archive)) {
+                                archive.value = mergeItemsById(archive.value, data.archive);
+                            }
                             saveAll();
-                            alert('نسخه پشتیبان با موفقیت بازیابی شد!');
-                        } catch { alert('فایل پشتیبان معتبر نیست.'); }
+                            alert('پشتیبان با موفقیت ادغام شد!');
+                        } catch (err) {
+                            console.error(err);
+                            alert('فایل پشتیبان معتبر نیست.');
+                        }
+                        e.target.value = '';
                     };
                     reader.readAsText(file);
                 };
@@ -2222,7 +2348,7 @@
                     parts, pendingParts, completedParts, filteredCompletedParts, trashedParts, todayCompleted, weekCompletedParts, todayStats,
                     newPart, setPlannedTimePreset, addSubPartToNew,
                     timer, setTimerStyle, switchTimerMode, currentTargetMinutes, activeTimerInfo, formattedTimer, timerProgressPercent,
-                    completingPart, detailPart,
+                    completingPart, pendingSession, detailPart, closeCompleteModal,
                     chartDaysRange, chartMetric, rangeAnalytics, analysisReport, setCustomRange, setChartMetric, updateMainChart, runPerformanceAnalysis,
                     weekDays, selectedWeekDay, scheduleForm, currentDaySchedule,
                     archiveForm, archiveSearch, filteredArchive,
