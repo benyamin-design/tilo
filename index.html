@@ -115,7 +115,8 @@
             box-sizing: border-box;
             max-width: 100%;
         }
-        .soft-card { overflow: hidden; word-break: break-word; }
+        .soft-card { overflow: visible; word-break: break-word; }
+        .tilo-stat-card, .tilo-clip { overflow: hidden; }
         .tilo-scroll {
             overflow-x: hidden;
             overflow-y: auto;
@@ -162,9 +163,96 @@
             main { padding-bottom: 6.5rem !important; }
             .soft-card { border-radius: 1.1rem; }
         }
+
+        /* تم شب قوی‌تر */
+        body.tilo-theme-night {
+            background-color: #0c1017 !important;
+            color: #e8eaed !important;
+        }
+        body.tilo-theme-night .soft-card {
+            background: rgba(22, 28, 40, 0.95) !important;
+            border-color: rgba(255,255,255,0.08) !important;
+        }
+        body.tilo-theme-night .text-white { color: #f3f4f6 !important; }
+        body.tilo-theme-night .text-slate-400 { color: #94a3b8 !important; }
+        body.tilo-theme-night .input-calm {
+            background: #0f1520 !important;
+            border-color: rgba(255,255,255,0.12) !important;
+            color: #f1f5f9 !important;
+        }
+
+        /* تم روز کامل */
+        body.tilo-theme-day {
+            background-color: #f3f0e8 !important;
+            background-image: none !important;
+            color: #1f2937 !important;
+        }
+        body.tilo-theme-day .soft-card,
+        body.tilo-theme-day nav,
+        body.tilo-theme-day header {
+            background: #ffffff !important;
+            border-color: #e7e2d6 !important;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.06) !important;
+            color: #1f2937 !important;
+        }
+        body.tilo-theme-day .text-white { color: #111827 !important; }
+        body.tilo-theme-day .text-slate-400,
+        body.tilo-theme-day .text-slate-300,
+        body.tilo-theme-day .text-slate-500 { color: #6b7280 !important; }
+        body.tilo-theme-day .text-slate-200 { color: #374151 !important; }
+        body.tilo-theme-day .bg-slate-900,
+        body.tilo-theme-day .bg-slate-900\/70,
+        body.tilo-theme-day .bg-slate-900\/80,
+        body.tilo-theme-day .bg-slate-800,
+        body.tilo-theme-day .bg-slate-800\/40,
+        body.tilo-theme-day .bg-slate-800\/60,
+        body.tilo-theme-day .bg-slate-950\/60,
+        body.tilo-theme-day .bg-slate-950\/80 {
+            background-color: #f5f2ea !important;
+            color: #1f2937 !important;
+        }
+        body.tilo-theme-day .input-calm {
+            background: #fafaf7 !important;
+            border-color: #ddd6c8 !important;
+            color: #111827 !important;
+        }
+        body.tilo-theme-day .border-slate-800,
+        body.tilo-theme-day .border-slate-700 {
+            border-color: #e8e2d6 !important;
+        }
+        body.tilo-theme-day .soft-card.bg-\[\#162032\],
+        body.tilo-theme-day [class*="bg-[#162032]"] {
+            background: #ffffff !important;
+        }
+        /* مودال‌ها در تم روز */
+        body.tilo-theme-day .fixed.inset-0 .soft-card {
+            background: #ffffff !important;
+            color: #111827 !important;
+        }
+
+        /* داشبورد: جلوگیری از بیرون‌زدن */
+        .tilo-stat-grid > * { min-width: 0; }
+        .tilo-stat-card {
+            overflow: hidden;
+            min-width: 0;
+        }
+        .tilo-stat-card .tilo-stat-value {
+            font-size: clamp(1rem, 4vw, 1.5rem);
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        @media (min-width: 768px) {
+            main { max-width: 1100px; margin-left: auto; margin-right: auto; }
+        }
+        @media (max-width: 640px) {
+            .tilo-stat-card { padding: 0.85rem !important; }
+            header .btn-calm { padding-left: 0.6rem; padding-right: 0.6rem; }
+        }
+
     </style>
 </head>
-<body class="font-sans antialiased h-screen flex flex-col md:flex-row overflow-hidden select-none">
+<body class="font-sans antialiased h-screen flex flex-col md:flex-row overflow-hidden select-none tilo-theme-night">
     <div id="app" class="w-full h-full flex flex-col md:flex-row max-w-7xl mx-auto relative" v-cloak>
         
         <!-- ==================== پنجره خوش‌آمدگویی و ورود مدرن (Onboarding) ==================== -->
@@ -292,7 +380,11 @@
                     </div>
                 </div>
                 
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap justify-end">
+                    <button type="button" @click="toggleTheme" class="tilo-theme-switch-btn bg-slate-900/70 text-slate-200 text-[11px]" :title="settings.theme === 'day' ? 'حالت شب' : 'حالت روز'">
+                        <i :class="settings.theme === 'day' ? 'fas fa-moon' : 'fas fa-sun'"></i>
+                        <span class="hidden sm:inline">{{ settings.theme === 'day' ? 'شب' : 'روز' }}</span>
+                    </button>
                     <button @click="currentTab = 'settings'" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900/70 border border-slate-700/70 text-[11px]">
                         <span class="w-2 h-2 rounded-full" :class="cloudStatus.class"></span>
                         <span class="text-slate-300">{{ currentUser ? currentUser.displayName || 'اکانت متصل' : cloudStatus.text }}</span>
@@ -325,13 +417,13 @@
                 </div>
                 
                 <!-- ۴ کارت شاخص‌های امروز -->
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-                    <div class="soft-card p-4 rounded-2xl border-r-4 border-r-primarySoft">
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5 tilo-stat-grid">
+                    <div class="soft-card tilo-stat-card p-4 rounded-2xl border-r-4 border-r-primarySoft">
                         <div class="flex justify-between items-start">
                             <p class="text-slate-400 text-xs">مطالعه امروز</p>
                             <i class="fas fa-clock text-primarySoft/70"></i>
                         </div>
-                        <p class="text-xl md:text-2xl font-black text-white mt-2">{{ formatMinutes(todayStats.totalTime) }}</p>
+                        <p class="tilo-stat-value text-xl md:text-2xl font-black text-white mt-2">{{ formatMinutes(todayStats.totalTime) }}</p>
                         <div class="w-full bg-slate-900 h-1.5 rounded-full mt-2 overflow-hidden">
                             <div class="bg-gradient-to-r from-primary to-tealSoft h-full rounded-full" :style="{width: todayStats.goalProgress + '%'}"></div>
                         </div>
@@ -339,12 +431,12 @@
                         <p v-if="todayStats.lifeTime > 0" class="text-[10px] text-amberSoft mt-0.5">غیردرسی امروز: {{ formatMinutes(todayStats.lifeTime) }}</p>
                     </div>
 
-                    <div class="soft-card p-4 rounded-2xl border-r-4 border-r-tealSoft">
+                    <div class="soft-card tilo-stat-card p-4 rounded-2xl border-r-4 border-r-tealSoft">
                         <div class="flex justify-between items-start">
                             <p class="text-slate-400 text-xs">تست و تشریحی امروز</p>
                             <i class="fas fa-pen-nib text-tealSoft/70"></i>
                         </div>
-                        <p class="text-xl md:text-2xl font-black text-white mt-2">
+                        <p class="tilo-stat-value text-xl md:text-2xl font-black text-white mt-2">
                             {{ todayStats.totalTests }} <span class="text-xs font-normal text-slate-400">تست</span>
                             <span v-if="todayStats.descriptive > 0" class="text-xs font-bold text-indigo-300 mr-1">| {{ todayStats.descriptive }} تشریحی</span>
                         </p>
@@ -354,21 +446,21 @@
                         </p>
                     </div>
 
-                    <div class="soft-card p-4 rounded-2xl border-r-4 border-r-sage">
+                    <div class="soft-card tilo-stat-card p-4 rounded-2xl border-r-4 border-r-sage">
                         <div class="flex justify-between items-start">
                             <p class="text-slate-400 text-xs">درصد خالص امروز</p>
                             <i class="fas fa-bullseye text-sage/70"></i>
                         </div>
-                        <p class="text-xl md:text-2xl font-black text-sage mt-2" dir="ltr">{{ todayStats.netScore }}</p>
+                        <p class="tilo-stat-value text-xl md:text-2xl font-black text-sage mt-2" dir="ltr">{{ todayStats.netScore }}</p>
                         <p class="text-[11px] text-slate-400 mt-1.5">دقت پاسخ‌گویی: {{ todayStats.accuracy }}</p>
                     </div>
 
-                    <div class="soft-card p-4 rounded-2xl border-r-4 border-r-amberSoft">
+                    <div class="soft-card tilo-stat-card p-4 rounded-2xl border-r-4 border-r-amberSoft">
                         <div class="flex justify-between items-start">
                             <p class="text-slate-400 text-xs">پارت‌های امروز</p>
                             <i class="fas fa-check-double text-amberSoft/70"></i>
                         </div>
-                        <p class="text-xl md:text-2xl font-black text-white mt-2">{{ todayCompleted.length }} <span class="text-xs font-normal text-slate-400">انجام‌شده</span></p>
+                        <p class="tilo-stat-value text-xl md:text-2xl font-black text-white mt-2">{{ todayCompleted.length }} <span class="text-xs font-normal text-slate-400">انجام‌شده</span></p>
                         <p class="text-[11px] text-amberSoft mt-1.5">{{ pendingParts.length }} پارت در صف انتظار</p>
                     </div>
                 </div>
@@ -1114,15 +1206,35 @@
                     </div>
                 </div>
 
+                <!-- اشتراک ساده بدون Firebase -->
+                <div class="soft-card p-5 rounded-3xl space-y-4 border border-sage/30">
+                    <div class="border-b border-slate-800 pb-3">
+                        <h3 class="font-bold text-white text-sm md:text-base flex items-center gap-2">
+                            <i class="fas fa-exchange-alt text-sage"></i> انتقال ساده بین موبایل و کامپیوتر
+                        </h3>
+                        <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
+                            ۱) اینجا «کپی کد» بزن · ۲) در تلگرام برای خودت بفرست · ۳) روی دستگاه دیگر کد را بچسبان و «ادغام» بزن.
+                            بدون ساخت حساب، بدون تنظیمات پیچیده.
+                        </p>
+                    </div>
+                    <button type="button" @click="copySimpleShare" class="btn-calm bg-gradient-to-r from-primary to-tealSoft text-slate-950 font-black w-full py-3 text-sm">
+                        <i class="fas fa-copy"></i> کپی کد اشتراک این دستگاه
+                    </button>
+                    <div class="space-y-2">
+                        <label class="block text-xs text-slate-300 font-bold">چسباندن کد از دستگاه دیگر</label>
+                        <textarea v-model="simpleSharePaste" rows="3" dir="ltr" placeholder="TILO1:...." class="input-calm text-[11px] font-mono"></textarea>
+                        <button type="button" @click="importShareText" class="btn-calm bg-sage hover:bg-emerald-400 text-slate-950 font-bold text-xs py-2.5 w-full">ادغام اطلاعات</button>
+                    </div>
+                </div>
+
                 <!-- همگام‌سازی با کد بین دستگاه‌ها -->
                 <div class="soft-card p-5 rounded-3xl space-y-4 border border-tealSoft/30">
                     <div class="border-b border-slate-800 pb-3">
                         <h3 class="font-bold text-white text-sm md:text-base flex items-center gap-2">
-                            <i class="fas fa-link text-tealSoft"></i> همگام‌سازی با کد (موبایل ↔ کامپیوتر)
+                            <i class="fas fa-link text-tealSoft"></i> همگام‌سازی ابری پیشرفته (اختیاری)
                         </h3>
                         <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
-                            یک کد بساز یا کد دستگاه دیگر را وارد کن تا پارت‌ها، تایمر، برنامه و تنظیمات بین دستگاه‌ها یکی شوند.
-                            یک‌بار اتصال Firebase لازم است (رایگان).
+                            فقط اگر به همگام‌سازی خودکار آنلاین نیاز داری. برای بیشتر افراد همان بخش «انتقال ساده» کافی است.
                         </p>
                     </div>
 
@@ -1355,36 +1467,63 @@
 
                 const gradeOptions = ['دهم', 'یازدهم', 'دوازدهم', 'فارغ‌التحصیل / پشت‌کنکوری'];
 
-                const lifeActivityItems = ['استراحت و بازیابی', 'ورزش', 'خواب کوتاه / چرت', 'تغذیه و وعده غذایی', 'امور شخصی', 'خانواده و کارهای خانه', 'رفت‌وآمد'];
+                const lifeActivityItems = ['استراحت و بازیابی', 'ورزش', 'خواب کوتاه / چرت', 'تغذیه و وعده غذایی', 'امور شخصی', 'خانواده و کارهای خانه', 'رفت‌وآمد', 'تفریح کوتاه'];
+
+                /** لیست کامل دروس دهم تا دوازدهم — برای همه؛ فیلتر بر اساس رشته فقط اولویت نمایش نیست */
+                const fullSubjectGroups = [
+                    {
+                        category: 'ریاضی · دهم',
+                        items: ['ریاضی ۱', 'فیزیک ۱', 'شیمی ۱', 'هندسه ۱']
+                    },
+                    {
+                        category: 'ریاضی · یازدهم',
+                        items: ['حسابان ۱', 'فیزیک ۲', 'شیمی ۲', 'هندسه ۲', 'آمار و احتمال']
+                    },
+                    {
+                        category: 'ریاضی · دوازدهم',
+                        items: ['حسابان ۲', 'فیزیک ۳', 'شیمی ۳', 'هندسه ۳', 'ریاضیات گسسته']
+                    },
+                    {
+                        category: 'تجربی · دهم',
+                        items: ['ریاضی ۱ (تجربی)', 'فیزیک ۱ (تجربی)', 'شیمی ۱', 'زیست‌شناسی ۱']
+                    },
+                    {
+                        category: 'تجربی · یازدهم',
+                        items: ['ریاضی ۲ (تجربی)', 'فیزیک ۲ (تجربی)', 'شیمی ۲', 'زیست‌شناسی ۲']
+                    },
+                    {
+                        category: 'تجربی · دوازدهم',
+                        items: ['ریاضی ۳ (تجربی)', 'فیزیک ۳ (تجربی)', 'شیمی ۳', 'زیست‌شناسی ۳', 'زمین‌شناسی']
+                    },
+                    {
+                        category: 'انسانی · دهم',
+                        items: ['ریاضی و آمار ۱', 'علوم و فنون ادبی ۱', 'عربی ۱ انسانی', 'تاریخ ۱', 'جغرافیای ایران', 'منطق', 'اقتصاد']
+                    },
+                    {
+                        category: 'انسانی · یازدهم',
+                        items: ['ریاضی و آمار ۲', 'علوم و فنون ادبی ۲', 'عربی ۲ انسانی', 'تاریخ ۲', 'جغرافیا ۲', 'فلسفه ۱', 'روان‌شناسی', 'جامعه‌شناسی ۱']
+                    },
+                    {
+                        category: 'انسانی · دوازدهم',
+                        items: ['ریاضی و آمار ۳', 'علوم و فنون ادبی ۳', 'عربی ۳ انسانی', 'تاریخ ۳', 'جغرافیا ۳', 'فلسفه ۲', 'جامعه‌شناسی ۲']
+                    },
+                    {
+                        category: 'عمومی و نهایی (همه رشته‌ها)',
+                        items: ['فارسی', 'نگارش', 'عربی عمومی', 'دین و زندگی', 'زبان انگلیسی', 'سلامت و بهداشت', 'هویت اجتماعی']
+                    },
+                    {
+                        category: 'غیردرسی / زندگی',
+                        items: ['استراحت و بازیابی', 'ورزش', 'خواب کوتاه / چرت', 'تغذیه و وعده غذایی', 'امور شخصی', 'خانواده و کارهای خانه', 'رفت‌وآمد', 'تفریح کوتاه']
+                    },
+                    {
+                        category: 'غیره (تیتر دلخواه)',
+                        items: ['غیره / سفارشی']
+                    }
+                ];
 
                 const buildSubjectGroups = (major, grade) => {
-                    const m = major || 'ریاضی';
-                    const g = grade || 'دوازدهم';
-                    const general = {
-                        category: 'عمومی و نهایی',
-                        items: ['ادبیات فارسی', 'عربی', 'دینی و معارف', 'زبان انگلیسی']
-                    };
-                    const life = { category: 'غیردرسی / زندگی', items: [...lifeActivityItems] };
-                    let specialized = [];
-                    if (m === 'تجربی') {
-                        specialized = [
-                            { category: 'تخصصی تجربی', items: ['زیست‌شناسی', 'شیمی', 'فیزیک', 'ریاضی تجربی', 'زمین‌شناسی'] }
-                        ];
-                    } else if (m === 'انسانی') {
-                        specialized = [
-                            { category: 'تخصصی انسانی', items: ['ادبیات اختصاصی', 'عربی اختصاصی', 'فلسفه و منطق', 'روان‌شناسی', 'علوم اجتماعی', 'اقتصاد', 'تاریخ', 'جغرافیا', 'ریاضی و آمار'] }
-                        ];
-                    } else {
-                        specialized = [
-                            { category: 'تخصصی ریاضی', items: ['حسابان', 'هندسه', 'گسسته', 'آمار و احتمال', 'فیزیک', 'شیمی'] }
-                        ];
-                    }
-                    // برچسب پایه فقط برای نمایش
-                    specialized = specialized.map(s => ({
-                        category: s.category + (g ? ` · ${g}` : ''),
-                        items: s.items
-                    }));
-                    return [...specialized, general, life];
+                    // همیشه لیست کامل را برمی‌گرداند تا دروس کسی حذف نشود
+                    return fullSubjectGroups.map(g => ({ category: g.category, items: [...g.items] }));
                 };
 
                 const defaultSubjectGroups = buildSubjectGroups('ریاضی', 'دوازدهم');
@@ -1403,7 +1542,8 @@
                     breakDuration: 15,
                     onboarded: false,
                     major: 'ریاضی',
-                    grade: 'دوازدهم'
+                    grade: 'دوازدهم',
+                    theme: localStorage.getItem('tilo_ui_theme') || 'night'
                 });
 
                 const currentUser = ref(null);
@@ -1426,6 +1566,7 @@
                 const getEmptyPartForm = () => ({
                     subjects: [],
                     topic: '',
+                    customTitle: '',
                     description: '',
                     type: 'مطالعه و تست',
                     category: 'کنکوری',
@@ -1859,6 +2000,21 @@
                     return score.toFixed(1);
                 };
 
+
+                const applyTheme = (mode) => {
+                    const m = mode === 'day' ? 'day' : 'night';
+                    settings.value.theme = m;
+                    localStorage.setItem('tilo_ui_theme', m);
+                    document.body.classList.remove('tilo-theme-day', 'tilo-theme-night');
+                    document.body.classList.add(m === 'day' ? 'tilo-theme-day' : 'tilo-theme-night');
+                    const meta = document.querySelector('meta[name="theme-color"]');
+                    if (meta) meta.setAttribute('content', m === 'day' ? '#f4f1ea' : '#0f1419');
+                };
+                const toggleTheme = () => {
+                    applyTheme(settings.value.theme === 'day' ? 'night' : 'day');
+                    saveAll();
+                };
+
                 const completeWelcome = () => {
                     if (!settings.value.userName || !settings.value.userName.trim()) {
                         alert('لطفاً نام خود را وارد کنید.');
@@ -1866,19 +2022,25 @@
                     }
                     if (!settings.value.major) settings.value.major = 'ریاضی';
                     if (!settings.value.grade) settings.value.grade = 'دوازدهم';
-                    subjectGroups.value = buildSubjectGroups(settings.value.major, settings.value.grade);
+                    if (!subjectGroups.value || !subjectGroups.value.length) {
+                        subjectGroups.value = buildSubjectGroups(settings.value.major, settings.value.grade);
+                    }
                     settings.value.onboarded = true;
                     showWelcomeModal.value = false;
                     saveAll();
                 };
 
                 const onMajorOrGradeChange = () => {
-                    // فقط اگر کاربر هنوز دروس پیش‌فرض را عوض نکرده، لیست را به‌روز کن
-                    subjectGroups.value = buildSubjectGroups(settings.value.major, settings.value.grade);
+                    // دروس کامل حفظ می‌شوند؛ فقط تنظیمات پروفایل ذخیره می‌شود
                     saveAll();
                 };
 
-                const isLifeSubject = (name) => lifeActivityItems.includes(name);
+                const isLifeSubject = (name) => {
+                    if (!name) return false;
+                    if (lifeActivityItems.includes(name)) return true;
+                    if (name === 'غیره / سفارشی') return false; // می‌تواند درسی یا غیردرسی باشد
+                    return false;
+                };
 
                 const toggleSubjectGroup = (idx) => {
                     openSubjectGroups.value = {
@@ -1967,8 +2129,21 @@
                     if (p) parts.value = JSON.parse(p);
                     if (s) settings.value = { ...settings.value, ...JSON.parse(s) };
                     if (sub) {
-                        try { subjectGroups.value = JSON.parse(sub); } catch (_) {}
-                    } else if (settings.value.major) {
+                        try {
+                            const parsed = JSON.parse(sub);
+                            if (Array.isArray(parsed) && parsed.length) {
+                                subjectGroups.value = parsed;
+                                // اگر دسته غیردرسی یا غیره نبود، اضافه کن بدون حذف دروس قبلی
+                                const cats = subjectGroups.value.map(g => g.category || '');
+                                if (!cats.some(c => c.includes('غیردرسی'))) {
+                                    subjectGroups.value.push({ category: 'غیردرسی / زندگی', items: [...lifeActivityItems] });
+                                }
+                                if (!cats.some(c => c.includes('غیره'))) {
+                                    subjectGroups.value.push({ category: 'غیره (تیتر دلخواه)', items: ['غیره / سفارشی'] });
+                                }
+                            }
+                        } catch (_) {}
+                    } else {
                         subjectGroups.value = buildSubjectGroups(settings.value.major, settings.value.grade);
                     }
                     if (sch) schedule.value = JSON.parse(sch);
@@ -2006,6 +2181,7 @@
                         initFirebase(savedFbConfig);
                     }
                     updateMainChart();
+                    applyTheme(settings.value.theme || localStorage.getItem('tilo_ui_theme') || 'night');
                 };
 
                 // راه‌اندازی Firebase و تنظیم ماندگاری دائمی لاگین
@@ -2040,6 +2216,77 @@
                     }
                 };
 
+
+
+                /** اشتراک‌گذاری ساده بدون Firebase: کپی یک متن و چسباندن در دستگاه دیگر */
+                const exportShareText = () => {
+                    try {
+                        const payload = {
+                            v: 1,
+                            parts: parts.value,
+                            settings: settings.value,
+                            subjectGroups: subjectGroups.value,
+                            schedule: schedule.value,
+                            archive: archive.value,
+                            exportedAt: Date.now()
+                        };
+                        const raw = JSON.stringify(payload);
+                        const b64 = btoa(unescape(encodeURIComponent(raw)));
+                        const textOut = 'TILO1:' + b64;
+                        return textOut;
+                    } catch (e) {
+                        console.warn(e);
+                        alert('ساخت کد اشتراک ناموفق بود.');
+                        return null;
+                    }
+                };
+
+                const copySimpleShare = async () => {
+                    const t = exportShareText();
+                    if (!t) return;
+                    try {
+                        await navigator.clipboard.writeText(t);
+                        alert('کد اشتراک کپی شد.\\nآن را در تلگرام/واتساپ برای خودت بفرست و روی دستگاه دیگر در همین بخش «چسباندن کد» وارد کن.');
+                    } catch {
+                        prompt('این متن را کامل کپی کن:', t);
+                    }
+                };
+
+                const simpleSharePaste = ref('');
+                const importShareText = () => {
+                    let t = (simpleSharePaste.value || '').trim();
+                    if (!t) {
+                        alert('اول کد اشتراک را در کادر بچسبان.');
+                        return;
+                    }
+                    if (t.startsWith('TILO1:')) t = t.slice(6);
+                    try {
+                        const raw = decodeURIComponent(escape(atob(t)));
+                        const data = JSON.parse(raw);
+                        if (!data || typeof data !== 'object') throw new Error('bad');
+                        if (Array.isArray(data.parts)) {
+                            parts.value = mergeItemsById(parts.value, data.parts);
+                        }
+                        if (data.settings && typeof data.settings === 'object') {
+                            settings.value = { ...settings.value, ...data.settings };
+                        }
+                        if (Array.isArray(data.subjectGroups) && data.subjectGroups.length) {
+                            subjectGroups.value = data.subjectGroups;
+                        }
+                        if (Array.isArray(data.schedule)) {
+                            schedule.value = mergeItemsById(schedule.value, data.schedule);
+                        }
+                        if (Array.isArray(data.archive)) {
+                            archive.value = mergeItemsById(archive.value, data.archive);
+                        }
+                        saveAll();
+                        simpleSharePaste.value = '';
+                        alert('اطلاعات با موفقیت ادغام شد.');
+                    } catch (e) {
+                        console.warn(e);
+                        alert('کد نامعتبر است. مطمئن شو کل متن TILO1:... را کامل چسبانده‌ای.');
+                    }
+                };
 
                 const randomShareCode = () => {
                     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -2294,7 +2541,8 @@
                         dateISO: todayISO,
                         dateStr: getTehranShortDateStr(),
                         subjects: [...newPart.value.subjects],
-                        topic: newPart.value.topic.trim() || (life ? 'فعالیت غیردرسی' : ''),
+                        topic: (newPart.value.customTitle || newPart.value.topic || '').trim() || (life ? 'فعالیت غیردرسی' : ''),
+                        customTitle: (newPart.value.customTitle || '').trim(),
                         description: (newPart.value.description || '').trim(),
                         type: life ? 'غیردرسی' : newPart.value.type,
                         category: newPart.value.category || (life ? 'غیردرسی / بازیابی' : 'کنکوری'),
@@ -2738,7 +2986,7 @@
                     currentTab, tabTitle, currentDateStr, showWelcomeModal, completeWelcome,
                     cloudStatus, authInstance, currentUser, firebaseConfigInput,
                     activeShareCode, shareCodeInput, shareSyncStatus,
-                    createShareCode, joinShareCode, disconnectShareCode, copyShareCode, pushShareCodeNow, pullShareCodeNow,
+                    createShareCode, joinShareCode, disconnectShareCode, copyShareCode, pushShareCodeNow, pullShareCodeNow, copySimpleShare, importShareText, simpleSharePaste, toggleTheme, applyTheme,
                     subjectGroups, partCategories, filterCategory, dropdownOpen, timerDropdownOpen,
                     gradeOptions, onMajorOrGradeChange, quickStartMinutes, openSubjectGroups, toggleSubjectGroup, isLifeSubject,
                     parts, pendingParts, completedParts, filteredCompletedParts, trashedParts, todayCompleted, weekCompletedParts, todayStats,
