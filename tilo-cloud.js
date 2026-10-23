@@ -82,6 +82,7 @@
             localStorage.setItem('sp_pro_subjects', JSON.stringify(state.subjectGroups || []));
             localStorage.setItem('tilo_schedule', JSON.stringify(state.schedule || []));
             localStorage.setItem('tilo_archive', JSON.stringify(state.archive || []));
+            localStorage.setItem('tilo_problems', JSON.stringify(state.problems || []));
             if (typeof state.updateMainChart === 'function') {
                 state.updateMainChart();
             }
@@ -101,6 +102,7 @@
                     state.parts = mergeItemsById(state.parts, cloudData.parts);
                     state.schedule = mergeItemsById(state.schedule, cloudData.schedule);
                     state.archive = mergeItemsById(state.archive, cloudData.archive);
+                    state.problems = mergeItemsById(state.problems || [], cloudData.problems || []);
 
                     // ۲. ادغام تنظیمات
                     if (cloudData.settings) {
@@ -149,6 +151,7 @@
                     subjectGroups: JSON.parse(JSON.stringify(state.subjectGroups || [])),
                     schedule: JSON.parse(JSON.stringify(state.schedule || [])),
                     archive: JSON.parse(JSON.stringify(state.archive || [])),
+                problems: JSON.parse(JSON.stringify(state.problems || [])),
                     updatedAt: Date.now()
                 }, { merge: true });
 
