@@ -391,9 +391,9 @@
                 <span class="text-[10px] md:text-sm mt-1 md:mt-0">برنامه هفتگی</span>
             </button>
 
-            <button @click="currentTab = 'archive'" :class="navClass('archive')">
-                <i class="fas fa-folder-open text-base md:w-6"></i>
-                <span class="text-[10px] md:text-sm mt-1 md:mt-0">آرشیو آموزشی</span>
+            <button @click="currentTab = 'problems'" :class="navClass('problems')">
+                <i class="fas fa-book-open text-base md:w-6"></i>
+                <span class="text-[10px] md:text-sm mt-1 md:mt-0">دفترچه مشکلات</span>
             </button>
 
             <button @click="currentTab = 'calculator'" :class="navClass('calculator')">
@@ -730,7 +730,7 @@
 
                             <div class="md:col-span-2">
                                 <label class="block text-xs text-slate-300 mb-1.5 font-medium">توضیحات پارت (زیرمبحث، صفحات کتاب یا منبع تست)</label>
-                                <input type="text" v-model="newPart.description" class="input-calm text-xs md:text-sm" placeholder="مثلاً: مطالعه درس‌نامه از صفحه ۴۰ تا ۵۲ + حل تست‌های مضرب ۳...">
+                                <input type="text" v-model="newPart.description" @paste="onPasteAdvance('description')" class="input-calm text-xs md:text-sm" placeholder="مثلاً: مطالعه درس‌نامه از صفحه ۴۰ تا ۵۲ + حل تست‌های مضرب ۳...">
                             </div>
 
                             <div class="grid grid-cols-2 gap-2.5">
@@ -1143,53 +1143,73 @@
             </div>
 
             <!-- ==================== ۵. تب آرشیو آموزشی ==================== -->
-            <div v-show="currentTab === 'archive'" class="space-y-6 max-w-4xl mx-auto">
-                <div class="soft-card p-5 rounded-3xl space-y-4">
-                    <h3 class="font-bold text-white text-base flex items-center gap-2">
-                        <i class="fas fa-bookmark text-tealSoft"></i> افزودن به آرشیو آموزشی (جزوه، سؤال نشان‌دار، لینک)
+                        <!-- ==================== ۵. دفترچه مشکلات ==================== -->
+            <div v-show="currentTab === 'problems'" class="space-y-6 max-w-4xl mx-auto">
+                <div class="soft-card p-5 rounded-3xl space-y-4 border border-amberSoft/25">
+                    <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                        <i class="fas fa-book-open text-amberSoft"></i> ثبت مشکل درسی
                     </h3>
-                    <form @submit.prevent="addArchiveItem" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <input type="text" v-model="archiveForm.title" required placeholder="عنوان جزوه، نکته یا سؤال *" class="input-calm text-xs">
-                        <select v-model="archiveForm.category" class="input-calm text-xs">
-                            <option value="جزوه و خلاصه‌نویسی">جزوه و خلاصه‌نویسی</option>
-                            <option value="سؤال و تست نشان‌دار">سؤال و تست نشان‌دار</option>
-                            <option value="لینک و ویدیو آموزشی">لینک و ویدیو آموزشی</option>
-                            <option value="فرمول و نکته کلیدی">فرمول و نکته کلیدی</option>
-                        </select>
-                        <input type="text" v-model="archiveForm.link" placeholder="لینک مرتبط (اختیاری - https://...)" class="input-calm text-xs" dir="ltr">
-                        <input type="text" v-model="archiveForm.content" placeholder="توضیحات، صورت سؤال یا پاسخ..." class="input-calm text-xs">
-                        <button type="submit" class="btn-calm bg-primary text-white text-xs sm:col-span-2 py-2.5">
-                            <i class="fas fa-save"></i> ذخیره در آرشیو شخصی
-                        </button>
-                    </form>
-                </div>
-
-                <div class="soft-card p-5 rounded-3xl space-y-4">
-                    <div class="flex flex-wrap justify-between items-center gap-2">
-                        <input type="text" v-model="archiveSearch" placeholder="جست‌وجو در عنوان، دسته یا متن آرشیو..." class="input-calm text-xs max-w-xs">
-                        <span class="text-xs text-slate-400">{{ filteredArchive.length }} مورد ثبت‌شده</span>
-                    </div>
-                    <div v-if="filteredArchive.length === 0" class="text-center py-6 text-slate-500 text-xs">موردی در آرشیو یافت نشد.</div>
+                    <p class="text-[11px] text-slate-400">درس را انتخاب کن و مشکل یا نکته مبهم را بنویس تا بعداً مرور یا از مشاور بپرسی.</p>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div v-for="ar in filteredArchive" :key="ar.id" class="bg-slate-900/70 p-4 rounded-2xl border border-slate-800 flex flex-col justify-between gap-2">
-                            <div>
-                                <div class="flex justify-between items-start mb-1">
-                                    <span class="text-[10px] bg-tealSoft/15 text-tealSoft px-2 py-0.5 rounded font-bold">{{ ar.category }}</span>
-                                    <button @click="deleteArchiveItem(ar.id)" class="text-roseSoft text-xs"><i class="fas fa-trash"></i></button>
-                                </div>
-                                <h4 class="font-bold text-white text-sm mt-1">{{ ar.title }}</h4>
-                                <p v-if="ar.content" class="text-xs text-slate-300 mt-1 leading-relaxed">{{ ar.content }}</p>
-                            </div>
-                            <a v-if="ar.link" :href="ar.link" target="_blank" class="text-xs text-primarySoft hover:underline flex items-center gap-1 mt-2">
-                                <i class="fas fa-external-link-alt"></i> باز کردن لینک
-                            </a>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">درس</label>
+                            <select v-model="problemForm.subject" class="input-calm text-xs">
+                                <option value="">انتخاب درس...</option>
+                                <option v-for="g in subjectGroups" :key="g.category" disabled>{{ g.category }}</option>
+                                <template v-for="g in subjectGroups" :key="g.category + '-items'">
+                                    <option v-for="s in g.items" :key="s" :value="s">{{ s }}</option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">وضعیت</label>
+                            <select v-model="problemForm.status" class="input-calm text-xs">
+                                <option value="open">باز / حل‌نشده</option>
+                                <option value="review">نیاز به مرور</option>
+                                <option value="done">حل شد</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs text-slate-400 mb-1">عنوان کوتاه</label>
+                            <input type="text" v-model="problemForm.title" placeholder="مثلاً: ابهام در شتاب متوسط" class="input-calm text-xs">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs text-slate-400 mb-1">توضیح مشکل</label>
+                            <textarea v-model="problemForm.note" rows="3" placeholder="مشکل را کامل بنویس..." class="input-calm text-xs"></textarea>
+                        </div>
+                    </div>
+                    <button type="button" @click="addProblem" class="btn-calm bg-primary text-white text-xs py-2.5 px-4">
+                        <i class="fas fa-plus"></i> ذخیره در دفترچه
+                    </button>
+                </div>
+                <div class="soft-card p-5 rounded-3xl space-y-3">
+                    <div class="flex flex-wrap justify-between gap-2 items-center">
+                        <h3 class="font-bold text-white text-sm">لیست مشکلات</h3>
+                        <select v-model="problemFilter" class="input-calm text-xs w-auto">
+                            <option value="">همه</option>
+                            <option value="open">باز</option>
+                            <option value="review">مرور</option>
+                            <option value="done">حل‌شده</option>
+                        </select>
+                    </div>
+                    <div v-if="!filteredProblems.length" class="text-center py-6 text-slate-500 text-xs">مشکلی ثبت نشده.</div>
+                    <div v-for="pr in filteredProblems" :key="pr.id" class="p-3.5 rounded-2xl border border-slate-800 bg-slate-900/50 tilo-break space-y-1.5 text-xs">
+                        <div class="flex flex-wrap gap-1.5 items-center">
+                            <span class="bg-primary/20 text-indigo-300 px-2 py-0.5 rounded-md font-bold">{{ pr.subject || 'بدون درس' }}</span>
+                            <span class="text-slate-400">{{ pr.dateStr }}</span>
+                            <span :class="pr.status === 'done' ? 'text-sage' : pr.status === 'review' ? 'text-amberSoft' : 'text-roseSoft'">{{ pr.status === 'done' ? 'حل شد' : pr.status === 'review' ? 'مرور' : 'باز' }}</span>
+                        </div>
+                        <p class="font-bold text-white">{{ pr.title }}</p>
+                        <p class="text-slate-300">{{ pr.note }}</p>
+                        <div class="flex gap-2 pt-1">
+                            <button type="button" @click="cycleProblemStatus(pr)" class="btn-calm bg-slate-800 text-[11px] py-1 px-2">تغییر وضعیت</button>
+                            <button type="button" @click="deleteProblem(pr.id)" class="text-roseSoft text-[11px] px-2">حذف</button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- ==================== ۶. تب درصدگیر کنکور ==================== -->
-            <div v-show="currentTab === 'calculator'" class="max-w-xl mx-auto soft-card p-6 rounded-3xl space-y-5">
+<div v-show="currentTab === 'calculator'" class="max-w-xl mx-auto soft-card p-6 rounded-3xl space-y-5">
                 <h3 class="font-bold text-white text-base border-b border-slate-800 pb-3">محاسبه‌گر سریع درصد و نمره منفی</h3>
                 <div class="grid grid-cols-3 gap-3">
                     <div>
@@ -1686,7 +1706,7 @@
                     parts: 'مدیریت پارت‌ها و بخش‌بندی',
                     timer: 'تایمر مهندسی مطالعه',
                     calendar: 'برنامه هفتگی درسی',
-                    archive: 'آرشیو جزوات و لینک‌ها',
+                    problems: 'دفترچه مشکلات درسی',
                     calculator: 'محاسبه‌گر درصد کنکور',
                     settings: 'اکانت گوگل و تنظیمات'
                 }[currentTab.value]));
@@ -2162,6 +2182,7 @@
                     localStorage.setItem('sp_pro_subjects', JSON.stringify(subjectGroups.value));
                     localStorage.setItem('tilo_schedule', JSON.stringify(schedule.value));
                     localStorage.setItem('tilo_archive', JSON.stringify(archive.value));
+                    localStorage.setItem('tilo_problems', JSON.stringify(problems.value));
                     updateMainChart();
                     if (currentUser.value && dbInstance) {
                         syncToCloud();
@@ -2179,6 +2200,7 @@
                     const sub = localStorage.getItem('sp_pro_subjects');
                     const sch = localStorage.getItem('tilo_schedule');
                     const arc = localStorage.getItem('tilo_archive');
+                    const probs = localStorage.getItem('tilo_problems');
                     const t = localStorage.getItem('sp_pro_timer');
 
                     if (p) parts.value = JSON.parse(p);
@@ -2203,6 +2225,7 @@
                     }
                     if (sch) schedule.value = JSON.parse(sch);
                     if (arc) archive.value = JSON.parse(arc);
+                    if (probs) { try { problems.value = JSON.parse(probs); } catch(_) {} }
 
                     if (!settings.value.onboarded && parts.value.length === 0) {
                         showWelcomeModal.value = true;
@@ -2309,15 +2332,21 @@
                     return b64ToUtf8(t);
                 };
 
-                const buildSharePayloadObject = () => ({
-                    v: 2,
-                    parts: parts.value,
-                    settings: settings.value,
-                    subjectGroups: subjectGroups.value,
-                    schedule: schedule.value,
-                    archive: archive.value,
-                    exportedAt: Date.now()
-                });
+                const buildSharePayloadObject = () => {
+                    let weeklyParts = {};
+                    try { weeklyParts = JSON.parse(localStorage.getItem('tilo_weekly_parts') || '{}'); } catch (_) {}
+                    return {
+                        v: 2,
+                        parts: parts.value,
+                        settings: settings.value,
+                        subjectGroups: subjectGroups.value,
+                        schedule: schedule.value,
+                        archive: archive.value,
+                        problems: problems.value,
+                        weeklyParts,
+                        exportedAt: Date.now()
+                    };
+                };
 
                 const exportShareText = async () => {
                     try {
@@ -2362,9 +2391,27 @@
                         }
                         if (Array.isArray(data.schedule)) schedule.value = mergeItemsById(schedule.value, data.schedule);
                         if (Array.isArray(data.archive)) archive.value = mergeItemsById(archive.value, data.archive);
+                        if (Array.isArray(data.problems)) problems.value = mergeItemsById(problems.value, data.problems);
+                        if (data.weeklyParts && typeof data.weeklyParts === 'object') {
+                            try {
+                                const localW = JSON.parse(localStorage.getItem('tilo_weekly_parts') || '{}');
+                                const mergedW = { ...localW };
+                                Object.keys(data.weeklyParts).forEach(day => {
+                                    const remote = data.weeklyParts[day] || [];
+                                    const local = mergedW[day] || [];
+                                    const map = new Map();
+                                    [...local, ...remote].forEach(it => { if (it && it.id) map.set(it.id, it); });
+                                    mergedW[day] = Array.from(map.values());
+                                });
+                                localStorage.setItem('tilo_weekly_parts', JSON.stringify(mergedW));
+                                if (window.TiloPlus && typeof window.TiloPlus.renderWeeklyCalendar === 'function') {
+                                    window.TiloPlus.renderWeeklyCalendar();
+                                }
+                            } catch (e) { console.warn(e); }
+                        }
                         saveAll();
                         simpleSharePaste.value = '';
-                        alert('اطلاعات با موفقیت ادغام شد.');
+                        alert('اطلاعات ادغام شد.\nتوجه: همگام خودکار لحظه‌ای بدون Firebase ممکن نیست؛ برای دستگاه دیگر دوباره کد بساز و بچسبان.');
                     } catch (e) {
                         console.warn(e);
                         alert('کد نامعتبر است. کل متن TILO2: یا TILO1: را یکجا بچسبان (Select All).');
@@ -2413,15 +2460,21 @@
                     return true;
                 };
 
-                const buildSharePayload = () => ({
+                const buildSharePayload = () => {
+                    let weeklyParts = {};
+                    try { weeklyParts = JSON.parse(localStorage.getItem('tilo_weekly_parts') || '{}'); } catch (_) {}
+                    return {
                     parts: parts.value,
                     settings: settings.value,
                     subjectGroups: subjectGroups.value,
                     schedule: schedule.value,
                     archive: archive.value,
+                    problems: problems.value,
+                    weeklyParts,
                     updatedAt: Date.now(),
                     version: 1
-                });
+                    };
+                };
 
                 const pushShareCodeNow = async (silent = false) => {
                     if (!activeShareCode.value) return;
@@ -2475,6 +2528,7 @@
                         localStorage.setItem('sp_pro_subjects', JSON.stringify(subjectGroups.value));
                         localStorage.setItem('tilo_schedule', JSON.stringify(schedule.value));
                         localStorage.setItem('tilo_archive', JSON.stringify(archive.value));
+                    localStorage.setItem('tilo_problems', JSON.stringify(problems.value));
                         updateMainChart();
                         shareSyncStatus.value = 'دریافت شد · ' + new Date().toLocaleTimeString('fa-IR');
                         if (!silent) alert('اطلاعات از ابر دریافت و ادغام شد.');
@@ -2613,6 +2667,21 @@
                     }
                 };
 
+                const onPasteAdvance = (field) => {
+                    setTimeout(() => {
+                        try {
+                            if (field === 'topic') {
+                                const el = document.querySelector('textarea[v-model], input[placeholder*="توضیح"], input[placeholder*="جزئیات"], input[placeholder*="زیرمبحث"]');
+                                // fallback: focus description by placeholder
+                                const cand = Array.from(document.querySelectorAll('input, textarea')).find(i => (i.placeholder || '').includes('مطالعه درس') || (i.placeholder || '').includes('توضیح') || (i.placeholder || '').includes('زیرمبحث'));
+                                if (cand) cand.focus();
+                            } else if (field === 'description') {
+                                const time = document.querySelector('input[type="number"]');
+                                // soft: user can continue
+                            }
+                        } catch (_) {}
+                    }, 30);
+                };
                 const createNewPart = () => {
                     if (newPart.value.subjects.length === 0) {
                         alert('لطفاً حداقل یک مورد (درس یا فعالیت غیردرسی) را انتخاب کنید.');
@@ -3079,11 +3148,11 @@
                     completingPart, pendingSession, detailPart, closeCompleteModal,
                     chartDaysRange, chartMetric, rangeAnalytics, analysisReport, setCustomRange, setChartMetric, updateMainChart, runPerformanceAnalysis,
                     weekDays, selectedWeekDay, scheduleForm, currentDaySchedule,
-                    archiveForm, archiveSearch, filteredArchive,
+                    archiveForm, archiveSearch, filteredArchive, problems, problemForm, problemFilter, filteredProblems, addProblem, cycleProblemStatus, deleteProblem,
                     calc, calcTotalTests, calcPercentTotal, calcPercentAccuracy, calcPercentNegative,
                     settings, customSubjectInput,
                     navClass, formatMinutes, calcPartPercent,
-                    createNewPart, openDirectCompleteModal, selectPartAndGoToTimer,
+                    createNewPart, openDirectCompleteModal, onPasteAdvance, selectPartAndGoToTimer,
                     startTimer, pauseTimer, resumeTimer, finishTimerAndRecord,
                     openCompleteModal, openEditModal, openPartDetail, confirmCompletePart,
                     deletePart, restorePart, permanentDeletePart,
