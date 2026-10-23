@@ -116,6 +116,25 @@
             border-color: #4f46e5 !important; background: #eef2ff !important;
         }
         body.tilo-theme-day button.bg-primary { color: #fff !important; }
+        body.tilo-theme-day .fixed.inset-0,
+        body.tilo-theme-day .bg-slate-950,
+        body.tilo-theme-day .bg-slate-950\/80,
+        body.tilo-theme-day .bg-slate-950\/85,
+        body.tilo-theme-day [class*="bg-[#162032]"],
+        body.tilo-theme-day .bg-\[\#162032\] {
+            background-color: rgba(243, 240, 232, 0.92) !important;
+        }
+        body.tilo-theme-day .fixed.inset-0 .soft-card {
+            background: #ffffff !important;
+            color: #111827 !important;
+            border-color: #e5e0d8 !important;
+        }
+        body.tilo-theme-day .tilo-drawer-panel button,
+        body.tilo-theme-day .tilo-drawer-panel .text-slate-300 {
+            color: #374151 !important;
+        }
+        main { padding-bottom: 9rem !important; }
+        .tilo-timer-spacer { height: 120px !important; }
         .tilo-theme-switch-btn {
             padding: 0.4rem 0.7rem; border-radius: 0.7rem; font-size: 11px; font-weight: 700;
             display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer;
@@ -554,4 +573,154 @@
             w.document.close();
         };
     }
+
+
+    /* --- بازگردانی: پارت‌های انجام‌شده روزانه + PDF + تحلیل --- */
+    (function restoreCompletedAndAi() {
+        const wait = setInterval(() => {
+            const state = window.TiloPlus && window.TiloPlus.vueState;
+            const mainEl = document.querySelector('main');
+            if (!state || !mainEl) return;
+            clearInterval(wait);
+
+            function dayMeta(dateISO, fallback) {
+                try {
+                    if (!dateISO) return { weekday: 'روز', full: fallback || '—' };
+                    const [y, m, d] = dateISO.split('-').map(Number);
+                    const dt = new Date(y, m - 1, d, 12);
+                    const weekday = new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', weekday: 'long' }).format(dt);
+                    const full = new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', year: 'numeric', month: 'long', day: 'numeric' }).format(dt);
+                    return { weekday, full };
+                } catch (_) {
+                    return { weekday: 'روز', full: fallback || dateISO };
+                }
+            }
+
+            function ensureBox() {
+                const divs = Array.from(mainEl.children).filter(el => el.tagName === 'DIV' && !el.classList.contains('fixed'));
+                const partsTab = divs.find(d => d.innerHTML.includes('تعریف پارت') || d.innerHTML.includes('پارت مطالعه'));
+                if (!partsTab) return null;
+                let box = document.getElementById('tilo-parts-completed-grouped');
+                if (!box) {
+                    box = document.createElement('div');
+                    box.id = 'tilo-parts-completed-grouped';
+                    box.className = 'space-y-4 mt-6';
+                    partsTab.appendChild(box);
+                }
+                return box;
+            }
+
+            function renderGroups() {
+                const box = ensureBox();
+                if (!box || !Array.isArray(state.parts)) return;
+                const completed = state.parts.filter(p => p.status === 'completed')
+                    .sort((a, b) => (b.completedAt || b.id || 0) - (a.completedAt || a.id || 0));
+                const map = new Map();
+                completed.forEach(p => {
+                    const k = p.dateISO || p.dateStr || 'x';
+                    if (!map.has(k)) map.set(k, []);
+                    map.get(k).push(p);
+                });
+                const keys = Array.from(map.keys()).sort((a, b) => String(b).localeCompare(String(a)));
+                const name = (state.settings && state.settings.userName) || 'دانش‌آموز';
+                let html = `<div class="soft-card p-4 rounded-2xl space-y-3 border border-slate-700">
+                    <div class="flex flex-wrap justify-between gap-2 items-center">
+                        <h3 class="text-sm font-extrabold">آرشیو روزانه پارت‌های انجام‌شده</h3>
+                        <button type="button" id="tilo-pdf-btn" class="btn-calm bg-primary text-white text-[11px] py-1.5 px-3">PDF گزارش (${name})</button>
+                    </div>`;
+                if (!keys.length) {
+                    html += `<p class="text-[11px] text-slate-500 text-center py-4">هنوز پارتی تکمیل نشده.</p></div>`;
+                    box.innerHTML = html;
+                    bindPdf();
+                    return;
+                }
+                keys.forEach(k => {
+                    const items = map.get(k);
+                    const meta = dayMeta(items[0].dateISO, items[0].dateStr);
+                    const mins = items.reduce((s, p) => s + Number(p.realTime || 0), 0);
+                    const collapsed = !!(window.TiloPro.collapsedDays && window.TiloPro.collapsedDays[k]);
+                    html += `<div class="rounded-xl border border-slate-800 overflow-hidden">
+                        <button type="button" data-day="${k}" class="tilo-day-toggle w-full text-right p-3 flex justify-between items-center bg-slate-900/50 hover:bg-slate-800/60">
+                            <span class="text-xs font-bold">${meta.weekday} · ${meta.full} · ${items.length} پارت · ${mins} دقیقه</span>
+                            <span class="text-tealSoft">«</span>
+                        </button>
+                        <div class="tilo-day-body ${collapsed ? 'hidden' : ''} p-2 space-y-2">
+                            ${items.map(p => `
+                                <div class="p-2.5 rounded-lg border border-slate-800 text-xs tilo-break">
+                                    <div class="font-bold">${p.topic || 'بدون عنوان'}</div>
+                                    <div class="text-slate-400">${(p.subjects || []).join('، ') || (p.isLife ? 'غیردرسی' : '')} · ${p.realTime || 0} دقیقه</div>
+                                    ${p.notes || p.description ? `<div class="text-slate-300 mt-1">${p.notes || p.description}</div>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
+                });
+                html += `</div>`;
+                box.innerHTML = html;
+                box.querySelectorAll('.tilo-day-toggle').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const k = btn.getAttribute('data-day');
+                        window.TiloPro.collapsedDays = window.TiloPro.collapsedDays || {};
+                        window.TiloPro.collapsedDays[k] = !window.TiloPro.collapsedDays[k];
+                        localStorage.setItem('tilo_collapsed_days', JSON.stringify(window.TiloPro.collapsedDays));
+                        renderGroups();
+                    });
+                });
+                bindPdf();
+            }
+
+            function bindPdf() {
+                const b = document.getElementById('tilo-pdf-btn');
+                if (b) b.onclick = () => window.TiloPro.openPdfExportModal && window.TiloPro.openPdfExportModal();
+            }
+
+            setInterval(renderGroups, 1200);
+            renderGroups();
+
+            // تحلیل زیر داشبورد
+            const divs = Array.from(mainEl.children).filter(el => el.tagName === 'DIV' && !el.classList.contains('fixed'));
+            const dash = divs[0];
+            if (dash && !document.getElementById('tilo-ai-consultant-section')) {
+                const ai = document.createElement('div');
+                ai.id = 'tilo-ai-consultant-section';
+                ai.className = 'soft-card p-5 rounded-2xl mt-5 space-y-3 border border-indigo-500/20';
+                ai.innerHTML = `
+                    <div class="flex flex-wrap justify-between gap-2 items-center">
+                        <h3 class="text-sm font-extrabold">تحلیل عملکرد (مشاوره متنی)</h3>
+                        <button type="button" id="tilo-run-ai" class="btn-calm bg-primary text-white text-xs py-2 px-3">اجرای تحلیل</button>
+                    </div>
+                    <div id="tilo-ai-out" class="text-xs text-slate-400">با زدن دکمه، بر اساس پارت‌های ثبت‌شده یک جمع‌بندی کاربردی می‌گیری.</div>
+                `;
+                dash.appendChild(ai);
+                document.getElementById('tilo-run-ai').onclick = () => {
+                    const completed = (state.parts || []).filter(p => p.status === 'completed');
+                    let study = 0, tests = 0, correct = 0, wrong = 0;
+                    const sub = {};
+                    completed.forEach(p => {
+                        if (p.isLife || p.isNonStudy) return;
+                        study += Number(p.realTime || 0);
+                        (p.subjects || []).forEach(s => { sub[s] = (sub[s] || 0) + Number(p.realTime || 0); });
+                        if (p.tests) {
+                            tests += Number(p.tests.total || 0);
+                            correct += Number(p.tests.correct || 0);
+                            wrong += Number(p.tests.wrong || 0);
+                        }
+                    });
+                    const top = Object.entries(sub).sort((a, b) => b[1] - a[1])[0];
+                    const weak = Object.entries(sub).sort((a, b) => a[1] - b[1])[0];
+                    const acc = (correct + wrong) > 0 ? ((correct / (correct + wrong)) * 100).toFixed(1) : '—';
+                    const name = (state.settings && state.settings.userName) || 'تو';
+                    document.getElementById('tilo-ai-out').innerHTML = `
+                        <div class="space-y-2 text-slate-300 leading-relaxed">
+                            <p><strong class="text-white">${name}</strong> تا الان <strong class="text-tealSoft">${study} دقیقه</strong> مطالعه درسی ثبت کرده (${completed.length} پارت تکمیل‌شده).</p>
+                            <p>دقت تست‌ها: <strong>${acc}%</strong> (${correct} درست / ${wrong} غلط از ${tests} تست).</p>
+                            <p>بیشترین زمان: <strong class="text-white">${top ? top[0] : '—'}</strong>${top ? ` (${top[1]} دقیقه)` : ''}.</p>
+                            <p>کم‌توجهی نسبی: <strong class="text-amberSoft">${weak && top && weak[0] !== top[0] ? weak[0] : 'هنوز داده کافی نیست'}</strong>.</p>
+                            <p class="text-slate-400">پیشنهاد: هر پارت درس‌نامه را با ۱۵–۲۰ تست ببند و درس کم‌زمان را در برنامه هفتگی جبران کن.</p>
+                        </div>`;
+                };
+            }
+        }, 400);
+    })();
+
 })();
