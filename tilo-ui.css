@@ -1,0 +1,57 @@
+/* tilo-ui.css — لایه طراحی */
+:root{--t-bg:#0e1117;--t-card:#161b24;--t-line:#2a3140;--t-mute:#9aa6b8}
+
+html body.h-screen{height:100vh;height:100dvh}
+
+html body.tilo-theme-night{
+  background-color:var(--t-bg)!important;
+  background-image:
+    radial-gradient(48rem 24rem at 90% -8%,rgba(99,102,241,.12),transparent 60%),
+    radial-gradient(36rem 22rem at 0% 100%,rgba(45,212,191,.08),transparent 60%)!important;
+  background-attachment:fixed!important}
+html body.tilo-theme-night .soft-card,
+html body.tilo-theme-night nav.soft-card{
+  background:var(--t-card)!important;border-color:var(--t-line)!important;
+  box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 16px 32px -20px rgba(0,0,0,.75)!important}
+html body.tilo-theme-night main>header:first-child{background:rgba(22,27,36,.85)!important;border-color:var(--t-line)!important}
+html body.tilo-theme-night .input-calm{background:#0f141c!important;border-color:var(--t-line)!important}
+html body.tilo-theme-night .text-slate-400{color:var(--t-mute)!important}
+html body.tilo-theme-night .text-slate-500{color:#8793a6!important}
+html body .text-\[10px\]{font-size:11px}
+html body .text-\[11px\]{font-size:12px}
+
+html body.tilo-theme-day{
+  background-color:#f2efe8!important;background-image:none!important;color:#1f2937!important}
+html body.tilo-theme-day .soft-card,
+html body.tilo-theme-day nav.soft-card,
+html body.tilo-theme-day main>header:first-child{
+  background:#fff!important;border-color:#e5e0d8!important;color:#1f2937!important;
+  box-shadow:0 4px 14px rgba(28,25,23,.05)!important}
+html body.tilo-theme-day .text-white{color:#111827!important}
+html body.tilo-theme-day .text-slate-400,
+html body.tilo-theme-day .text-slate-500{color:#6b7280!important}
+html body.tilo-theme-day .input-calm{background:#faf9f6!important;border-color:#d6cfc2!important;color:#111827!important}
+html body.tilo-theme-day .bg-slate-900,
+html body.tilo-theme-day .bg-slate-800,
+html body.tilo-theme-day .bg-slate-950,
+html body.tilo-theme-day [class*="bg-[#162032]"]{background-color:#f6f3ec!important;color:#1f2937!important}
+html body.tilo-theme-day .fixed.inset-0 .soft-card{background:#fff!important;color:#111827!important}
+
+html body .soft-card:hover{transform:none!important}
+html body main>header:first-child{position:sticky;top:.5rem;z-index:30;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+html body main .font-mono.font-black{font-variant-numeric:tabular-nums;letter-spacing:.04em;font-weight:800}
+html body .tilo-stat-value{font-variant-numeric:tabular-nums}
+button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid #818cf8;outline-offset:2px}
+
+@media (max-width:767px){
+  input:not([type=checkbox]):not([type=radio]),select,textarea{font-size:16px!important}
+  html body nav.soft-card{padding:.3rem .3rem calc(.3rem + env(safe-area-inset-bottom));gap:.15rem}
+  html body nav.soft-card>button{flex:1 1 0;min-width:0;min-height:3.4rem;padding:.3rem .1rem;border-radius:.9rem;justify-content:center;text-align:center;line-height:1.25}
+  html body nav.soft-card>button span{white-space:normal}
+  html body main{padding-bottom:calc(5.5rem + env(safe-area-inset-bottom))!important}
+}
+@media (pointer:coarse){.btn-calm{min-height:2.75rem}.tilo-chip{min-height:2.25rem}}
+@media (hover:none){.btn-calm:hover{transform:none;filter:none}}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
