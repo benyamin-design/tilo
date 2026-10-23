@@ -250,6 +250,51 @@
             header .btn-calm { padding-left: 0.6rem; padding-right: 0.6rem; }
         }
 
+
+        /* جلوگیری از به‌هم‌ریختگی متن‌های طولانی فارسی */
+        .tilo-break {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            white-space: normal;
+            line-height: 1.55;
+        }
+        .tilo-part-option {
+            display: block;
+            width: 100%;
+            text-align: right;
+            padding: 0.75rem 0.9rem;
+            border-radius: 0.85rem;
+            border: 1px solid rgba(148,163,184,0.15);
+            background: rgba(15,23,42,0.55);
+            margin-bottom: 0.45rem;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .tilo-part-option:hover { border-color: rgba(99,102,241,0.45); background: rgba(30,41,59,0.9); }
+        .tilo-part-option.is-selected {
+            border-color: rgba(45,212,191,0.55);
+            background: rgba(45,212,191,0.08);
+        }
+        .tilo-part-pick-list {
+            max-height: min(42vh, 320px);
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            padding: 0.35rem;
+        }
+        .tilo-share-code-box {
+            font-family: ui-monospace, monospace;
+            font-size: 1.75rem;
+            letter-spacing: 0.35em;
+            text-align: center;
+            font-weight: 900;
+            direction: ltr;
+            user-select: all;
+            -webkit-user-select: all;
+            cursor: text;
+        }
+        /* هاور دکمه‌ها ملایم */
+        .btn-calm:hover { filter: brightness(1.06); transform: translateY(-1px); }
+
     </style>
 </head>
 <body class="font-sans antialiased h-screen flex flex-col md:flex-row overflow-hidden select-none tilo-theme-night">
@@ -917,12 +962,22 @@
                             <button @click="currentTab = 'parts'" class="text-xs bg-amberSoft text-slate-950 font-bold px-2.5 py-1 rounded-lg">+ تعریف پارت</button>
                         </div>
                         <div v-else class="relative">
-                            <select v-model="timer.selectedPartId" :disabled="timer.active" class="input-calm text-xs md:text-sm appearance-none pr-4 pl-10 font-bold">
-                                <option :value="null" disabled>-- پارت مورد نظر را انتخاب کنید --</option>
-                                <option v-for="p in pendingParts" :key="p.id" :value="p.id">
-                                    {{ p.subjects.join('، ') }} ⬅ {{ p.topic }} (هدف: {{ p.plannedTime }} دقیقه)
-                                </option>
-                            </select>
+                            <div class="tilo-part-pick-list" :class="timer.active ? 'opacity-60 pointer-events-none' : ''">
+                                <button type="button" class="tilo-part-option tilo-break text-xs text-slate-400"
+                                    :class="!timer.selectedPartId ? 'is-selected' : ''"
+                                    @click="timer.selectedPartId = null; saveTimer()">
+                                    -- پارت مورد نظر را انتخاب کنید --
+                                </button>
+                                <button type="button" v-for="p in pendingParts" :key="p.id"
+                                    class="tilo-part-option tilo-break text-xs"
+                                    :class="timer.selectedPartId === p.id ? 'is-selected' : ''"
+                                    @click="timer.selectedPartId = p.id; saveTimer()">
+                                    <span class="font-bold text-white block">{{ (p.subjects && p.subjects.length) ? p.subjects.join('، ') : (p.isLife ? 'غیردرسی' : 'پارت') }}</span>
+                                    <span class="text-slate-300 block mt-0.5">← {{ p.topic || 'بدون مبحث' }}</span>
+                                    <span class="text-tealSoft text-[11px] block mt-0.5">هدف: {{ p.plannedTime || 60 }} دقیقه</span>
+                                </button>
+                                <p v-if="!pendingParts.length" class="text-[11px] text-slate-500 text-center py-3">پارتی در صف نیست. از تب پارت‌ها اضافه کن.</p>
+                            </div>
                             <i class="fas fa-chevron-down absolute left-4 top-3.5 text-tealSoft pointer-events-none"></i>
                         </div>
                     </div>
@@ -1240,7 +1295,7 @@
 
                     <div v-if="activeShareCode" class="bg-slate-900/80 p-4 rounded-2xl border border-tealSoft/40 text-center space-y-2">
                         <p class="text-xs text-slate-400">کد فعال این دستگاه</p>
-                        <p class="text-3xl font-black tracking-[0.35em] text-tealSoft" dir="ltr">{{ activeShareCode }}</p>
+                        <input type="text" readonly class="tilo-share-code-box input-calm text-tealSoft w-full" :value="activeShareCode" @focus="$event.target.select()" @click="$event.target.select()" />
                         <p class="text-[11px] text-slate-500">همین کد را در دستگاه دیگر وارد کن</p>
                         <div class="flex flex-wrap gap-2 justify-center pt-1">
                             <button type="button" @click="copyShareCode" class="btn-calm bg-tealSoft/20 text-tealSoft text-xs py-2 px-3">کپی کد</button>
@@ -1409,7 +1464,7 @@
         </div>
 
         <div v-if="detailPart" class="fixed inset-0 z-[100000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-            <div class="soft-card bg-[#162032] w-full max-w-md rounded-3xl p-6 border border-tealSoft/40 shadow-2xl space-y-4 my-auto text-xs">
+            <div class="soft-card bg-[#162032] w-full max-w-md rounded-3xl p-6 border border-tealSoft/40 shadow-2xl space-y-4 my-auto text-xs tilo-break">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-3">
                     <h3 class="font-extrabold text-white text-base flex items-center gap-2">
                         <i class="fas fa-info-circle text-tealSoft"></i> جزئیات کامل پارت مطالعه
@@ -2434,11 +2489,12 @@
 
                 const copyShareCode = async () => {
                     if (!activeShareCode.value) return;
+                    const code = activeShareCode.value;
                     try {
-                        await navigator.clipboard.writeText(activeShareCode.value);
-                        alert('کد کپی شد: ' + activeShareCode.value);
+                        await navigator.clipboard.writeText(code);
+                        alert('کد «' + code + '» کپی شد.\nروی دستگاه دیگر در تنظیمات، همین کد را وارد کن (حداکثر ۸ کاراکتر).');
                     } catch {
-                        prompt('کد را کپی کن:', activeShareCode.value);
+                        prompt('Select All و کپی کن:', code);
                     }
                 };
 
@@ -2851,7 +2907,7 @@
                         (p.topic || '').trim() === topic
                     );
                     if (already) {
-                        alert('این مورد امروز قبلاً به پارت‌ها اضافه شده است.');
+                        currentTab.value = 'parts'; // تکراری — فقط برو به پارت‌ها
                         return;
                     }
                     const partObj = {
@@ -2874,7 +2930,7 @@
                     };
                     parts.value.unshift(partObj);
                     saveAll();
-                    alert('به لیست پارت‌های آماده امروز اضافه شد!');
+                    currentTab.value = 'parts';
                 };
 
                 const addArchiveItem = () => {
