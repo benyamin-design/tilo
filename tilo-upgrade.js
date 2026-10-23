@@ -434,6 +434,12 @@
         var activeDay = 'sat';
         var isNonStudy = false;
         var subjects = [];
+        var dropOpen = false;
+        var formType = 'آموزشی / مطالعاتی';
+        var formCategory = 'کنکوری';
+        var formTime = 60;
+        var subParts = [{ title: 'بخش اول', timeRange: '', duration: 60 }];
+
         function storage() {
             try { return JSON.parse(localStorage.getItem('tilo_weekly_parts') || '{}'); } catch (_) { return {}; }
         }
@@ -441,108 +447,321 @@
         function subjectGroups() {
             return state.subjectGroups || [{ category: 'عمومی', items: ['فارسی', 'عربی', 'دین و زندگی', 'زبان انگلیسی'] }];
         }
+        function categories() {
+            return state.partCategories || ['کنکوری', 'امتحان نهایی', 'مرور و جمع‌بندی', 'آزمون آزمایشی', 'جبرانی', 'غیردرسی / بازیابی'];
+        }
+        function escapeHtml(s) {
+            return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
         function pushToToday(item, goTimer) {
             if (!Array.isArray(state.parts)) return;
             var part = {
-                id: Date.now(), dateISO: todayISO(), dateStr: todayFa(),
-                isLife: !!item.isNonStudy, isNonStudy: !!item.isNonStudy,
-                subjects: item.isNonStudy ? [] : (item.subjects || (item.subject ? [item.subject] : [])),
-                topic: item.topic, description: item.description || '',
+                id: Date.now(),
+                dateISO: todayISO(),
+                dateStr: todayFa(),
+                isLife: !!item.isNonStudy,
+                isNonStudy: !!item.isNonStudy,
+                subjects: item.isNonStudy ? [] : (item.subjects || []),
+                topic: item.topic,
+                description: item.description || '',
                 type: item.type || (item.isNonStudy ? 'غیردرسی' : 'آموزشی / مطالعاتی'),
-                plannedTime: item.plannedTime || 60, realTime: 0, status: 'pending',
-                tests: { correct: 0, wrong: 0, unanswered: 0, total: 0 }, updatedAt: Date.now()
+                category: item.category || 'کنکوری',
+                plannedTime: item.plannedTime || 60,
+                subParts: item.subParts ? JSON.parse(JSON.stringify(item.subParts)) : [],
+                realTime: 0,
+                status: 'pending',
+                tests: { correct: 0, wrong: 0, unanswered: 0, total: 0 },
+                updatedAt: Date.now()
             };
             state.parts.unshift(part);
             localStorage.setItem('sp_pro_parts', JSON.stringify(state.parts));
             if (goTimer && state.selectPartAndGoToTimer) state.selectPartAndGoToTimer(part);
             else state.currentTab = 'parts';
         }
+
         function tryBuild() {
             var mainEl = document.querySelector('main');
             if (!mainEl) return;
-            var divs = Array.from(mainEl.children).filter(function (el) { return el.tagName === 'DIV' && !el.classList.contains('fixed'); });
+            var divs = Array.from(mainEl.children).filter(function (el) {
+                return el.tagName === 'DIV' && !el.classList.contains('fixed');
+            });
             var calTab = divs[3];
             if (!calTab || document.getElementById('tilo-calendar-pro-extension')) return;
+
             var box = document.createElement('div');
             box.id = 'tilo-calendar-pro-extension';
-            box.className = 'space-y-4 mt-3';
+            box.className = 'space-y-4 mt-2';
             Array.from(calTab.children).forEach(function (c) { c.style.display = 'none'; });
             calTab.appendChild(box);
+
             function render() {
                 var data = storage();
                 var dayObj = days.filter(function (d) { return d.id === activeDay; })[0] || days[0];
                 var groups = subjectGroups();
+                var cats = categories();
+
                 var daysHtml = days.map(function (d) {
                     var n = (data[d.id] || []).length;
                     var on = d.id === activeDay;
-                    return '<button type="button" data-d="' + d.id + '" class="p-2 rounded-xl text-[11px] border ' + (on ? 'bg-primary text-white border-primary' : 'bg-slate-900/60 border-slate-800') + '">' + d.name + '<br><span class="text-[10px] opacity-80">' + n + '</span></button>';
+                    return '<button type="button" data-d="' + d.id + '" class="p-2.5 rounded-2xl text-[11px] border transition ' +
+                        (on ? 'bg-primary text-white border-primary font-black shadow-md' : 'bg-slate-900/70 border-slate-800 text-slate-300') +
+                        '"><span class="font-bold block">' + d.name + '</span><span class="text-[10px] opacity-80">' + n + ' پارت</span></button>';
                 }).join('');
-                var subsHtml = '';
-                if (!isNonStudy) {
-                    subsHtml = groups.map(function (g) {
-                        return '<div><div class="text-[10px] font-bold text-slate-400 mb-1">' + g.category + '</div><div class="flex flex-wrap gap-1">' +
-                            (g.items || []).map(function (it) {
-                                var on = subjects.indexOf(it) !== -1;
-                                return '<label class="inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] cursor-pointer ' + (on ? 'border-indigo-400 bg-indigo-500/15' : 'border-slate-700') + '"><input type="checkbox" value="' + it.replace(/"/g, '') + '" ' + (on ? 'checked' : '') + ' class="tilo-w-cb"> ' + it + '</label>';
-                            }).join('') + '</div></div>';
-                    }).join('');
-                }
+
+                var subChecks = groups.map(function (g) {
+                    return '<div class="mb-2"><div class="text-[10px] font-bold text-tealSoft bg-slate-900/90 px-2 py-1 rounded-lg mb-1">' +
+                        escapeHtml(g.category) + '</div><div class="grid grid-cols-1 sm:grid-cols-2 gap-1">' +
+                        (g.items || []).map(function (it) {
+                            var on = subjects.indexOf(it) !== -1;
+                            return '<label class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-800/70 cursor-pointer text-xs">' +
+                                '<input type="checkbox" value="' + escapeHtml(it) + '" class="tilo-w-cb w-4 h-4 accent-indigo-500 rounded" ' + (on ? 'checked' : '') + '>' +
+                                '<span class="text-slate-200">' + escapeHtml(it) + '</span></label>';
+                        }).join('') + '</div></div>';
+                }).join('');
+
+                var selectedLabel = subjects.length ? subjects.join(' ، ') : 'روی فلش بزنید و درس‌ها را انتخاب کنید...';
+                var presets = [60, 75, 90];
+                var presetBtns = presets.map(function (p) {
+                    return '<button type="button" data-preset="' + p + '" class="px-3 py-1.5 rounded-xl text-xs ' +
+                        (formTime === p ? 'bg-primary text-white font-bold' : 'bg-slate-800 text-slate-300') + '">' + p + ' دقیقه</button>';
+                }).join('');
+
+                var subPartsHtml = subParts.map(function (sp, idx) {
+                    return '<div class="flex flex-wrap sm:flex-nowrap items-center gap-1.5 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800" data-sp="' + idx + '">' +
+                        '<span class="text-[11px] font-bold text-primarySoft shrink-0">بخش ' + (idx + 1) + ':</span>' +
+                        '<input type="text" data-f="title" value="' + escapeHtml(sp.title) + '" placeholder="کار (مثلاً: درس‌نامه)" class="input-calm text-xs py-1.5 px-2 flex-1 min-w-[90px]">' +
+                        '<input type="text" data-f="timeRange" value="' + escapeHtml(sp.timeRange) + '" placeholder="بازه (مثلاً 16 تا 17)" class="input-calm text-xs py-1.5 px-2 w-28 text-center">' +
+                        '<input type="number" data-f="duration" value="' + (sp.duration || 60) + '" min="5" class="input-calm text-xs py-1.5 px-1.5 w-14 text-center font-bold text-tealSoft">' +
+                        '<span class="text-[10px] text-slate-500">دقیقه</span>' +
+                        (subParts.length > 1 ? '<button type="button" data-rm-sp="' + idx + '" class="text-roseSoft p-1"><i class="fas fa-times"></i></button>' : '') +
+                        '</div>';
+                }).join('');
+
+                var typeOpts = ['آموزشی / مطالعاتی', 'تست و تمرین', 'مرور و جمع‌بندی', 'غیردرسی'].map(function (t) {
+                    return '<option value="' + t + '"' + (formType === t ? ' selected' : '') + '>' + t + '</option>';
+                }).join('');
+                var catOpts = cats.map(function (c) {
+                    return '<option value="' + escapeHtml(c) + '"' + (formCategory === c ? ' selected' : '') + '>' + escapeHtml(c) + '</option>';
+                }).join('');
+
                 var dayParts = data[activeDay] || [];
                 var listHtml = !dayParts.length
-                    ? '<p class="text-[11px] text-slate-500 text-center py-4">خالی است</p>'
+                    ? '<p class="text-[11px] text-slate-500 text-center py-6">هنوز پارتی برای «' + dayObj.name + '» تعریف نشده. از فرم بالا اضافه کن.</p>'
                     : dayParts.map(function (p, idx) {
-                        return '<div class="p-3 rounded-xl border border-slate-800 bg-slate-900/50 tilo-break text-xs space-y-1"><div class="font-bold">' + (p.topic || '') + '</div><div class="text-slate-400">' + (p.isNonStudy ? 'غیردرسی' : (p.subjects || []).join('، ')) + ' · ' + (p.plannedTime || 60) + ' دقیقه</div><div class="flex flex-wrap gap-1.5 pt-1"><button type="button" data-q="' + idx + '" class="btn-calm bg-teal-700/30 text-teal-200 text-[11px] py-1 px-2">ارسال به امروز</button><button type="button" data-t="' + idx + '" class="btn-calm bg-primary text-white text-[11px] py-1 px-2">تایمر</button><button type="button" data-x="' + idx + '" class="text-rose-400 text-[11px] px-2">حذف</button></div></div>';
+                        var subs = (p.subjects || []).join('، ') || (p.isNonStudy ? 'غیردرسی' : '');
+                        return '<div class="bg-slate-900/75 p-4 rounded-2xl border border-slate-800 space-y-2 tilo-break text-xs">' +
+                            '<div class="flex flex-wrap gap-1.5 items-center">' +
+                            '<span class="' + (p.isNonStudy ? 'bg-amberSoft/20 text-amberSoft' : 'bg-primary/20 text-indigo-300') + ' px-2.5 py-0.5 rounded-md font-bold text-[11px]">' + escapeHtml(subs) + '</span>' +
+                            '<span class="text-slate-400">• ' + escapeHtml(p.type || '') + '</span>' +
+                            '<span class="text-tealSoft font-bold">• ' + (p.plannedTime || 60) + ' دقیقه</span></div>' +
+                            '<h5 class="font-bold text-white text-sm">' + escapeHtml(p.topic) + '</h5>' +
+                            (p.description ? '<p class="text-slate-300 bg-slate-950/50 p-2 rounded-xl border border-slate-800/80">' + escapeHtml(p.description) + '</p>' : '') +
+                            '<div class="flex flex-wrap gap-1.5 pt-1">' +
+                            '<button type="button" data-q="' + idx + '" class="btn-calm bg-tealSoft/15 text-tealSoft border border-tealSoft/30 text-[11px] py-1.5 px-2.5"><i class="fas fa-plus"></i> ارسال به صف امروز</button>' +
+                            '<button type="button" data-t="' + idx + '" class="btn-calm bg-primary text-white text-[11px] py-1.5 px-2.5"><i class="fas fa-stopwatch"></i> تایمر</button>' +
+                            '<button type="button" data-x="' + idx + '" class="text-roseSoft p-1.5"><i class="fas fa-trash"></i></button></div></div>';
                     }).join('');
-                box.innerHTML = '<div class="soft-card p-4 rounded-2xl space-y-3"><h3 class="text-sm font-extrabold">برنامه هفتگی</h3><p class="text-[11px] text-slate-400">روز را انتخاب کن. «ارسال به امروز» بدون پیام، مستقیم به پارت‌ها می‌رود و عدد صف پایین به‌روز می‌شود.</p><div class="grid grid-cols-3 sm:grid-cols-7 gap-1.5" id="tilo-week-days">' + daysHtml + '</div></div><div class="soft-card p-4 rounded-2xl space-y-3"><div class="text-xs font-bold">افزودن برای «' + dayObj.name + '»</div><div class="flex gap-2"><button type="button" id="tilo-w-study" class="btn-calm text-xs py-1.5 px-3 ' + (!isNonStudy ? 'bg-primary text-white' : 'bg-slate-800') + '">درسی</button><button type="button" id="tilo-w-life" class="btn-calm text-xs py-1.5 px-3 ' + (isNonStudy ? 'bg-amber-500/80 text-slate-900' : 'bg-slate-800') + '">غیردرسی</button></div><div id="tilo-w-subs" class="' + (isNonStudy ? 'hidden' : '') + ' max-h-40 overflow-y-auto text-xs space-y-2">' + subsHtml + '</div><input id="tilo-w-topic" class="input-calm text-xs" placeholder="عنوان مبحث / فعالیت"><input id="tilo-w-desc" class="input-calm text-xs" placeholder="توضیح اختیاری"><input id="tilo-w-time" type="number" value="60" min="5" class="input-calm text-xs text-center font-bold"><div class="flex flex-wrap gap-2"><button type="button" id="tilo-w-save" class="btn-calm bg-primary text-white text-xs py-2 px-3 flex-1">ذخیره در ' + dayObj.name + '</button><button type="button" id="tilo-w-today" class="btn-calm bg-slate-800 text-xs py-2 px-3">+ صف امروز</button></div></div><div class="soft-card p-4 rounded-2xl space-y-2"><div class="text-xs font-bold">پارت‌های ' + dayObj.name + '</div><div id="tilo-w-list" class="space-y-2">' + listHtml + '</div></div>';
-                box.querySelector('#tilo-week-days').querySelectorAll('[data-d]').forEach(function (b) {
-                    b.addEventListener('click', function () { activeDay = b.getAttribute('data-d'); render(); });
+
+                box.innerHTML =
+                    '<div class="soft-card p-4 rounded-3xl space-y-3 border border-indigo-500/20">' +
+                    '<h3 class="text-sm font-extrabold flex items-center gap-2"><i class="fas fa-calendar-week text-sage"></i> برنامه هفتگی</h3>' +
+                    '<p class="text-[11px] text-slate-400">روز را انتخاب کن؛ فرم افزودن دقیقاً مثل «تعریف پارت مطالعه» است.</p>' +
+                    '<div class="grid grid-cols-3 sm:grid-cols-7 gap-1.5">' + daysHtml + '</div></div>' +
+
+                    '<div class="soft-card p-5 rounded-3xl space-y-4 border border-primary/20">' +
+                    '<div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">' +
+                    '<h4 class="text-sm font-extrabold text-white flex items-center gap-2"><i class="fas fa-plus-circle text-primarySoft"></i> تعریف پارت مطالعه برای <span class="text-tealSoft">' + dayObj.name + '</span></h4></div>' +
+
+                    '<div class="flex gap-2 bg-slate-900/60 p-1.5 rounded-xl border border-slate-800 w-fit">' +
+                    '<button type="button" id="tilo-w-study" class="px-4 py-1.5 rounded-lg text-xs ' + (!isNonStudy ? 'bg-primary text-white font-bold' : 'text-slate-400') + '"><i class="fas fa-book"></i> پارت درسی</button>' +
+                    '<button type="button" id="tilo-w-life" class="px-4 py-1.5 rounded-lg text-xs ' + (isNonStudy ? 'bg-amberSoft text-slate-900 font-bold' : 'text-slate-400') + '"><i class="fas fa-coffee"></i> غیردرسی</button></div>' +
+
+                    '<div class="relative ' + (isNonStudy ? 'hidden' : '') + '" id="tilo-w-sub-wrap">' +
+                    '<label class="block text-xs text-slate-400 mb-1.5">انتخاب درس یا فعالیت *</label>' +
+                    '<button type="button" id="tilo-w-drop-btn" class="input-calm flex justify-between items-center text-right text-xs w-full">' +
+                    '<span id="tilo-w-sel-label" class="truncate ' + (subjects.length ? 'text-white font-bold' : 'text-slate-400') + '">' + escapeHtml(selectedLabel) + '</span>' +
+                    '<i class="fas fa-chevron-down text-slate-400"></i></button>' +
+                    '<div id="tilo-w-drop" class="' + (dropOpen ? '' : 'hidden') + ' absolute z-50 left-0 right-0 mt-2 soft-card bg-[#162032] rounded-2xl p-3 max-h-72 overflow-y-auto border border-slate-700 shadow-2xl">' +
+                    '<div class="flex justify-between items-center pb-2 mb-2 border-b border-slate-700">' +
+                    '<span class="text-xs text-slate-400">' + subjects.length + ' درس</span>' +
+                    '<button type="button" id="tilo-w-drop-close" class="text-xs bg-primary text-white px-3 py-1 rounded-lg">تأیید و بستن</button></div>' +
+                    subChecks + '</div></div>' +
+
+                    '<div><label class="block text-xs text-slate-400 mb-1.5">مبحث دقیق *</label>' +
+                    '<input type="text" id="tilo-w-topic" class="input-calm text-xs md:text-sm" placeholder="مثلاً: حرکت بر خط راست / مشتق" value=""></div>' +
+
+                    '<div><label class="block text-xs text-slate-400 mb-1.5">توضیحات پارت (زیرمبحث، صفحات کتاب یا منبع تست)</label>' +
+                    '<input type="text" id="tilo-w-desc" class="input-calm text-xs md:text-sm" placeholder="مثلاً: مطالعه درس‌نامه از صفحه ۴۰ تا ۵۲ + حل تست..."></div>' +
+
+                    '<div class="grid grid-cols-2 gap-2.5">' +
+                    '<div><label class="block text-xs text-slate-400 mb-1.5">نوع فعالیت</label>' +
+                    '<select id="tilo-w-type" class="input-calm text-xs">' + typeOpts + '</select></div>' +
+                    '<div><label class="block text-xs text-slate-400 mb-1.5">دسته‌بندی</label>' +
+                    '<select id="tilo-w-cat" class="input-calm text-xs">' + catOpts + '</select></div></div>' +
+
+                    '<div><label class="block text-xs text-slate-400 mb-1.5">مدت زمان پارت (دقیقه)</label>' +
+                    '<div class="flex flex-wrap gap-2 items-center">' +
+                    '<input type="number" id="tilo-w-time" value="' + formTime + '" min="5" max="400" class="input-calm text-xs font-bold text-center w-20">' +
+                    presetBtns + '</div></div>' +
+
+                    '<div class="bg-slate-900/50 border border-slate-800 rounded-2xl p-3 space-y-2">' +
+                    '<div class="flex flex-wrap justify-between items-center gap-2">' +
+                    '<span class="text-xs text-tealSoft font-bold"><i class="fas fa-sitemap"></i> تقسیم پارت به بخش‌های کوچک‌تر (' + subParts.length + ' از ۴ بخش)</span>' +
+                    (subParts.length < 4 ? '<button type="button" id="tilo-w-add-sp" class="text-xs bg-primary/20 text-indigo-300 px-3 py-1 rounded-lg">+ افزودن بخش جدید</button>' : '') +
+                    '</div>' + subPartsHtml + '</div>' +
+
+                    '<div class="flex flex-wrap gap-2 pt-1">' +
+                    '<button type="button" id="tilo-w-save" class="btn-calm bg-primary text-white text-xs flex-1 py-3"><i class="fas fa-plus"></i> افزودن به برنامه «' + dayObj.name + '»</button>' +
+                    '<button type="button" id="tilo-w-both" class="btn-calm bg-slate-800 text-slate-200 text-xs border border-slate-700 py-3"><i class="fas fa-bolt text-tealSoft"></i> + صف امروز</button></div>' +
+                    '</div>' +
+
+                    '<div class="soft-card p-4 rounded-3xl space-y-3">' +
+                    '<h4 class="font-bold text-sm text-white flex items-center gap-2"><i class="fas fa-list-ul text-amberSoft"></i> پارت‌های برنامه‌ریزی‌شده برای <span class="text-tealSoft">' + dayObj.name + '</span></h4>' +
+                    '<div class="space-y-2">' + listHtml + '</div></div>';
+
+                // events
+                box.querySelectorAll('[data-d]').forEach(function (b) {
+                    b.addEventListener('click', function () { activeDay = b.getAttribute('data-d'); dropOpen = false; render(); });
                 });
                 box.querySelector('#tilo-w-study').onclick = function () { isNonStudy = false; render(); };
-                box.querySelector('#tilo-w-life').onclick = function () { isNonStudy = true; subjects = []; render(); };
+                box.querySelector('#tilo-w-life').onclick = function () { isNonStudy = true; subjects = []; formType = 'غیردرسی'; formCategory = 'غیردرسی / بازیابی'; render(); };
+
+                var dropBtn = box.querySelector('#tilo-w-drop-btn');
+                var drop = box.querySelector('#tilo-w-drop');
+                if (dropBtn && drop) {
+                    dropBtn.onclick = function () { dropOpen = !dropOpen; drop.classList.toggle('hidden', !dropOpen); };
+                    var closeBtn = box.querySelector('#tilo-w-drop-close');
+                    if (closeBtn) closeBtn.onclick = function () { dropOpen = false; drop.classList.add('hidden'); };
+                }
                 box.querySelectorAll('.tilo-w-cb').forEach(function (cb) {
                     cb.addEventListener('change', function () {
                         var v = cb.value;
                         if (cb.checked) { if (subjects.indexOf(v) === -1) subjects.push(v); }
                         else subjects = subjects.filter(function (x) { return x !== v; });
+                        var lbl = box.querySelector('#tilo-w-sel-label');
+                        if (lbl) {
+                            lbl.textContent = subjects.length ? subjects.join(' ، ') : 'روی فلش بزنید و درس‌ها را انتخاب کنید...';
+                            lbl.className = 'truncate ' + (subjects.length ? 'text-white font-bold' : 'text-slate-400');
+                        }
                     });
                 });
-                function collectItem() {
+
+                box.querySelectorAll('[data-preset]').forEach(function (b) {
+                    b.onclick = function () {
+                        formTime = Number(b.getAttribute('data-preset'));
+                        var ti = box.querySelector('#tilo-w-time');
+                        if (ti) ti.value = formTime;
+                        if (subParts.length === 1) subParts[0].duration = formTime;
+                        render();
+                    };
+                });
+                var timeInp = box.querySelector('#tilo-w-time');
+                if (timeInp) timeInp.addEventListener('change', function () { formTime = parseInt(timeInp.value, 10) || 60; });
+
+                var typeSel = box.querySelector('#tilo-w-type');
+                var catSel = box.querySelector('#tilo-w-cat');
+                if (typeSel) typeSel.onchange = function () { formType = typeSel.value; };
+                if (catSel) catSel.onchange = function () { formCategory = catSel.value; };
+
+                box.querySelectorAll('[data-sp]').forEach(function (row) {
+                    var idx = Number(row.getAttribute('data-sp'));
+                    row.querySelectorAll('input').forEach(function (inp) {
+                        inp.addEventListener('change', function () {
+                            var f = inp.getAttribute('data-f');
+                            if (f === 'duration') subParts[idx].duration = parseInt(inp.value, 10) || 60;
+                            else subParts[idx][f] = inp.value;
+                        });
+                    });
+                });
+                box.querySelectorAll('[data-rm-sp]').forEach(function (b) {
+                    b.onclick = function () {
+                        var i = Number(b.getAttribute('data-rm-sp'));
+                        if (subParts.length > 1) { subParts.splice(i, 1); render(); }
+                    };
+                });
+                var addSp = box.querySelector('#tilo-w-add-sp');
+                if (addSp) addSp.onclick = function () {
+                    if (subParts.length < 4) {
+                        subParts.push({ title: 'بخش ' + (subParts.length + 1), timeRange: '', duration: 30 });
+                        render();
+                    }
+                };
+
+                function collect() {
                     var topic = (box.querySelector('#tilo-w-topic').value || '').trim();
                     var description = (box.querySelector('#tilo-w-desc').value || '').trim();
-                    var plannedTime = parseInt(box.querySelector('#tilo-w-time').value, 10) || 60;
-                    if (!isNonStudy && !subjects.length) { window.alert('حداقل یک درس انتخاب کن.'); return null; }
-                    if (!topic) { window.alert('عنوان را بنویس.'); return null; }
-                    return { id: Date.now(), isNonStudy: isNonStudy, subjects: isNonStudy ? [] : subjects.slice(), subject: subjects.join('، '), topic: topic, description: description, plannedTime: plannedTime, type: isNonStudy ? 'غیردرسی' : 'آموزشی / مطالعاتی' };
+                    formTime = parseInt((box.querySelector('#tilo-w-time') || {}).value, 10) || formTime;
+                    formType = (box.querySelector('#tilo-w-type') || {}).value || formType;
+                    formCategory = (box.querySelector('#tilo-w-cat') || {}).value || formCategory;
+                    // sync subParts from inputs
+                    box.querySelectorAll('[data-sp]').forEach(function (row) {
+                        var idx = Number(row.getAttribute('data-sp'));
+                        row.querySelectorAll('input').forEach(function (inp) {
+                            var f = inp.getAttribute('data-f');
+                            if (!subParts[idx]) return;
+                            if (f === 'duration') subParts[idx].duration = parseInt(inp.value, 10) || 60;
+                            else subParts[idx][f] = inp.value;
+                        });
+                    });
+                    if (!isNonStudy && !subjects.length) {
+                        window.alert('لطفاً حداقل یک درس را انتخاب کنید.');
+                        dropOpen = true; render();
+                        return null;
+                    }
+                    if (!topic) { window.alert('مبحث دقیق را بنویس.'); return null; }
+                    return {
+                        id: Date.now(),
+                        isNonStudy: isNonStudy,
+                        subjects: isNonStudy ? [] : subjects.slice(),
+                        topic: topic,
+                        description: description,
+                        type: formType,
+                        category: formCategory,
+                        plannedTime: formTime,
+                        subParts: JSON.parse(JSON.stringify(subParts))
+                    };
                 }
+
+                function resetForm() {
+                    subjects = [];
+                    subParts = [{ title: 'بخش اول', timeRange: '', duration: formTime }];
+                    dropOpen = false;
+                }
+
                 box.querySelector('#tilo-w-save').onclick = function () {
-                    var item = collectItem();
+                    var item = collect();
                     if (!item) return;
                     var data2 = storage();
                     if (!data2[activeDay]) data2[activeDay] = [];
                     data2[activeDay].unshift(item);
                     save(data2);
-                    subjects = [];
+                    resetForm();
                     render();
                 };
-                box.querySelector('#tilo-w-today').onclick = function () {
-                    var item = collectItem();
+                box.querySelector('#tilo-w-both').onclick = function () {
+                    var item = collect();
                     if (!item) return;
                     var data2 = storage();
                     if (!data2[activeDay]) data2[activeDay] = [];
                     data2[activeDay].unshift(item);
                     save(data2);
                     pushToToday(item, false);
-                    subjects = [];
+                    resetForm();
                     render();
                 };
-                var list = box.querySelector('#tilo-w-list');
-                list.querySelectorAll('[data-q]').forEach(function (b) {
-                    b.addEventListener('click', function () { pushToToday(dayParts[Number(b.getAttribute('data-q'))], false); });
+
+                box.querySelectorAll('[data-q]').forEach(function (b) {
+                    b.addEventListener('click', function () {
+                        pushToToday(dayParts[Number(b.getAttribute('data-q'))], false);
+                    });
                 });
-                list.querySelectorAll('[data-t]').forEach(function (b) {
-                    b.addEventListener('click', function () { pushToToday(dayParts[Number(b.getAttribute('data-t'))], true); });
+                box.querySelectorAll('[data-t]').forEach(function (b) {
+                    b.addEventListener('click', function () {
+                        pushToToday(dayParts[Number(b.getAttribute('data-t'))], true);
+                    });
                 });
-                list.querySelectorAll('[data-x]').forEach(function (b) {
+                box.querySelectorAll('[data-x]').forEach(function (b) {
                     b.addEventListener('click', function () {
                         dayParts.splice(Number(b.getAttribute('data-x')), 1);
                         save(data);
@@ -550,6 +769,7 @@
                     });
                 });
             }
+
             window.TiloPlus.renderWeeklyCalendar = render;
             render();
         }
