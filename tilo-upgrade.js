@@ -1,898 +1,557 @@
 /**
- * Tilo Pro Suite - Final Upgrade
- * شامل: منوی کشویی، تایید ایمیل (OTP)، برنامه هفتگی پیشرفته، تقویم گروه‌بندی شده، PDF مشاور و هوش مصنوعی
+ * Tilo Upgrade Suite (بهینه‌شده)
+ * تم روز/شب مات · منوی کشویی · تایمر · برنامه هفتگی · PDF · بدون آلرت اضافه
  */
-(function initTiloPro() {
+(function initTiloUpgrade() {
     'use strict';
 
     window.TiloPlus = window.TiloPlus || {
         vueState: null,
-        deletedIds: JSON.parse(localStorage.getItem('tilo_deleted_ids') || '[]')
+        deletedIds: JSON.parse(localStorage.getItem('tilo_deleted_ids') || '[]'),
+        isSyncingFromCloud: false,
+        syncTimeout: null,
+        unsubscribeSnapshot: null
     };
-
     window.TiloPro = window.TiloPro || {
-        collapsedDays: JSON.parse(localStorage.getItem('tilo_collapsed_days') || '{}'),
-        verifiedEmail: localStorage.getItem('tilo_verified_email') || '',
-        pendingEmail: '',
-        generatedCode: ''
+        theme: localStorage.getItem('tilo_ui_theme') || 'night',
+        collapsedDays: JSON.parse(localStorage.getItem('tilo_collapsed_days') || '{}')
     };
 
-    // تزریق استایل‌های تکمیلی برای منوها، انیمیشن‌ها و علامت «
     const styleEl = document.createElement('style');
-    styleEl.id = 'tilo-pro-styles';
+    styleEl.id = 'tilo-upgrade-styles';
     styleEl.textContent = `
-        .tilo-hamburger-btn { width: 42px; height: 42px; border-radius: 0.8rem; background: rgba(30,41,59,0.7); border: 1px solid rgba(148,163,184,0.2); color: inherit; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
-        .tilo-hamburger-btn:hover { border-color: #6366f1; transform: translateY(-1px); }
-        .tilo-drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 99990; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        main { padding-bottom: 7.5rem !important; scroll-behavior: smooth; }
+        .tilo-timer-spacer { height: 96px; width: 100%; pointer-events: none; }
+        .tilo-timer-pro-card {
+            background: #1b1e24 !important;
+            border: 1px solid #2e333d !important;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.35) !important;
+        }
+        .tilo-timer-pro-card::before { display: none !important; }
+        .tilo-timer-digits-glow {
+            text-shadow: none !important;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.06em !important;
+        }
+        .tilo-hamburger-btn {
+            width: 40px; height: 40px; border-radius: 0.75rem;
+            background: rgba(30,41,59,0.92); border: 1px solid rgba(148,163,184,0.22);
+            color: #e2e8f0; display: inline-flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: border-color .2s, transform .2s;
+        }
+        .tilo-hamburger-btn:hover { border-color: #64748b; transform: translateY(-1px); }
+        .tilo-drawer-backdrop {
+            position: fixed; inset: 0; background: rgba(2,6,23,0.72);
+            backdrop-filter: blur(5px); z-index: 99990; opacity: 0; pointer-events: none;
+            transition: opacity .25s ease;
+        }
         .tilo-drawer-backdrop.open { opacity: 1; pointer-events: auto; }
-        .tilo-drawer-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 300px; max-width: 85vw; background: var(--bg-surface, #1b1f27); border-left: 1px solid rgba(255,255,255,0.1); z-index: 99995; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.16,1,0.3,1); display: flex; flex-direction: column; padding: 1.25rem; overflow-y: auto; }
+        .tilo-drawer-panel {
+            position: fixed; top: 0; right: 0; bottom: 0; width: 290px; max-width: 86vw;
+            background: #151820; border-left: 1px solid #2a2e37; z-index: 99995;
+            transform: translateX(100%); transition: transform .28s cubic-bezier(0.16,1,0.3,1);
+            display: flex; flex-direction: column; padding: 1.1rem; overflow-y: auto;
+        }
         .tilo-drawer-panel.open { transform: translateX(0); }
-        body.tilo-theme-day .tilo-drawer-panel { background: #ffffff; border-left-color: #e6e1d6; }
-        
-        .tilo-collapse-chevron { display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; font-weight: 900; transition: transform 0.3s cubic-bezier(0.16,1,0.3,1); user-select: none; }
-        .tilo-collapse-chevron.is-open { transform: rotate(-90deg); }
-        .tilo-collapse-chevron.is-closed { transform: rotate(0deg); opacity: 0.7; }
-        .tilo-day-group-body { overflow: hidden; transition: max-height 0.35s ease, opacity 0.3s ease; }
-        .tilo-day-group-body.collapsed { max-height: 0 !important; opacity: 0; padding: 0 !important; margin: 0 !important; border: none !important; pointer-events: none; }
-        
-        #tilo-pdf-printable-sheet * { color: #0f172a !important; border-color: #cbd5e1 !important; }
-        @media print { body * { visibility: hidden; } #tilo-pdf-printable-sheet, #tilo-pdf-printable-sheet * { visibility: visible; } #tilo-pdf-printable-sheet { position: absolute; left: 0; top: 0; width: 100%; } }
+        .btn-calm { transition: transform .18s ease, filter .18s ease !important; }
+        .btn-calm:hover { transform: translateY(-1px); filter: brightness(1.05); }
+        .btn-calm:active { transform: scale(0.97) !important; }
+        .soft-card { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease !important; }
+        .soft-card:hover { transform: translateY(-1px); }
+        .tilo-break, .tilo-part-option, .tilo-queue-item {
+            overflow-wrap: anywhere; word-break: break-word; white-space: normal; line-height: 1.55;
+        }
+        body.tilo-theme-night {
+            background-color: #12151a !important; background-image: none !important; color: #e4e4e7 !important;
+        }
+        body.tilo-theme-night .soft-card,
+        body.tilo-theme-night nav.soft-card,
+        body.tilo-theme-night header {
+            background: #1b1e24 !important; border-color: #2a2e37 !important;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.28) !important; backdrop-filter: none !important;
+        }
+        body.tilo-theme-night .input-calm {
+            background: #131519 !important; border-color: #2e333d !important; color: #f4f4f5 !important;
+        }
+        body.tilo-theme-day {
+            background-color: #f2efe8 !important; background-image: none !important; color: #1f2937 !important;
+        }
+        body.tilo-theme-day .soft-card,
+        body.tilo-theme-day nav.soft-card,
+        body.tilo-theme-day header {
+            background: #ffffff !important; border-color: #e5e0d8 !important;
+            box-shadow: 0 4px 14px rgba(28,25,23,0.05) !important; color: #1f2937 !important;
+        }
+        body.tilo-theme-day .text-white { color: #111827 !important; }
+        body.tilo-theme-day .text-slate-200,
+        body.tilo-theme-day .text-slate-300 { color: #374151 !important; }
+        body.tilo-theme-day .text-slate-400,
+        body.tilo-theme-day .text-slate-500 { color: #6b7280 !important; }
+        body.tilo-theme-day .bg-slate-900,
+        body.tilo-theme-day .bg-slate-900\\/70,
+        body.tilo-theme-day .bg-slate-900\\/80,
+        body.tilo-theme-day .bg-slate-800,
+        body.tilo-theme-day .bg-slate-800\\/40,
+        body.tilo-theme-day .bg-slate-950\\/60,
+        body.tilo-theme-day .bg-slate-950\\/80 {
+            background-color: #f6f3ec !important; color: #1f2937 !important; border-color: #e5e0d8 !important;
+        }
+        body.tilo-theme-day .input-calm {
+            background: #faf9f6 !important; border-color: #d6cfc2 !important; color: #111827 !important;
+        }
+        body.tilo-theme-day .border-slate-800,
+        body.tilo-theme-day .border-slate-700 { border-color: #e5e0d8 !important; }
+        body.tilo-theme-day .tilo-drawer-panel { background: #fcfbf9 !important; border-left-color: #e5e0d8 !important; }
+        body.tilo-theme-day .tilo-hamburger-btn {
+            background: #fff !important; border-color: #d6cfc2 !important; color: #1f2937 !important;
+        }
+        body.tilo-theme-day .tilo-timer-pro-card {
+            background: #fff !important; border-color: #d6cfc2 !important; box-shadow: 0 8px 20px rgba(0,0,0,0.05) !important;
+        }
+        body.tilo-theme-day .tilo-timer-digits-glow { color: #111827 !important; }
+        body.tilo-theme-day .tilo-part-option {
+            background: #f8f6f1 !important; border-color: #e5e0d8 !important; color: #1f2937 !important;
+        }
+        body.tilo-theme-day .tilo-part-option.is-selected {
+            border-color: #4f46e5 !important; background: #eef2ff !important;
+        }
+        body.tilo-theme-day button.bg-primary { color: #fff !important; }
+        .tilo-theme-switch-btn {
+            padding: 0.4rem 0.7rem; border-radius: 0.7rem; font-size: 11px; font-weight: 700;
+            display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer;
+            border: 1px solid rgba(148,163,184,0.25);
+        }
     `;
     document.head.appendChild(styleEl);
 
-    // بارگذاری کتابخانه PDF
-    if (!document.getElementById('tilo-html2pdf-lib')) {
-        const script = document.createElement('script');
-        script.id = 'tilo-html2pdf-lib';
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-        document.head.appendChild(script);
+    function applyTheme(mode) {
+        const m = mode === 'day' ? 'day' : 'night';
+        window.TiloPro.theme = m;
+        localStorage.setItem('tilo_ui_theme', m);
+        document.body.classList.remove('tilo-theme-day', 'tilo-theme-night');
+        document.body.classList.add(m === 'day' ? 'tilo-theme-day' : 'tilo-theme-night');
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', m === 'day' ? '#f2efe8' : '#12151a');
+        const btn = document.getElementById('tilo-theme-toggle-btn');
+        if (btn) {
+            btn.innerHTML = m === 'day'
+                ? '<i class="fas fa-moon"></i><span class="hidden sm:inline">شب</span>'
+                : '<i class="fas fa-sun"></i><span class="hidden sm:inline">روز</span>';
+        }
+        try {
+            const st = window.TiloPlus.vueState;
+            if (st && st.settings) st.settings.theme = m;
+        } catch (_) {}
     }
 
-    // منتظر ماندن برای لود شدن کامل Vue و HTML
+    function todayISO() {
+        return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tehran' }).format(new Date());
+    }
+    function todayFa() {
+        return new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran' }).format(new Date());
+    }
+
     const waitVue = setInterval(() => {
         const appEl = document.getElementById('app');
-        if (appEl && appEl.__vue_app__ && appEl.__vue_app__._instance) {
-            clearInterval(waitVue);
-            const state = appEl.__vue_app__._instance.setupState;
-            window.TiloPlus.vueState = state;
-            
-            suppressAlerts();
-            buildDrawerMenu(state);
-            buildEmailOtpSystem(state);
-            injectPendingNotesUI(state);
-            buildWeeklyPlannerPro(state);
-            buildGroupedDailyArchive(state);
-            buildAiAnalyzer(state);
-        }
-    }, 200);
+        if (!(appEl && appEl.__vue_app__ && appEl.__vue_app__._instance)) return;
+        clearInterval(waitVue);
+        const state = appEl.__vue_app__._instance.setupState;
+        window.TiloPlus.vueState = state;
+        applyTheme(localStorage.getItem('tilo_ui_theme') || 'night');
+        setupCloud(state);
+        setupHeader(state);
+        setupTimerExtras(state);
+        setupWeekly(state);
+        setupPdf(state);
+        suppressNoiseAlerts();
+    }, 180);
 
-    // ۱. جلوگیری از نوتیفیکیشن‌های آزاردهنده
-    function suppressAlerts() {
+    function suppressNoiseAlerts() {
         const _alert = window.alert;
         window.alert = function (msg) {
-            if (typeof msg === 'string' && (msg.includes('پارت‌های در انتظار') || msg.includes('به لیست') || msg.includes('صف امروز'))) return;
+            if (typeof msg === 'string' && (
+                msg.indexOf('پارت‌های در انتظار') !== -1 ||
+                (msg.indexOf('به لیست') !== -1 && msg.indexOf('اضافه') !== -1)
+            )) return;
             return _alert.apply(this, arguments);
         };
     }
 
-    // ۲. منوی کشویی همبرگری
-    function buildDrawerMenu(state) {
-        const headerEl = document.querySelector('main header');
-        if (!headerEl || document.getElementById('tilo-hamburger-trigger')) return;
+    async function setupCloud(state) {
+        const FB = '10.8.0';
+        try {
+            const firestoreMod = await import('https://www.gstatic.com/firebasejs/' + FB + '/firebase-firestore.js');
+            const authMod = await import('https://www.gstatic.com/firebasejs/' + FB + '/firebase-auth.js');
+            const appMod = await import('https://www.gstatic.com/firebasejs/' + FB + '/firebase-app.js');
+            const origSetItem = localStorage.setItem.bind(localStorage);
+            localStorage.setItem = function (key, value) {
+                origSetItem(key, value);
+                if (!window.TiloPlus.isSyncingFromCloud && (key === 'sp_pro_parts' || key === 'sp_pro_settings' || key === 'tilo_weekly_parts')) {
+                    schedulePush();
+                }
+            };
+            function conn() {
+                const raw = localStorage.getItem('tilo_fb_config') || state.firebaseConfigInput;
+                if (!raw) return null;
+                try {
+                    const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                    if (!cfg || !cfg.apiKey) return null;
+                    const apps = appMod.getApps ? appMod.getApps() : [];
+                    const app = apps.length ? apps[0] : appMod.initializeApp(cfg);
+                    return { auth: authMod.getAuth(app), db: firestoreMod.getFirestore(app) };
+                } catch (_) { return null; }
+            }
+            function mergeParts(localArr, cloudArr) {
+                const map = new Map();
+                const del = new Set(window.TiloPlus.deletedIds || []);
+                (cloudArr || []).forEach(function (p) { if (p && p.id && !del.has(p.id)) map.set(p.id, p); });
+                (localArr || []).forEach(function (p) {
+                    if (!p || !p.id || del.has(p.id)) return;
+                    var ex = map.get(p.id);
+                    if (!ex) map.set(p.id, p);
+                    else if (p.status === 'completed' && ex.status !== 'completed') map.set(p.id, p);
+                    else if ((p.updatedAt || p.completedAt || 0) > (ex.updatedAt || ex.completedAt || 0)) map.set(p.id, p);
+                });
+                return Array.from(map.values()).sort(function (a, b) { return (b.id || 0) - (a.id || 0); });
+            }
+            async function pushNow() {
+                var c = conn();
+                if (!c || !c.auth.currentUser) return;
+                var ref = firestoreMod.doc(c.db, 'tilo_sync_users', c.auth.currentUser.uid);
+                var parts = Array.isArray(state.parts) ? state.parts : JSON.parse(localStorage.getItem('sp_pro_parts') || '[]');
+                var settings = state.settings || JSON.parse(localStorage.getItem('sp_pro_settings') || '{}');
+                var weekly = JSON.parse(localStorage.getItem('tilo_weekly_parts') || '{}');
+                await firestoreMod.setDoc(ref, {
+                    parts: JSON.parse(JSON.stringify(parts)),
+                    settings: JSON.parse(JSON.stringify(settings)),
+                    weeklyParts: weekly,
+                    deletedIds: (window.TiloPlus.deletedIds || []).slice(-300),
+                    updatedAt: Date.now()
+                }, { merge: true });
+            }
+            function schedulePush() {
+                clearTimeout(window.TiloPlus.syncTimeout);
+                window.TiloPlus.syncTimeout = setTimeout(function () { pushNow().catch(function () {}); }, 800);
+            }
+            function applyCloud(data) {
+                if (!data) return;
+                window.TiloPlus.isSyncingFromCloud = true;
+                try {
+                    if (Array.isArray(data.deletedIds)) {
+                        window.TiloPlus.deletedIds = Array.from(new Set([].concat(window.TiloPlus.deletedIds || [], data.deletedIds)));
+                        origSetItem('tilo_deleted_ids', JSON.stringify(window.TiloPlus.deletedIds));
+                    }
+                    var local = Array.isArray(state.parts) ? state.parts : JSON.parse(localStorage.getItem('sp_pro_parts') || '[]');
+                    state.parts = mergeParts(local, data.parts || []);
+                    origSetItem('sp_pro_parts', JSON.stringify(state.parts));
+                    if (data.settings) {
+                        state.settings = Object.assign({}, state.settings, data.settings, { onboarded: true });
+                        origSetItem('sp_pro_settings', JSON.stringify(state.settings));
+                    }
+                    if (data.weeklyParts) {
+                        origSetItem('tilo_weekly_parts', JSON.stringify(data.weeklyParts));
+                        if (typeof window.TiloPlus.renderWeeklyCalendar === 'function') window.TiloPlus.renderWeeklyCalendar();
+                    }
+                } finally {
+                    window.TiloPlus.isSyncingFromCloud = false;
+                }
+            }
+            async function pullListen(user) {
+                var c = conn();
+                if (!c || !user) return;
+                var ref = firestoreMod.doc(c.db, 'tilo_sync_users', user.uid);
+                try {
+                    var snap = await firestoreMod.getDoc(ref);
+                    if (snap.exists()) applyCloud(snap.data());
+                    else await pushNow();
+                } catch (_) {}
+                if (window.TiloPlus.unsubscribeSnapshot) window.TiloPlus.unsubscribeSnapshot();
+                window.TiloPlus.unsubscribeSnapshot = firestoreMod.onSnapshot(ref, function (s) {
+                    if (s.exists()) applyCloud(s.data());
+                });
+            }
+            if (typeof state.deletePart === 'function') {
+                var orig = state.deletePart;
+                state.deletePart = function (id) {
+                    if (window.TiloPlus.deletedIds.indexOf(id) === -1) {
+                        window.TiloPlus.deletedIds.push(id);
+                        origSetItem('tilo_deleted_ids', JSON.stringify(window.TiloPlus.deletedIds));
+                    }
+                    orig(id);
+                    schedulePush();
+                };
+            }
+            window.TiloPlus.forceSyncNow = async function () {
+                var c = conn();
+                if (!c || !c.auth.currentUser) return;
+                await pullListen(c.auth.currentUser);
+                await pushNow();
+            };
+            var t = setInterval(function () {
+                var c = conn();
+                if (c && c.auth) {
+                    clearInterval(t);
+                    authMod.onAuthStateChanged(c.auth, function (u) {
+                        if (u) { state.currentUser = u; pullListen(u); }
+                    });
+                }
+            }, 700);
+        } catch (e) {
+            console.warn('Tilo cloud optional:', e);
+        }
+    }
 
-        const rightGroup = headerEl.firstElementChild;
-        const hamBtn = document.createElement('button');
+    function setupHeader(state) {
+        var headerEl = document.querySelector('main header');
+        if (!headerEl || document.getElementById('tilo-hamburger-trigger')) return;
+        var rightGroup = headerEl.firstElementChild;
+        var hamBtn = document.createElement('button');
         hamBtn.id = 'tilo-hamburger-trigger';
         hamBtn.className = 'tilo-hamburger-btn shrink-0';
-        hamBtn.innerHTML = '<i class="fas fa-bars text-lg"></i>';
-        rightGroup.insertBefore(hamBtn, rightGroup.firstChild);
-
-        const backdrop = document.createElement('div');
+        hamBtn.type = 'button';
+        hamBtn.innerHTML = '<i class="fas fa-bars"></i>';
+        if (rightGroup) rightGroup.insertBefore(hamBtn, rightGroup.firstChild);
+        var leftGroup = headerEl.lastElementChild;
+        if (leftGroup && !document.getElementById('tilo-theme-toggle-btn')) {
+            var themeBtn = document.createElement('button');
+            themeBtn.id = 'tilo-theme-toggle-btn';
+            themeBtn.type = 'button';
+            themeBtn.className = 'tilo-theme-switch-btn';
+            themeBtn.addEventListener('click', function () {
+                applyTheme(window.TiloPro.theme === 'day' ? 'night' : 'day');
+            });
+            leftGroup.insertBefore(themeBtn, leftGroup.firstChild);
+            applyTheme(window.TiloPro.theme);
+        }
+        var backdrop = document.createElement('div');
         backdrop.className = 'tilo-drawer-backdrop';
-        const drawer = document.createElement('aside');
-        drawer.className = 'tilo-drawer-panel text-right shadow-2xl';
-
-        drawer.innerHTML = `
-            <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-700/50">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-tealSoft flex items-center justify-center text-white shadow-lg"><i class="fas fa-graduation-cap text-lg"></i></div>
-                    <div>
-                        <h3 class="font-black text-sm" id="tilo-dw-name">tilo Pro</h3>
-                        <p class="text-[10px] text-tealSoft" id="tilo-dw-email">بررسی ایمیل...</p>
-                    </div>
-                </div>
-                <button id="tilo-dw-close" class="w-8 h-8 rounded-lg bg-slate-800/50 text-slate-400 hover:text-white flex items-center justify-center"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="bg-slate-900/40 border border-slate-700/50 rounded-2xl p-4 mb-4 space-y-2 text-xs">
-                <div class="flex justify-between items-center"><span class="text-slate-400">مطالعه امروز:</span><strong id="tilo-dw-study">۰</strong></div>
-                <div class="flex justify-between items-center"><span class="text-slate-400">غیردرسی:</span><strong id="tilo-dw-life" class="text-amberSoft">۰</strong></div>
-            </div>
-            <div class="space-y-1.5 flex-1" id="tilo-dw-navs"></div>
-            <div class="mt-4 pt-4 border-t border-slate-700/50">
-                <button id="tilo-dw-email-btn" class="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-bold hover:bg-indigo-500/20 transition">
-                    <i class="fas fa-shield-alt"></i> تایید ایمیل و بکاپ
-                </button>
-            </div>
-        `;
-
+        var drawer = document.createElement('aside');
+        drawer.className = 'tilo-drawer-panel text-right';
+        drawer.innerHTML = '<div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-700"><div><h3 class="font-black text-sm" id="tilo-drawer-username">tilo</h3><p class="text-[10px] text-slate-400" id="tilo-drawer-sync-label">آفلاین</p></div><button type="button" id="tilo-drawer-close" class="w-8 h-8 rounded-lg bg-slate-800 text-slate-300"><i class="fas fa-times"></i></button></div><div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-3 mb-3 space-y-1.5 text-xs"><div class="flex justify-between"><span class="text-slate-400">مطالعه امروز</span><strong id="tilo-drawer-study-time">۰</strong></div><div class="flex justify-between"><span class="text-slate-400">غیردرسی</span><strong id="tilo-drawer-nonstudy-time">۰</strong></div><div class="flex justify-between"><span class="text-slate-400">صف پارت</span><strong id="tilo-drawer-pending-badge">0</strong></div></div><button type="button" id="tilo-drawer-force-sync" class="btn-calm w-full mb-3 text-xs py-2.5 bg-slate-800 border border-slate-700">همگام‌سازی ابری (اختیاری)</button><div class="space-y-1 flex-1" id="tilo-drawer-navs"></div>';
         document.body.appendChild(backdrop);
         document.body.appendChild(drawer);
-
-        const navs = drawer.querySelector('#tilo-dw-navs');
-        const tabs = [
-            { id: 'dashboard', icon: 'fa-chart-pie text-primarySoft', title: 'داشبورد و تحلیل' },
-            { id: 'parts', icon: 'fa-layer-group text-tealSoft', title: 'مدیریت پارت‌ها' },
-            { id: 'timer', icon: 'fa-stopwatch text-amberSoft', title: 'تایمر مهندسی' },
-            { id: 'calendar', icon: 'fa-calendar-week text-sage', title: 'برنامه هفتگی' },
-            { id: 'problems', icon: 'fa-book-open text-roseSoft', title: 'دفترچه مشکلات' },
-            { id: 'calculator', icon: 'fa-percentage text-indigo-400', title: 'درصدگیر' },
-            { id: 'settings', icon: 'fa-sliders-h text-slate-400', title: 'تنظیمات اکانت' }
-        ];
-
-        tabs.forEach(t => {
-            const b = document.createElement('button');
-            b.className = 'w-full flex items-center gap-3 p-3 rounded-xl text-xs font-bold text-slate-300 hover:bg-slate-800/50 transition';
-            b.innerHTML = `<i class="fas ${t.icon} w-5 text-center"></i> <span>${t.title}</span>`;
-            b.onclick = () => { state.currentTab = t.id; closeDrawer(); };
+        var tabs = [['dashboard','داشبورد'],['parts','پارت‌ها'],['timer','تایمر'],['calendar','برنامه هفتگی'],['archive','آرشیو'],['calculator','درصدگیر'],['settings','تنظیمات']];
+        var navs = drawer.querySelector('#tilo-drawer-navs');
+        tabs.forEach(function (pair) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'w-full text-right p-2.5 rounded-xl text-xs text-slate-300 hover:bg-slate-800 mb-1';
+            b.textContent = pair[1];
+            b.addEventListener('click', function () { state.currentTab = pair[0]; close(); });
             navs.appendChild(b);
         });
-
-        function updateDrawer() {
-            document.getElementById('tilo-dw-name').textContent = state.settings.userName || 'دانش‌آموز';
-            document.getElementById('tilo-dw-email').textContent = window.TiloPro.verifiedEmail || 'بدون ایمیل تاییدشده';
-            if (state.todayStats && state.formatMinutes) {
-                document.getElementById('tilo-dw-study').textContent = state.formatMinutes(state.todayStats.totalTime || 0);
-                document.getElementById('tilo-dw-life').textContent = state.formatMinutes(state.todayStats.lifeTime || 0);
-            }
+        function open() { update(); backdrop.classList.add('open'); drawer.classList.add('open'); }
+        function close() { backdrop.classList.remove('open'); drawer.classList.remove('open'); }
+        function update() {
+            var name = (state.settings && state.settings.userName) || 'کاربر';
+            var u = document.getElementById('tilo-drawer-username');
+            if (u) u.textContent = name;
+            var st = document.getElementById('tilo-drawer-study-time');
+            var ns = document.getElementById('tilo-drawer-nonstudy-time');
+            var bd = document.getElementById('tilo-drawer-pending-badge');
+            var fmt = state.formatMinutes || function (m) { return (m || 0) + ' دقیقه'; };
+            if (st && state.todayStats) st.textContent = fmt(state.todayStats.totalTime || 0);
+            if (ns && state.todayStats) ns.textContent = fmt(state.todayStats.lifeTime || state.todayStats.nonStudyTime || 0);
+            if (bd && state.pendingParts) bd.textContent = state.pendingParts.length || 0;
         }
-
-        function openDrawer() { updateDrawer(); backdrop.classList.add('open'); drawer.classList.add('open'); }
-        function closeDrawer() { backdrop.classList.remove('open'); drawer.classList.remove('open'); }
-
-        hamBtn.addEventListener('click', openDrawer);
-        backdrop.addEventListener('click', closeDrawer);
-        document.getElementById('tilo-dw-close').addEventListener('click', closeDrawer);
-        document.getElementById('tilo-dw-email-btn').addEventListener('click', () => { closeDrawer(); window.TiloPro.openEmailModal(); });
+        hamBtn.addEventListener('click', open);
+        backdrop.addEventListener('click', close);
+        document.getElementById('tilo-drawer-close').addEventListener('click', close);
+        document.getElementById('tilo-drawer-force-sync').addEventListener('click', async function () {
+            if (window.TiloPlus.forceSyncNow) await window.TiloPlus.forceSyncNow();
+            update();
+        });
     }
 
-    // ۳. سیستم ایمیل OTP و Vault اختصاصی
-    function buildEmailOtpSystem(state) {
-        if (document.getElementById('tilo-email-otp-modal')) return;
-
-        const modal = document.createElement('div');
-        modal.id = 'tilo-email-otp-modal';
-        modal.className = 'fixed inset-0 z-[100100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 hidden';
-        modal.innerHTML = `
-            <div class="soft-card w-full max-w-md rounded-3xl p-6 md:p-8 border border-slate-700 shadow-2xl space-y-5 text-right">
-                <div class="flex justify-between items-center border-b border-slate-700/50 pb-3">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center"><i class="fas fa-envelope-shield text-lg"></i></div>
-                        <div>
-                            <h3 class="font-black text-white text-sm">حساب ایمیل اختصاصی</h3>
-                            <p class="text-[10px] text-slate-400">ذخیره امن داده‌ها روی ایمیل شما</p>
-                        </div>
-                    </div>
-                    <button type="button" id="tilo-em-close" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
-                </div>
-                
-                <div id="tilo-em-status" class="hidden bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-xl flex justify-between items-center">
-                    <div>
-                        <span class="text-[10px] text-emerald-400 font-bold block">ایمیل فعال شما:</span>
-                        <strong id="tilo-em-addr" class="text-xs text-white" dir="ltr"></strong>
-                    </div>
-                    <button id="tilo-em-change" class="text-[11px] text-rose-400 font-bold hover:underline">تغییر</button>
-                </div>
-
-                <div id="tilo-em-step1" class="space-y-4">
-                    <div>
-                        <label class="block text-xs text-slate-300 mb-1.5 font-bold">آدرس ایمیل:</label>
-                        <input type="email" id="tilo-em-input" dir="ltr" placeholder="you@email.com" class="input-calm text-center text-sm font-mono font-bold">
-                    </div>
-                    <button id="tilo-em-send" class="btn-calm bg-primary text-white text-xs w-full py-3.5"><i class="fas fa-paper-plane"></i> ارسال کد تایید ۶ رقمی</button>
-                </div>
-
-                <div id="tilo-em-step2" class="space-y-4 hidden">
-                    <div class="bg-slate-900/50 p-3 rounded-xl border border-slate-700 text-center">
-                        <span class="text-[11px] text-slate-400">کد تایید (تستی) شما:</span>
-                        <strong id="tilo-em-fake-code" class="text-lg text-amber-400 font-mono tracking-widest block mt-1"></strong>
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-300 mb-1.5 font-bold">کد را وارد کنید:</label>
-                        <input type="text" id="tilo-em-code" maxlength="6" dir="ltr" class="input-calm text-center text-lg font-mono font-black tracking-widest">
-                    </div>
-                    <div class="flex gap-2">
-                        <button id="tilo-em-verify" class="btn-calm bg-emerald-600 text-white text-xs py-3.5 flex-1 font-bold"><i class="fas fa-check"></i> تایید و ورود</button>
-                        <button id="tilo-em-back" class="btn-calm bg-slate-800 text-slate-300 text-xs py-3.5 px-4"><i class="fas fa-arrow-right"></i></button>
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-
-        window.TiloPro.openEmailModal = () => {
-            if (window.TiloPro.verifiedEmail) {
-                document.getElementById('tilo-em-status').classList.remove('hidden');
-                document.getElementById('tilo-em-addr').textContent = window.TiloPro.verifiedEmail;
-                document.getElementById('tilo-em-input').value = window.TiloPro.verifiedEmail;
-            } else {
-                document.getElementById('tilo-em-status').classList.add('hidden');
-            }
-            document.getElementById('tilo-em-step1').classList.remove('hidden');
-            document.getElementById('tilo-em-step2').classList.add('hidden');
-            modal.classList.remove('hidden');
-        };
-
-        document.getElementById('tilo-em-close').onclick = () => modal.classList.add('hidden');
-        document.getElementById('tilo-em-change').onclick = () => { document.getElementById('tilo-em-input').value = ''; document.getElementById('tilo-em-input').focus(); };
-        document.getElementById('tilo-em-back').onclick = () => { document.getElementById('tilo-em-step2').classList.add('hidden'); document.getElementById('tilo-em-step1').classList.remove('hidden'); };
-
-        document.getElementById('tilo-em-send').onclick = () => {
-            const email = document.getElementById('tilo-em-input').value.trim().toLowerCase();
-            if (!email.includes('@') || !email.includes('.')) return alert('ایمیل نامعتبر است.');
-            window.TiloPro.pendingEmail = email;
-            window.TiloPro.generatedCode = String(Math.floor(100000 + Math.random() * 900000));
-            document.getElementById('tilo-em-fake-code').textContent = window.TiloPro.generatedCode;
-            document.getElementById('tilo-em-code').value = '';
-            document.getElementById('tilo-em-step1').classList.add('hidden');
-            document.getElementById('tilo-em-step2').classList.remove('hidden');
-        };
-
-        document.getElementById('tilo-em-verify').onclick = () => {
-            const val = document.getElementById('tilo-em-code').value.trim();
-            if (val !== window.TiloPro.generatedCode) return alert('کد اشتباه است.');
-            window.TiloPro.verifiedEmail = window.TiloPro.pendingEmail;
-            localStorage.setItem('tilo_verified_email', window.TiloPro.verifiedEmail);
-            syncVault();
-            modal.classList.add('hidden');
-            alert('ایمیل با موفقیت تایید شد و اطلاعات شما محفوظ است.');
-        };
-
-        function syncVault() {
-            if (!window.TiloPro.verifiedEmail) return;
-            const key = `tilo_vault_${window.TiloPro.verifiedEmail.replace(/[^a-z0-9]/g, '')}`;
-            const vaultStr = localStorage.getItem(key);
-            if (vaultStr) {
-                try {
-                    const vault = JSON.parse(vaultStr);
-                    if (vault.parts && vault.parts.length) {
-                        const map = new Map();
-                        (state.parts || []).forEach(p => map.set(p.id, p));
-                        vault.parts.forEach(p => map.set(p.id, p));
-                        state.parts = Array.from(map.values()).sort((a,b) => b.id - a.id);
-                        localStorage.setItem('sp_pro_parts', JSON.stringify(state.parts));
-                    }
-                } catch(e){}
-            }
-            setInterval(() => {
-                localStorage.setItem(key, JSON.stringify({ parts: state.parts, settings: state.settings, weekly: localStorage.getItem('tilo_weekly_parts') }));
-            }, 5000);
-        }
-        if (window.TiloPro.verifiedEmail) syncVault();
-    }
-
-    // ۴. قابلیت ویرایش متن و توضیحات در کارت‌های در انتظار (Pending Notes UI)
-    function injectPendingNotesUI(state) {
-        setInterval(() => {
-            if (!Array.isArray(state.pendingParts)) return;
-            const cards = document.querySelectorAll('main .bg-slate-900\\/75, main .bg-slate-900\\/70');
-            cards.forEach(card => {
-                const titleEl = card.querySelector('h4.font-bold, p.font-bold.text-sm');
-                if (!titleEl) return;
-                const part = state.pendingParts.find(p => p.topic === titleEl.textContent.trim());
-                if (!part) return;
-
-                let btnBox = card.querySelector('.tilo-quick-note-btn');
-                if (!btnBox) {
-                    btnBox = document.createElement('button');
-                    btnBox.className = 'tilo-quick-note-btn text-[10px] text-tealSoft hover:underline font-bold mt-1 block';
-                    titleEl.parentElement.appendChild(btnBox);
-                    btnBox.onclick = (e) => {
-                        e.stopPropagation();
-                        const note = prompt('توضیحات یا یادداشت این پارت:', part.description || '');
-                        if (note !== null) {
-                            part.description = note.trim();
-                            localStorage.setItem('sp_pro_parts', JSON.stringify(state.parts));
-                        }
-                    };
+    function setupTimerExtras(state) {
+        var mainEl = document.querySelector('main');
+        if (!mainEl) return;
+        function tryBuild() {
+            var divs = Array.from(mainEl.children).filter(function (el) { return el.tagName === 'DIV' && !el.classList.contains('fixed'); });
+            var timerTab = divs.filter(function (d) { return d.innerHTML.indexOf('تایمر') !== -1; })[0] || divs[2];
+            if (!timerTab || document.getElementById('tilo-timer-pro-extension')) return;
+            var card = timerTab.querySelector('.soft-card');
+            if (card) card.classList.add('tilo-timer-pro-card');
+            var wrap = document.createElement('div');
+            wrap.id = 'tilo-timer-pro-extension';
+            wrap.className = 'space-y-4 mt-4';
+            wrap.innerHTML = '<div class="soft-card p-4 rounded-2xl space-y-2"><div class="flex justify-between items-center"><span class="text-xs font-bold">صف پارت‌های آماده</span><span id="tilo-timer-queue-count" class="text-[10px] text-slate-400">0</span></div><div id="tilo-timer-quick-queue" class="tilo-part-pick-list space-y-1"></div></div><div class="tilo-timer-spacer"></div>';
+            timerTab.appendChild(wrap);
+            setInterval(function () {
+                var box = document.getElementById('tilo-timer-quick-queue');
+                var cnt = document.getElementById('tilo-timer-queue-count');
+                if (!box || !Array.isArray(state.pendingParts)) return;
+                if (cnt) cnt.textContent = state.pendingParts.length + ' پارت';
+                var sig = state.pendingParts.map(function (p) { return p.id; }).join(',');
+                if (box.getAttribute('data-sig') === sig) return;
+                box.setAttribute('data-sig', sig);
+                if (!state.pendingParts.length) {
+                    box.innerHTML = '<p class="text-[11px] text-slate-500 text-center py-3">صف خالی است</p>';
+                    return;
                 }
-                btnBox.innerHTML = part.description ? `<i class="fas fa-pen"></i> ویرایش متن نوشته شده` : `<i class="fas fa-plus"></i> افزودن یادداشت / جزئیات`;
-            });
-        }, 1000);
+                box.innerHTML = state.pendingParts.map(function (p) {
+                    var sub = (p.subjects && p.subjects[0]) || (p.isLife || p.isNonStudy ? 'غیردرسی' : 'پارت');
+                    return '<button type="button" data-pid="' + p.id + '" class="tilo-part-option tilo-break text-xs w-full"><span class="font-bold block">' + sub + '</span><span class="text-slate-400 block">' + (p.topic || '') + ' · ' + (p.plannedTime || 60) + ' دقیقه</span></button>';
+                }).join('');
+                box.querySelectorAll('[data-pid]').forEach(function (b) {
+                    b.addEventListener('click', function () {
+                        var id = Number(b.getAttribute('data-pid'));
+                        var found = state.pendingParts.filter(function (x) { return x.id === id; })[0];
+                        if (found && state.selectPartAndGoToTimer) state.selectPartAndGoToTimer(found);
+                    });
+                });
+            }, 800);
+        }
+        setTimeout(tryBuild, 400);
+        setTimeout(tryBuild, 1200);
     }
 
-    // ۵. فرم پیشرفته برنامه هفتگی (مشابه پارت‌ها)
-    function buildWeeklyPlannerPro(state) {
-        const calTab = document.querySelector('div[v-show="currentTab === \'calendar\'"]');
-        if (!calTab) return;
-
-        const days = [{ id: 'sat', name: 'شنبه' }, { id: 'sun', name: 'یکشنبه' }, { id: 'mon', name: 'دوشنبه' }, { id: 'tue', name: 'سه‌شنبه' }, { id: 'wed', name: 'چهارشنبه' }, { id: 'thu', name: 'پنج‌شنبه' }, { id: 'fri', name: 'جمعه' }];
-        let activeDay = 'sat';
-        let isNonStudy = false;
-        let selectedSubs = [];
-
-        function getStore() { try { return JSON.parse(localStorage.getItem('tilo_weekly_parts') || '{}'); } catch(e) { return {}; } }
-        function saveStore(obj) { localStorage.setItem('tilo_weekly_parts', JSON.stringify(obj)); }
-
-        const wrapper = document.createElement('div');
-        wrapper.className = 'space-y-5 pt-2';
-        calTab.innerHTML = '';
-        calTab.appendChild(wrapper);
-
-        function render() {
-            const data = getStore();
-            const dayObj = days.find(d => d.id === activeDay);
-            const groups = state.subjectGroups || [];
-
-            const daysHtml = days.map(d => {
-                const count = (data[d.id] || []).length;
-                const on = d.id === activeDay;
-                return `<button type="button" data-wk-day="${d.id}" class="p-2.5 flex flex-col items-center justify-center rounded-xl border text-xs transition ${on ? 'bg-primary text-white border-primary font-black shadow-lg' : 'bg-slate-900/60 border-slate-700/50 text-slate-400 hover:bg-slate-800'}"><span>${d.name}</span><span class="text-[10px] ${on ? 'text-indigo-200' : 'text-slate-500'} mt-0.5">${count} پارت</span></button>`;
-            }).join('');
-
-            const subsHtml = groups.map(g => `
-                <div class="mb-2">
-                    <div class="text-[10px] font-bold text-tealSoft bg-slate-900 px-2 py-1 rounded mb-1">${g.category}</div>
-                    <div class="flex flex-wrap gap-1">
-                        ${g.items.map(sub => {
-                            const on = selectedSubs.includes(sub);
-                            return `<label class="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-[11px] cursor-pointer transition ${on ? 'border-primarySoft bg-primary/20 text-white' : 'border-slate-700 text-slate-300 hover:bg-slate-800'}"><input type="checkbox" value="${sub}" class="tilo-wk-cb hidden" ${on ? 'checked' : ''}><span>${sub}</span></label>`;
-                        }).join('')}
-                    </div>
-                </div>
-            `).join('');
-
-            const listData = data[activeDay] || [];
-            const listHtml = listData.length === 0 ? `<p class="text-xs text-slate-500 text-center py-6 border border-dashed border-slate-700/50 rounded-xl">پارتی برای این روز ثبت نشده.</p>` : listData.map((p, idx) => `
-                <div class="bg-slate-900/60 p-3.5 rounded-xl border border-slate-700/50 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-                    <div class="space-y-1">
-                        <div class="flex flex-wrap gap-1">
-                            ${p.isNonStudy ? '<span class="text-[10px] bg-amberSoft/20 text-amberSoft px-2 py-0.5 rounded font-bold">☕ کار شخصی</span>' : (p.subjects||[]).map(s => `<span class="text-[10px] bg-primary/20 text-indigo-300 px-2 py-0.5 rounded font-bold">${s}</span>`).join('')}
-                        </div>
-                        <h5 class="font-bold text-sm text-white">${p.topic}</h5>
-                        ${p.description ? `<p class="text-[11px] text-slate-400 tilo-break"><i class="fas fa-align-right text-tealSoft ml-1"></i>${p.description}</p>` : ''}
-                        <p class="text-[11px] text-tealSoft font-bold">${p.plannedTime} دقیقه</p>
-                    </div>
-                    <div class="flex gap-1.5 shrink-0 justify-end">
-                        <button type="button" data-wk-send="${idx}" class="btn-calm bg-tealSoft/15 text-tealSoft text-[11px] py-1.5 px-2">ارسال به امروز</button>
-                        <button type="button" data-wk-del="${idx}" class="text-roseSoft p-1.5 hover:bg-rose-500/10 rounded"><i class="fas fa-trash"></i></button>
-                    </div>
-                </div>
-            `).join('');
-
-            wrapper.innerHTML = `
-                <div class="soft-card p-5 rounded-3xl space-y-4">
-                    <div>
-                        <h3 class="font-black text-white text-base flex items-center gap-2"><i class="fas fa-calendar-alt text-sage"></i> برنامه‌ریز جامع هفتگی</h3>
-                        <p class="text-[11px] text-slate-400 mt-1">روز را انتخاب کن و پارت‌ها را دقیق تنظیم کن.</p>
-                    </div>
-                    <div class="grid grid-cols-3 sm:grid-cols-7 gap-1.5">${daysHtml}</div>
-                </div>
-                
-                <div class="soft-card p-5 rounded-3xl space-y-4 border border-primary/20">
-                    <div class="flex justify-between items-center border-b border-slate-700/50 pb-3">
-                        <h4 class="font-bold text-sm text-white">افزودن پارت به ${dayObj.name}</h4>
-                        <div class="flex gap-1 bg-slate-900 p-1 rounded-xl">
-                            <button id="tilo-wk-study-btn" class="px-3 py-1 rounded-lg text-xs font-bold transition ${!isNonStudy ? 'bg-primary text-white shadow' : 'text-slate-400'}">درسی</button>
-                            <button id="tilo-wk-life-btn" class="px-3 py-1 rounded-lg text-xs font-bold transition ${isNonStudy ? 'bg-amberSoft text-slate-950 shadow' : 'text-slate-400'}">غیردرسی</button>
-                        </div>
-                    </div>
-                    <div id="tilo-wk-subs-box" class="${isNonStudy ? 'hidden' : ''} max-h-48 overflow-y-auto">${subsHtml}</div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <input type="text" id="tilo-wk-topic" class="input-calm text-xs" placeholder="${isNonStudy ? 'عنوان تسک (مثلاً: ورزش)' : 'مبحث (مثلاً: تست مشتق)'}">
-                        <div class="flex items-center gap-1 bg-[#13161c] border border-slate-700/50 rounded-xl px-2">
-                            <span class="text-[11px] text-slate-400 shrink-0">هدف:</span>
-                            <input type="number" id="tilo-wk-time" value="60" min="5" class="bg-transparent w-full text-center text-xs font-bold text-tealSoft outline-none">
-                            <span class="text-[10px] text-slate-500 shrink-0">دقیقه</span>
-                        </div>
-                        <input type="text" id="tilo-wk-desc" class="input-calm text-xs sm:col-span-2" placeholder="توضیحات، منبع تست یا یادداشت...">
-                    </div>
-                    <button id="tilo-wk-save-btn" class="btn-calm bg-primary text-white text-xs w-full py-3 shadow-md shadow-primary/20"><i class="fas fa-calendar-plus"></i> ذخیره در ${dayObj.name}</button>
-                </div>
-
-                <div class="soft-card p-5 rounded-3xl space-y-3">
-                    <h4 class="font-bold text-white text-sm border-b border-slate-700/50 pb-2">لیست پارت‌های ${dayObj.name}</h4>
-                    <div class="space-y-2">${listHtml}</div>
-                </div>
-            `;
-
-            // رویدادها
-            wrapper.querySelectorAll('[data-wk-day]').forEach(b => { b.onclick = () => { activeDay = b.getAttribute('data-wk-day'); render(); }; });
-            wrapper.querySelector('#tilo-wk-study-btn').onclick = () => { isNonStudy = false; render(); };
-            wrapper.querySelector('#tilo-wk-life-btn').onclick = () => { isNonStudy = true; selectedSubs = []; render(); };
-            wrapper.querySelectorAll('.tilo-wk-cb').forEach(cb => {
-                cb.onchange = () => {
-                    if (cb.checked) { if (!selectedSubs.includes(cb.value)) selectedSubs.push(cb.value); }
-                    else selectedSubs = selectedSubs.filter(x => x !== cb.value);
+    function setupWeekly(state) {
+        var days = [
+            { id: 'sat', name: 'شنبه' }, { id: 'sun', name: 'یکشنبه' }, { id: 'mon', name: 'دوشنبه' },
+            { id: 'tue', name: 'سه‌شنبه' }, { id: 'wed', name: 'چهارشنبه' }, { id: 'thu', name: 'پنج‌شنبه' },
+            { id: 'fri', name: 'جمعه' }
+        ];
+        var activeDay = 'sat';
+        var isNonStudy = false;
+        var subjects = [];
+        function storage() {
+            try { return JSON.parse(localStorage.getItem('tilo_weekly_parts') || '{}'); } catch (_) { return {}; }
+        }
+        function save(obj) { localStorage.setItem('tilo_weekly_parts', JSON.stringify(obj)); }
+        function subjectGroups() {
+            return state.subjectGroups || [{ category: 'عمومی', items: ['فارسی', 'عربی', 'دین و زندگی', 'زبان انگلیسی'] }];
+        }
+        function pushToToday(item, goTimer) {
+            if (!Array.isArray(state.parts)) return;
+            var part = {
+                id: Date.now(), dateISO: todayISO(), dateStr: todayFa(),
+                isLife: !!item.isNonStudy, isNonStudy: !!item.isNonStudy,
+                subjects: item.isNonStudy ? [] : (item.subjects || (item.subject ? [item.subject] : [])),
+                topic: item.topic, description: item.description || '',
+                type: item.type || (item.isNonStudy ? 'غیردرسی' : 'آموزشی / مطالعاتی'),
+                plannedTime: item.plannedTime || 60, realTime: 0, status: 'pending',
+                tests: { correct: 0, wrong: 0, unanswered: 0, total: 0 }, updatedAt: Date.now()
+            };
+            state.parts.unshift(part);
+            localStorage.setItem('sp_pro_parts', JSON.stringify(state.parts));
+            if (goTimer && state.selectPartAndGoToTimer) state.selectPartAndGoToTimer(part);
+            else state.currentTab = 'parts';
+        }
+        function tryBuild() {
+            var mainEl = document.querySelector('main');
+            if (!mainEl) return;
+            var divs = Array.from(mainEl.children).filter(function (el) { return el.tagName === 'DIV' && !el.classList.contains('fixed'); });
+            var calTab = divs.filter(function (d) { return d.innerHTML.indexOf('برنامه هفتگی') !== -1 || d.innerHTML.indexOf('تقویم') !== -1; })[0] || divs[3];
+            if (!calTab || document.getElementById('tilo-calendar-pro-extension')) return;
+            var box = document.createElement('div');
+            box.id = 'tilo-calendar-pro-extension';
+            box.className = 'space-y-4 mt-3';
+            calTab.innerHTML = '';
+            calTab.appendChild(box);
+            function render() {
+                var data = storage();
+                var dayObj = days.filter(function (d) { return d.id === activeDay; })[0] || days[0];
+                var groups = subjectGroups();
+                var daysHtml = days.map(function (d) {
+                    var n = (data[d.id] || []).length;
+                    var on = d.id === activeDay;
+                    return '<button type="button" data-d="' + d.id + '" class="p-2 rounded-xl text-[11px] border ' + (on ? 'bg-primary text-white border-primary' : 'bg-slate-900/60 border-slate-800') + '">' + d.name + '<br><span class="text-[10px] opacity-80">' + n + '</span></button>';
+                }).join('');
+                var subsHtml = '';
+                if (!isNonStudy) {
+                    subsHtml = groups.map(function (g) {
+                        return '<div><div class="text-[10px] font-bold text-slate-400 mb-1">' + g.category + '</div><div class="flex flex-wrap gap-1">' +
+                            (g.items || []).map(function (it) {
+                                var on = subjects.indexOf(it) !== -1;
+                                return '<label class="inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] cursor-pointer ' + (on ? 'border-indigo-400 bg-indigo-500/15' : 'border-slate-700') + '"><input type="checkbox" value="' + it.replace(/"/g, '') + '" ' + (on ? 'checked' : '') + ' class="tilo-w-cb"> ' + it + '</label>';
+                            }).join('') + '</div></div>';
+                    }).join('');
+                }
+                var dayParts = data[activeDay] || [];
+                var listHtml = !dayParts.length
+                    ? '<p class="text-[11px] text-slate-500 text-center py-4">خالی است</p>'
+                    : dayParts.map(function (p, idx) {
+                        return '<div class="p-3 rounded-xl border border-slate-800 bg-slate-900/50 tilo-break text-xs space-y-1"><div class="font-bold">' + (p.topic || '') + '</div><div class="text-slate-400">' + (p.isNonStudy ? 'غیردرسی' : (p.subjects || []).join('، ')) + ' · ' + (p.plannedTime || 60) + ' دقیقه</div><div class="flex flex-wrap gap-1.5 pt-1"><button type="button" data-q="' + idx + '" class="btn-calm bg-teal-700/30 text-teal-200 text-[11px] py-1 px-2">ارسال به امروز</button><button type="button" data-t="' + idx + '" class="btn-calm bg-primary text-white text-[11px] py-1 px-2">تایمر</button><button type="button" data-x="' + idx + '" class="text-rose-400 text-[11px] px-2">حذف</button></div></div>';
+                    }).join('');
+                box.innerHTML = '<div class="soft-card p-4 rounded-2xl space-y-3"><h3 class="text-sm font-extrabold">برنامه هفتگی</h3><p class="text-[11px] text-slate-400">روز را انتخاب کن. «ارسال به امروز» بدون پیام، مستقیم به پارت‌ها می‌رود و عدد صف پایین به‌روز می‌شود.</p><div class="grid grid-cols-3 sm:grid-cols-7 gap-1.5" id="tilo-week-days">' + daysHtml + '</div></div><div class="soft-card p-4 rounded-2xl space-y-3"><div class="text-xs font-bold">افزودن برای «' + dayObj.name + '»</div><div class="flex gap-2"><button type="button" id="tilo-w-study" class="btn-calm text-xs py-1.5 px-3 ' + (!isNonStudy ? 'bg-primary text-white' : 'bg-slate-800') + '">درسی</button><button type="button" id="tilo-w-life" class="btn-calm text-xs py-1.5 px-3 ' + (isNonStudy ? 'bg-amber-500/80 text-slate-900' : 'bg-slate-800') + '">غیردرسی</button></div><div id="tilo-w-subs" class="' + (isNonStudy ? 'hidden' : '') + ' max-h-40 overflow-y-auto text-xs space-y-2">' + subsHtml + '</div><input id="tilo-w-topic" class="input-calm text-xs" placeholder="عنوان مبحث / فعالیت"><input id="tilo-w-desc" class="input-calm text-xs" placeholder="توضیح اختیاری"><input id="tilo-w-time" type="number" value="60" min="5" class="input-calm text-xs text-center font-bold"><div class="flex flex-wrap gap-2"><button type="button" id="tilo-w-save" class="btn-calm bg-primary text-white text-xs py-2 px-3 flex-1">ذخیره در ' + dayObj.name + '</button><button type="button" id="tilo-w-today" class="btn-calm bg-slate-800 text-xs py-2 px-3">+ صف امروز</button></div></div><div class="soft-card p-4 rounded-2xl space-y-2"><div class="text-xs font-bold">پارت‌های ' + dayObj.name + '</div><div id="tilo-w-list" class="space-y-2">' + listHtml + '</div></div>';
+                box.querySelector('#tilo-week-days').querySelectorAll('[data-d]').forEach(function (b) {
+                    b.addEventListener('click', function () { activeDay = b.getAttribute('data-d'); render(); });
+                });
+                box.querySelector('#tilo-w-study').onclick = function () { isNonStudy = false; render(); };
+                box.querySelector('#tilo-w-life').onclick = function () { isNonStudy = true; subjects = []; render(); };
+                box.querySelectorAll('.tilo-w-cb').forEach(function (cb) {
+                    cb.addEventListener('change', function () {
+                        var v = cb.value;
+                        if (cb.checked) { if (subjects.indexOf(v) === -1) subjects.push(v); }
+                        else subjects = subjects.filter(function (x) { return x !== v; });
+                    });
+                });
+                function collectItem() {
+                    var topic = (box.querySelector('#tilo-w-topic').value || '').trim();
+                    var description = (box.querySelector('#tilo-w-desc').value || '').trim();
+                    var plannedTime = parseInt(box.querySelector('#tilo-w-time').value, 10) || 60;
+                    if (!isNonStudy && !subjects.length) { window.alert('حداقل یک درس انتخاب کن.'); return null; }
+                    if (!topic) { window.alert('عنوان را بنویس.'); return null; }
+                    return { id: Date.now(), isNonStudy: isNonStudy, subjects: isNonStudy ? [] : subjects.slice(), subject: subjects.join('، '), topic: topic, description: description, plannedTime: plannedTime, type: isNonStudy ? 'غیردرسی' : 'آموزشی / مطالعاتی' };
+                }
+                box.querySelector('#tilo-w-save').onclick = function () {
+                    var item = collectItem();
+                    if (!item) return;
+                    var data2 = storage();
+                    if (!data2[activeDay]) data2[activeDay] = [];
+                    data2[activeDay].unshift(item);
+                    save(data2);
+                    subjects = [];
                     render();
                 };
-            });
-
-            wrapper.querySelector('#tilo-wk-save-btn').onclick = () => {
-                const topic = document.getElementById('tilo-wk-topic').value.trim();
-                const desc = document.getElementById('tilo-wk-desc').value.trim();
-                const time = parseInt(document.getElementById('tilo-wk-time').value, 10) || 60;
-                if (!isNonStudy && !selectedSubs.length) return alert('یک درس انتخاب کن.');
-                if (!topic) return alert('عنوان مبحث اجباری است.');
-
-                const data2 = getStore();
-                if (!data2[activeDay]) data2[activeDay] = [];
-                data2[activeDay].push({ id: Date.now(), isNonStudy, subjects: [...selectedSubs], topic, description: desc, plannedTime: time, type: isNonStudy ? 'غیردرسی' : 'مطالعاتی' });
-                saveStore(data2);
-                selectedSubs = [];
-                render();
-            };
-
-            wrapper.querySelectorAll('[data-wk-send]').forEach(b => {
-                b.onclick = () => {
-                    const idx = Number(b.getAttribute('data-wk-send'));
-                    const item = listData[idx];
+                box.querySelector('#tilo-w-today').onclick = function () {
+                    var item = collectItem();
                     if (!item) return;
-                    if (Array.isArray(state.parts)) {
-                        state.parts.unshift({
-                            id: Date.now(), dateISO: new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tehran' }).format(new Date()), dateStr: new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran' }).format(new Date()),
-                            isNonStudy: item.isNonStudy, isLife: item.isNonStudy, subjects: [...item.subjects], topic: item.topic, description: item.description, type: item.type, plannedTime: item.plannedTime, realTime: 0, status: 'pending', tests: { correct: 0, wrong: 0, unanswered: 0, total: 0 }
-                        });
-                        localStorage.setItem('sp_pro_parts', JSON.stringify(state.parts));
-                        alert('پارت به صف امروز اضافه شد.');
-                    }
+                    var data2 = storage();
+                    if (!data2[activeDay]) data2[activeDay] = [];
+                    data2[activeDay].unshift(item);
+                    save(data2);
+                    pushToToday(item, false);
+                    subjects = [];
+                    render();
                 };
-            });
-            wrapper.querySelectorAll('[data-wk-del]').forEach(b => {
-                b.onclick = () => { listData.splice(Number(b.getAttribute('data-wk-del')), 1); saveStore(data); render(); };
-            });
-        }
-        window.TiloPlus.renderWeeklyCalendar = render;
-        render();
-    }
-
-    // ۶. گروه‌بندی روزانه + خروجی PDF در آرشیو/پارت‌ها
-    function buildGroupedDailyArchive(state) {
-        setInterval(() => {
-            const partsTab = document.querySelector('div[v-show="currentTab === \'parts\'"]');
-            if (!partsTab) return;
-            
-            let targetBox = document.getElementById('tilo-daily-groups-box');
-            if (!targetBox) {
-                targetBox = document.createElement('div');
-                targetBox.id = 'tilo-daily-groups-box';
-                targetBox.className = 'space-y-4 pt-4';
-                partsTab.appendChild(targetBox);
-            }
-
-            const completed = (state.parts || []).filter(p => p.status === 'completed').sort((a, b) => b.completedAt - a.completedAt);
-            const map = new Map();
-            completed.forEach(p => {
-                const k = p.dateISO || p.dateStr || 'unknown';
-                if (!map.has(k)) map.set(k, []);
-                map.get(k).push(p);
-            });
-            const keys = Array.from(map.keys()).sort((a, b) => b.localeCompare(a));
-            
-            const sig = keys.join(',') + completed.length;
-            if (targetBox.getAttribute('data-sig') === sig) return;
-            targetBox.setAttribute('data-sig', sig);
-
-            const name = state.settings.userName || 'دانش‌آموز';
-
-            let html = `
-                <div class="soft-card p-5 rounded-3xl space-y-4 border border-sage/20">
-                    <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-700/50 pb-3">
-                        <div>
-                            <h3 class="font-extrabold text-white text-sm md:text-base flex items-center gap-2"><i class="fas fa-calendar-day text-sage"></i> آرشیو روزانه و گزارش کار</h3>
-                            <p class="text-[10px] text-slate-400 mt-1">با کلیک روی نام هر روز، پارت‌های آن را جمع (باز و بسته) کنید.</p>
-                        </div>
-                        <button type="button" id="tilo-pdf-export-btn" class="btn-calm bg-gradient-to-r from-primary to-tealSoft text-slate-950 font-black text-xs py-2 px-4 shadow-lg shadow-tealSoft/20">
-                            <i class="fas fa-file-pdf"></i> خروجی PDF
-                        </button>
-                    </div>
-            `;
-
-            if (keys.length === 0) {
-                html += `<div class="text-center py-6 text-slate-500 text-xs">هیچ پارتی تکمیل نشده است.</div></div>`;
-                targetBox.innerHTML = html;
-                return;
-            }
-
-            html += `<div class="space-y-3">`;
-            keys.forEach(k => {
-                const items = map.get(k);
-                const dtStr = items[0].dateStr || k;
-                const totalMin = items.reduce((acc, p) => acc + Number(p.realTime || 0), 0);
-                const isCollapsed = !!window.TiloPro.collapsedDays[k];
-
-                html += `
-                    <div class="rounded-2xl border border-slate-700/60 overflow-hidden bg-slate-900/30">
-                        <div data-toggle-day="${k}" class="cursor-pointer p-3.5 bg-slate-800/40 hover:bg-slate-800/60 transition flex justify-between items-center">
-                            <div class="flex items-center gap-3">
-                                <span class="tilo-collapse-chevron text-tealSoft ${isCollapsed ? 'is-closed' : 'is-open'}">«</span>
-                                <div>
-                                    <h4 class="font-bold text-white text-sm">${dtStr}</h4>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">${items.length} پارت · مجموع: <strong class="text-sage">${totalMin} دقیقه</strong></p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="tilo-day-group-body ${isCollapsed ? 'collapsed' : ''} p-3 space-y-2 border-t border-slate-700/50">
-                            ${items.map(p => `
-                                <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 flex flex-col sm:flex-row justify-between sm:items-center gap-2 text-xs">
-                                    <div>
-                                        <div class="flex flex-wrap gap-1 mb-1">
-                                            ${p.isNonStudy || p.isLife ? '<span class="text-[10px] text-amberSoft bg-amberSoft/10 px-2 py-0.5 rounded font-bold">☕ غیردرسی</span>' : (p.subjects||[]).map(s => `<span class="text-[10px] text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded font-bold">${s}</span>`).join('')}
-                                        </div>
-                                        <span class="font-bold text-white">${p.topic || 'بدون عنوان'}</span>
-                                        ${p.description ? `<p class="text-slate-400 mt-1">${p.description}</p>` : ''}
-                                    </div>
-                                    <div class="font-black text-sage shrink-0">${p.realTime} دقیقه</div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-            });
-            html += `</div></div>`;
-            targetBox.innerHTML = html;
-
-            targetBox.querySelectorAll('[data-toggle-day]').forEach(btn => {
-                btn.onclick = () => {
-                    const day = btn.getAttribute('data-toggle-day');
-                    window.TiloPro.collapsedDays[day] = !window.TiloPro.collapsedDays[day];
-                    localStorage.setItem('tilo_collapsed_days', JSON.stringify(window.TiloPro.collapsedDays));
-                    targetBox.removeAttribute('data-sig'); // Force re-render
-                };
-            });
-
-            const pdfBtn = targetBox.querySelector('#tilo-pdf-export-btn');
-            if (pdfBtn) {
-                pdfBtn.onclick = () => {
-                    const content = `
-                        <div dir="rtl" style="font-family: Tahoma, Vazirmatn, sans-serif; padding: 20px; color: #111;">
-                            <div style="border-bottom: 2px solid #4f46e5; padding-bottom: 10px; margin-bottom: 20px;">
-                                <h2 style="margin:0; color:#1e293b;">گزارش کار و عملکرد روزانه</h2>
-                                <p style="margin:5px 0 0 0; color:#475569; font-size:12px;">نام دانش‌آموز: <strong>${name}</strong> | تاریخ تهیه گزارش: ${new Intl.DateTimeFormat('fa-IR').format(new Date())}</p>
-                            </div>
-                            <table style="width:100%; border-collapse: collapse; font-size: 12px; text-align: right;">
-                                <thead>
-                                    <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1;">
-                                        <th style="padding:10px;">تاریخ</th>
-                                        <th style="padding:10px;">درس / نوع</th>
-                                        <th style="padding:10px;">مبحث و توضیحات</th>
-                                        <th style="padding:10px;">زمان مطالعه</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${completed.slice(0, 150).map(p => `
-                                        <tr style="border-bottom:1px solid #e2e8f0;">
-                                            <td style="padding:10px;">${p.dateStr || ''}</td>
-                                            <td style="padding:10px; font-weight:bold; color:${p.isNonStudy ? '#b45309' : '#3730a3'};">${p.isNonStudy || p.isLife ? '☕ غیردرسی' : (p.subjects||[]).join('، ')}</td>
-                                            <td style="padding:10px;">${p.topic} ${p.description ? '<br><span style="color:#64748b;font-size:10px;">'+p.description+'</span>' : ''}</td>
-                                            <td style="padding:10px; color:#047857; font-weight:bold;">${p.realTime} دقیقه</td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    `;
-                    const w = window.open('', '_blank', 'width=800,height=900');
-                    if (w) {
-                        w.document.write(content);
-                        w.document.close();
-                        setTimeout(() => w.print(), 500);
-                    }
-                };
-            }
-        }, 1000);
-    }
-
-    // ۷. موتور هوش مصنوعی تحلیلگر
-    function buildAiAnalyzer(state) {
-        setInterval(() => {
-            const dashTab = document.querySelector('div[v-show="currentTab === \'dashboard\'"]');
-            if (!dashTab) return;
-
-            let aiBox = document.getElementById('tilo-ai-analyzer-pro');
-            if (!aiBox) {
-                aiBox = document.createElement('div');
-                aiBox.id = 'tilo-ai-analyzer-pro';
-                aiBox.className = 'soft-card p-5 md:p-6 rounded-3xl border border-indigo-500/30 space-y-4 mt-6';
-                aiBox.innerHTML = `
-                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700/50 pb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-teal-500 flex items-center justify-center text-white shadow-lg"><i class="fas fa-brain text-xl"></i></div>
-                            <div>
-                                <h3 class="font-black text-white text-base md:text-lg">مشاور هوش مصنوعی tilo</h3>
-                                <p class="text-[11px] text-slate-400">تحلیل عمیق، روانی و مشاوره‌ای عملکرد شما</p>
-                            </div>
-                        </div>
-                        <button type="button" id="tilo-ai-run-btn" class="btn-calm bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs py-3 px-5 shadow-lg">
-                            <i class="fas fa-wand-magic-sparkles text-indigo-400"></i> اجرای تحلیل هوشمند
-                        </button>
-                    </div>
-                    <div id="tilo-ai-output" class="hidden space-y-4 pt-2"></div>
-                `;
-                dashTab.appendChild(aiBox);
-
-                document.getElementById('tilo-ai-run-btn').onclick = () => {
-                    const btn = document.getElementById('tilo-ai-run-btn');
-                    const out = document.getElementById('tilo-ai-output');
-                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> در حال پردازش داده‌ها...';
-                    
-                    setTimeout(() => {
-                        const completed = (state.parts || []).filter(p => p.status === 'completed');
-                        let studyMin = 0, nonStudyMin = 0, correct = 0, wrong = 0, totalTests = 0;
-                        const subs = {};
-                        
-                        completed.forEach(p => {
-                            const t = Number(p.realTime || 0);
-                            if (p.isNonStudy || p.isLife) nonStudyMin += t;
-                            else {
-                                studyMin += t;
-                                (p.subjects || []).forEach(s => subs[s] = (subs[s] || 0) + t);
-                                if (p.tests) {
-                                    correct += Number(p.tests.correct || 0);
-                                    wrong += Number(p.tests.wrong || 0);
-                                    totalTests += Number(p.tests.total || 0);
-                                }
-                            }
-                        });
-
-                        const sortedSubs = Object.entries(subs).sort((a,b) => b[1] - a[1]);
-                        const topSub = sortedSubs.length ? sortedSubs[0][0] : 'هنوز شکل نگرفته';
-                        const weakSub = sortedSubs.length > 1 ? sortedSubs[sortedSubs.length-1][0] : 'نامشخص';
-                        const acc = totalTests > 0 ? Math.round((correct / (correct+wrong)) * 100) : 0;
-                        const name = state.settings.userName || 'بنیامین';
-
-                        out.innerHTML = `
-                            <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 text-right space-y-4">
-                                <h4 class="text-sm font-black text-white"><i class="fas fa-stethoscope text-tealSoft ml-1"></i> نتیجه تحلیل عملکرد برای ${name}:</h4>
-                                <p class="text-xs text-slate-300 leading-relaxed text-justify">
-                                    بررسی الگوی مطالعاتی شما نشان می‌دهد که تا کنون <strong>${studyMin} دقیقه</strong> مطالعه متمرکز درسی داشته‌اید. 
-                                    اختصاص <strong>${nonStudyMin} دقیقه</strong> به کارهای شخصی و غیردرسی نشانگر توانمندی شما در مدیریت استرس و جلوگیری از فرسودگی ذهنی است.
-                                    نقطه قوت اصلی شما درس <strong class="text-sage">${topSub}</strong> است، اما بررسی‌ها نشان می‌دهد که درس <strong class="text-amberSoft">${weakSub}</strong> زمان بسیار کمی دریافت کرده و نیازمند توجه ویژه در برنامه هفتگی آینده است.
-                                    دقت پاسخ‌گویی تست‌های شما روی <strong class="text-indigo-400">${acc}٪</strong> قرار دارد. توصیه می‌شود برای افزایش این دقت، پس از هر پارت تست‌زنی، حداقل ۱۵ دقیقه را به تحلیل دقیق تست‌های غلط اختصاص دهید.
-                                </p>
-                            </div>
-                        `;
-                        out.classList.remove('hidden');
-                        btn.innerHTML = '<i class="fas fa-redo text-slate-400"></i> بروزرسانی تحلیل';
-                    }, 1000);
-                };
-            }
-        }, 1000);
-    }
-
-})();
-/**
- * Tilo Final Patch (Stage 5 - Chart, Analytics, Cloud Sync & Backup Engine)
- * این بخش را در انتهای فایل tilo-upgrade.js قرار دهید تا نمودارها، آمار بازه‌ای و همگام‌سازی کامل شوند.
- */
-(function initTiloFinalEngine() {
-    'use strict';
-
-    let mainChartInstance = null;
-
-    const waitEngine = setInterval(() => {
-        const appEl = document.getElementById('app');
-        if (!appEl || !appEl.__vue_app__ || !appEl.__vue_app__._instance) return;
-        clearInterval(waitEngine);
-
-        const instance = appEl.__vue_app__._instance;
-        const state = instance.setupState;
-        const ctx = instance.ctx;
-
-        // ۱. تزریق ایمن rangeAnalytics برای جلوگیری از هرگونه خطای رندر در داشبورد
-        function computeRangeAnalytics() {
-            const days = Number(state.chartDaysRange) || 7;
-            const completed = (state.parts || []).filter(p => p.status === 'completed');
-            const now = new Date();
-            const cutoff = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
-            const cutoffISO = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tehran' }).format(cutoff);
-
-            let totalMinutes = 0, totalTests = 0, totalCorrect = 0, totalWrong = 0, totalDescriptive = 0;
-            const activeDaysSet = new Set();
-
-            completed.forEach(p => {
-                if (p.dateISO && p.dateISO < cutoffISO) return;
-                if (p.isNonStudy || p.isLife) return;
-
-                const dur = Number(p.realTime || p.plannedTime || 0);
-                totalMinutes += dur;
-                if (p.dateISO) activeDaysSet.add(p.dateISO);
-
-                if (p.type && (p.type.includes('تشریحی') || p.type.includes('نهایی'))) {
-                    totalDescriptive += Number(p.descriptiveCount || Math.max(1, Math.round(dur / 12)));
-                }
-                if (p.tests) {
-                    totalTests += Number(p.tests.total || 0);
-                    totalCorrect += Number(p.tests.correct || 0);
-                    totalWrong += Number(p.tests.wrong || 0);
-                }
-            });
-
-            const avgDailyMinutes = Math.round(totalMinutes / days);
-            let avgScore = '—';
-            if (totalTests > 0) {
-                const ratio = (state.settings && state.settings.negativeMarkRatio) || 3;
-                const raw = ratio > 0
-                    ? ((totalCorrect - (totalWrong / ratio)) / totalTests) * 100
-                    : (totalCorrect / totalTests) * 100;
-                avgScore = raw.toFixed(1) + '%';
-            }
-
-            return {
-                totalMinutes,
-                avgDailyMinutes,
-                totalTests,
-                totalCorrect,
-                totalWrong,
-                totalDescriptive,
-                avgScore,
-                activeDays: activeDaysSet.size
-            };
-        }
-
-        // اتصال متغیر به Vue
-        try {
-            Object.defineProperty(ctx, 'rangeAnalytics', {
-                get: computeRangeAnalytics,
-                configurable: true
-            });
-            state.rangeAnalytics = computeRangeAnalytics();
-        } catch (e) {
-            state.rangeAnalytics = computeRangeAnalytics();
-        }
-
-        // ۲. راه‌اندازی نمودار اصلی داشبورد (Chart.js)
-        function renderDashboardChart() {
-            state.rangeAnalytics = computeRangeAnalytics();
-            const canvas = document.getElementById('mainDashboardChart');
-            if (!canvas || typeof window.Chart === 'undefined') return;
-
-            const days = Math.min(90, Math.max(1, Number(state.chartDaysRange) || 7));
-            const metric = state.chartMetric || 'time';
-            const labels = [];
-            const dataPoints = [];
-
-            for (let i = days - 1; i >= 0; i--) {
-                const d = new Date(Date.now() - i * 86400000);
-                const iso = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tehran' }).format(d);
-                const faLabel = new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', month: 'numeric', day: 'numeric' }).format(d);
-                labels.push(faLabel);
-
-                const dayParts = (state.parts || []).filter(p => p.status === 'completed' && p.dateISO === iso && !p.isNonStudy && !p.isLife);
-                if (metric === 'time') {
-                    const mins = dayParts.reduce((s, p) => s + Number(p.realTime || 0), 0);
-                    dataPoints.push(mins);
-                } else if (metric === 'tests') {
-                    const tCount = dayParts.reduce((s, p) => s + Number((p.tests && p.tests.total) || 0), 0);
-                    dataPoints.push(tCount);
-                } else {
-                    let c = 0, w = 0, tot = 0;
-                    dayParts.forEach(p => {
-                        if (p.tests) {
-                            c += Number(p.tests.correct || 0);
-                            w += Number(p.tests.wrong || 0);
-                            tot += Number(p.tests.total || 0);
-                        }
+                var list = box.querySelector('#tilo-w-list');
+                list.querySelectorAll('[data-q]').forEach(function (b) {
+                    b.addEventListener('click', function () { pushToToday(dayParts[Number(b.getAttribute('data-q'))], false); });
+                });
+                list.querySelectorAll('[data-t]').forEach(function (b) {
+                    b.addEventListener('click', function () { pushToToday(dayParts[Number(b.getAttribute('data-t'))], true); });
+                });
+                list.querySelectorAll('[data-x]').forEach(function (b) {
+                    b.addEventListener('click', function () {
+                        dayParts.splice(Number(b.getAttribute('data-x')), 1);
+                        save(data);
+                        render();
                     });
-                    const ratio = (state.settings && state.settings.negativeMarkRatio) || 3;
-                    const pct = tot > 0 ? Math.max(0, Math.round(((c - (ratio > 0 ? w / ratio : 0)) / tot) * 100)) : 0;
-                    dataPoints.push(pct);
-                }
+                });
             }
-
-            if (mainChartInstance) mainChartInstance.destroy();
-
-            const color = metric === 'time' ? '#818cf8' : (metric === 'tests' ? '#2dd4bf' : '#34d399');
-            mainChartInstance = new window.Chart(canvas.getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels,
-                    datasets: [{
-                        label: metric === 'time' ? 'دقیقه مطالعه' : (metric === 'tests' ? 'تعداد تست' : 'درصد تستی'),
-                        data: dataPoints,
-                        borderColor: color,
-                        backgroundColor: color + '22',
-                        borderWidth: 2.5,
-                        pointRadius: 3,
-                        fill: true,
-                        tension: 0.35
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { ticks: { color: '#94a3b8', font: { family: 'Vazirmatn', size: 10 } }, grid: { display: false } },
-                        y: { beginAtZero: true, ticks: { color: '#94a3b8', font: { family: 'Vazirmatn', size: 10 } }, grid: { color: 'rgba(148,163,184,0.1)' } }
-                    }
-                }
-            });
+            window.TiloPlus.renderWeeklyCalendar = render;
+            render();
         }
+        setTimeout(tryBuild, 500);
+        setTimeout(tryBuild, 1500);
+    }
 
-        state.setCustomRange = (d) => { state.chartDaysRange = d; renderDashboardChart(); };
-        state.setChartMetric = (m) => { state.chartMetric = m; renderDashboardChart(); };
-        state.updateMainChart = renderDashboardChart;
-
-        // ۳. دکمه تحلیل هوشمند داخل کارت نمودار
-        state.runPerformanceAnalysis = () => {
-            const stats = computeRangeAnalytics();
-            const subMap = {};
-            (state.parts || []).filter(p => p.status === 'completed' && !p.isNonStudy && !p.isLife).forEach(p => {
-                (p.subjects || []).forEach(s => { subMap[s] = (subMap[s] || 0) + Number(p.realTime || 0); });
-            });
-            const sorted = Object.entries(subMap).sort((a, b) => b[1] - a[1]);
-            const best = sorted[0] ? sorted[0][0] : 'نیاز به ثبت پارت بیشتر';
-            const weak = sorted.length > 1 ? sorted[sorted.length - 1][0] : 'نیاز به تنوع دروس';
-
-            state.analysisReport = {
-                days: state.chartDaysRange || 7,
-                consistencyTitle: `${stats.activeDays} روز فعال (میانگین ${stats.avgDailyMinutes} دقیقه در روز)`,
-                consistencyDesc: stats.avgDailyMinutes >= (state.settings.dailyGoal * 0.7)
-                    ? 'پیوستگی و ساعت مطالعه شما در وضعیت بسیار مطلوبی قرار دارد.'
-                    : 'ساعت مطالعه فعلی با هدف روزانه فاصله دارد؛ پارت‌های ۵۰ دقیقه‌ای را در اولویت بگذارید.',
-                bestSubject: best,
-                bestSubjectDesc: sorted[0] ? `${sorted[0][1]} دقیقه تمرکز ثبت‌شده در این درس.` : 'هنوز داده کافی ثبت نشده است.',
-                weakSubject: weak,
-                weakSubjectDesc: 'سهم این درس در برنامه اخیر کمتر بوده است؛ در برنامه هفتگی جبران شود.',
-                recommendation: 'برای دانش‌آموز سال دوازدهم، ترکیب ۶۰٪ مطالعه تشریحی (ویژه امتحانات نهایی) و ۴۰٪ تست زمان‌دار بهترین استراتژی کسب تراز بالاست.'
-            };
+    function setupPdf(state) {
+        window.TiloPro.openPdfExportModal = function () {
+            var name = (state.settings && state.settings.userName) || 'دانش‌آموز';
+            var completed = (state.parts || []).filter(function (p) { return p.status === 'completed'; });
+            var study = 0;
+            completed.forEach(function (p) { if (!p.isLife && !p.isNonStudy) study += Number(p.realTime || 0); });
+            var rows = completed.slice(0, 100).map(function (p) {
+                return '<tr><td>' + ((p.subjects || []).join('، ') || (p.isLife ? 'غیردرسی' : '')) + '</td><td>' + (p.topic || '') + '</td><td>' + (p.realTime || 0) + ' دقیقه</td><td>' + (p.dateStr || '') + '</td></tr>';
+            }).join('');
+            var html = '<div dir="rtl" style="font-family:Tahoma,sans-serif;padding:24px;color:#111"><h2>گزارش مطالعه — ' + name + '</h2><p>تاریخ: ' + todayFa() + ' · مجموع مطالعه: ' + study + ' دقیقه · تعداد: ' + completed.length + '</p><table border="1" cellpadding="6" cellspacing="0" width="100%" style="border-collapse:collapse;font-size:12px"><thead><tr><th>درس</th><th>مبحث</th><th>زمان</th><th>تاریخ</th></tr></thead><tbody>' + (rows || '<tr><td colspan="4">داده‌ای نیست</td></tr>') + '</tbody></table></div>';
+            var w = window.open('', '_blank', 'width=800,height=900');
+            if (!w) return;
+            w.document.write('<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><title>گزارش ' + name + '</title></head><body>' + html + '<script>setTimeout(function(){window.print()},400)<\\/script></body></html>');
+            w.document.close();
         };
-
-        // ۴. فعال‌سازی انتقال ساده (کد فشرده بین گوشی و لپ‌تاپ) و خروجی JSON/CSV
-        state.copySimpleShare = () => {
-            const payload = { p: state.parts || [], s: state.settings || {}, pr: state.problems || [] };
-            const encoded = 'TILO2:' + btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-            navigator.clipboard.writeText(encoded).then(() => alert('کد فشرده کپی شد! آن را در دستگاه دیگر بچسبانید.'));
-        };
-
-        state.importShareText = () => {
-            const raw = (state.simpleSharePaste || '').trim();
-            if (!raw.startsWith('TILO2:')) return alert('کد وارد شده معتبر نیست.');
-            try {
-                const decoded = JSON.parse(decodeURIComponent(escape(atob(raw.replace('TILO2:', '')))));
-                if (Array.isArray(decoded.p)) {
-                    const map = new Map();
-                    (state.parts || []).forEach(x => map.set(x.id, x));
-                    decoded.p.forEach(x => map.set(x.id, x));
-                    state.parts = Array.from(map.values()).sort((a, b) => b.id - a.id);
-                    localStorage.setItem('sp_pro_parts', JSON.stringify(state.parts));
-                }
-                alert('اطلاعات با موفقیت ادغام شد!');
-                state.simpleSharePaste = '';
-                renderDashboardChart();
-            } catch (e) {
-                alert('خطا در خواندن کد انتقال.');
-            }
-        };
-
-        state.exportJSON = () => {
-            const data = JSON.stringify({ parts: state.parts, settings: state.settings, problems: state.problems }, null, 2);
-            const blob = new Blob([data], { type: 'application/json' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `tilo-backup-${state.settings.userName || 'user'}.json`;
-            a.click();
-        };
-
-        state.importJSON = (ev) => {
-            const file = ev.target.files && ev.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const parsed = JSON.parse(e.target.result);
-                    if (parsed.parts) state.parts = parsed.parts;
-                    if (parsed.settings) state.settings = { ...state.settings, ...parsed.settings };
-                    if (parsed.problems) state.problems = parsed.problems;
-                    state.saveAll();
-                    renderDashboardChart();
-                    alert('فایل پشتیبان با موفقیت بازیابی شد!');
-                } catch (_) { alert('فایل نامعتبر است.'); }
-            };
-            reader.readAsText(file);
-        };
-
-        setTimeout(renderDashboardChart, 400);
-        setInterval(() => { state.rangeAnalytics = computeRangeAnalytics(); }, 2000);
-    }, 250);
+    }
 })();
