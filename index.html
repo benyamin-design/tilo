@@ -1273,11 +1273,11 @@
                         </p>
                     </div>
                     <button type="button" @click="copySimpleShare" class="btn-calm bg-gradient-to-r from-primary to-tealSoft text-slate-950 font-black w-full py-3 text-sm">
-                        <i class="fas fa-copy"></i> کپی کد فشرده (بدون Firebase)
+                        <i class="fas fa-copy"></i> کپی کد اشتراک این دستگاه
                     </button>
                     <div class="space-y-2">
                         <label class="block text-xs text-slate-300 font-bold">چسباندن کد از دستگاه دیگر</label>
-                        <textarea v-model="simpleSharePaste" rows="3" dir="ltr" placeholder="TILO2:... یا TILO1:..." class="input-calm text-[11px] font-mono"></textarea>
+                        <textarea v-model="simpleSharePaste" rows="3" dir="ltr" placeholder="TILO1:...." class="input-calm text-[11px] font-mono"></textarea>
                         <button type="button" @click="importShareText" class="btn-calm bg-sage hover:bg-emerald-400 text-slate-950 font-bold text-xs py-2.5 w-full">ادغام اطلاعات</button>
                     </div>
                 </div>
@@ -2273,56 +2273,22 @@
 
 
 
-
-                /** فشرده‌سازی بدون سرور — کد کوتاه‌تر می‌شود ولی نه ۶ حرفیِ معجزه‌آسا */
-                const utf8ToB64 = (str) => btoa(unescape(encodeURIComponent(str)));
-                const b64ToUtf8 = (b64) => decodeURIComponent(escape(atob(b64)));
-
-                const compressPayload = async (str) => {
+                /** اشتراک‌گذاری ساده بدون Firebase: کپی یک متن و چسباندن در دستگاه دیگر */
+                const exportShareText = () => {
                     try {
-                        if (typeof CompressionStream !== 'undefined') {
-                            const stream = new Blob([str]).stream().pipeThrough(new CompressionStream('gzip'));
-                            const buf = await new Response(stream).arrayBuffer();
-                            const bytes = new Uint8Array(buf);
-                            let binary = '';
-                            for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-                            return 'TILO2:' + btoa(binary);
-                        }
-                    } catch (e) { console.warn(e); }
-                    return 'TILO1:' + utf8ToB64(str);
-                };
-
-                const decompressPayload = async (token) => {
-                    let t = (token || '').trim();
-                    if (t.startsWith('TILO2:')) {
-                        const bin = atob(t.slice(6));
-                        const bytes = new Uint8Array(bin.length);
-                        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-                        if (typeof DecompressionStream !== 'undefined') {
-                            const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-                            const textOut = await new Response(stream).text();
-                            return textOut;
-                        }
-                        throw new Error('مرورگر از فشرده‌سازی پشتیبانی نمی‌کند');
-                    }
-                    if (t.startsWith('TILO1:')) t = t.slice(6);
-                    return b64ToUtf8(t);
-                };
-
-                const buildSharePayloadObject = () => ({
-                    v: 2,
-                    parts: parts.value,
-                    settings: settings.value,
-                    subjectGroups: subjectGroups.value,
-                    schedule: schedule.value,
-                    archive: archive.value,
-                    exportedAt: Date.now()
-                });
-
-                const exportShareText = async () => {
-                    try {
-                        const raw = JSON.stringify(buildSharePayloadObject());
-                        return await compressPayload(raw);
+                        const payload = {
+                            v: 1,
+                            parts: parts.value,
+                            settings: settings.value,
+                            subjectGroups: subjectGroups.value,
+                            schedule: schedule.value,
+                            archive: archive.value,
+                            exportedAt: Date.now()
+                        };
+                        const raw = JSON.stringify(payload);
+                        const b64 = btoa(unescape(encodeURIComponent(raw)));
+                        const textOut = 'TILO1:' + b64;
+                        return textOut;
                     } catch (e) {
                         console.warn(e);
                         alert('ساخت کد اشتراک ناموفق بود.');
@@ -2331,43 +2297,49 @@
                 };
 
                 const copySimpleShare = async () => {
-                    const t = await exportShareText();
+                    const t = exportShareText();
                     if (!t) return;
-                    simpleSharePaste.value = t;
                     try {
                         await navigator.clipboard.writeText(t);
-                        alert('کد فشرده کپی شد (' + t.length + ' کاراکتر).\\nروی دستگاه دیگر در همین کادر بچسبان و «ادغام» بزن.\\nتوجه: کد ۶ حرفیِ بدون سرور برای کل داده ممکن نیست؛ این کوتاه‌ترین حالت آفلاین است.');
+                        alert('کد اشتراک کپی شد.\\nآن را در تلگرام/واتساپ برای خودت بفرست و روی دستگاه دیگر در همین بخش «چسباندن کد» وارد کن.');
                     } catch {
-                        prompt('Select All و کپی کن:', t);
+                        prompt('این متن را کامل کپی کن:', t);
                     }
                 };
 
                 const simpleSharePaste = ref('');
-                const importShareText = async () => {
+                const importShareText = () => {
                     let t = (simpleSharePaste.value || '').trim();
                     if (!t) {
-                        alert('اول کد را در کادر بچسبان.');
+                        alert('اول کد اشتراک را در کادر بچسبان.');
                         return;
                     }
+                    if (t.startsWith('TILO1:')) t = t.slice(6);
                     try {
-                        const raw = await decompressPayload(t);
+                        const raw = decodeURIComponent(escape(atob(t)));
                         const data = JSON.parse(raw);
                         if (!data || typeof data !== 'object') throw new Error('bad');
-                        if (Array.isArray(data.parts)) parts.value = mergeItemsById(parts.value, data.parts);
+                        if (Array.isArray(data.parts)) {
+                            parts.value = mergeItemsById(parts.value, data.parts);
+                        }
                         if (data.settings && typeof data.settings === 'object') {
                             settings.value = { ...settings.value, ...data.settings };
                         }
                         if (Array.isArray(data.subjectGroups) && data.subjectGroups.length) {
                             subjectGroups.value = data.subjectGroups;
                         }
-                        if (Array.isArray(data.schedule)) schedule.value = mergeItemsById(schedule.value, data.schedule);
-                        if (Array.isArray(data.archive)) archive.value = mergeItemsById(archive.value, data.archive);
+                        if (Array.isArray(data.schedule)) {
+                            schedule.value = mergeItemsById(schedule.value, data.schedule);
+                        }
+                        if (Array.isArray(data.archive)) {
+                            archive.value = mergeItemsById(archive.value, data.archive);
+                        }
                         saveAll();
                         simpleSharePaste.value = '';
                         alert('اطلاعات با موفقیت ادغام شد.');
                     } catch (e) {
                         console.warn(e);
-                        alert('کد نامعتبر است. کل متن TILO2: یا TILO1: را یکجا بچسبان (Select All).');
+                        alert('کد نامعتبر است. مطمئن شو کل متن TILO1:... را کامل چسبانده‌ای.');
                     }
                 };
 
