@@ -124,8 +124,8 @@
     var css = document.createElement('style');
     css.id = 'tilo-notes-css';
     css.textContent = [
-      '#tilo-notes-root{position:fixed;inset:0;z-index:12000;display:none;flex-direction:column;font-family:inherit}',
-      '#tilo-notes-root.open{display:flex}',
+      '#tilo-notes-root{position:fixed;inset:0;z-index:120000;display:none!important;flex-direction:column;font-family:inherit}',
+      '#tilo-notes-root.open{display:flex!important}',
       '#tilo-notes-root *{box-sizing:border-box}',
       '.tn-bar{display:flex;align-items:center;gap:.5rem;padding:.65rem .85rem;border-bottom:1px solid rgba(255,255,255,.08);backdrop-filter:blur(12px);flex-shrink:0}',
       '.tn-btn{border:0;border-radius:.75rem;padding:.45rem .7rem;font-size:12px;font-weight:700;cursor:pointer;background:rgba(255,255,255,.08);color:inherit;transition:.15s}',
@@ -543,6 +543,10 @@
     injectStyles();
     var root = ensureRoot();
     root.classList.add('open');
+    root.style.display = 'flex';
+    root.style.position = 'fixed';
+    root.style.inset = '0';
+    root.style.zIndex = '120000';
     document.body.style.overflow = 'hidden';
     render();
   }
@@ -551,7 +555,10 @@
     persistEditor();
     save(data);
     var root = document.getElementById('tilo-notes-root');
-    if (root) root.classList.remove('open');
+    if (root) {
+      root.classList.remove('open');
+      root.style.display = 'none';
+    }
     document.body.style.overflow = '';
     unlocked = !localStorage.getItem(PIN_KEY);
   }
@@ -564,12 +571,14 @@
     btn.id = 'tilo-notes-menu-btn';
     btn.className = 'w-full text-right px-3 py-2.5 rounded-xl text-sm font-bold text-slate-300 hover:bg-slate-800/80 transition';
     btn.innerHTML = '<i class="fas fa-book me-1"></i> دفترچه یادداشت';
-    btn.addEventListener('click', function () {
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
       var backdrop = document.querySelector('.tilo-drawer-backdrop');
       var panel = document.querySelector('.tilo-drawer-panel');
       if (backdrop) backdrop.classList.remove('open');
       if (panel) panel.classList.remove('open');
-      openNotes();
+      setTimeout(openNotes, 50);
     });
     navs.appendChild(btn);
   }
@@ -591,7 +600,7 @@
     fab.type = 'button';
     fab.title = 'دفترچه یادداشت';
     fab.textContent = '📓';
-    fab.style.cssText = 'position:fixed;bottom:5.5rem;left:1rem;z-index:40;width:2.75rem;height:2.75rem;border-radius:999px;border:1px solid rgba(148,163,184,.35);background:rgba(22,27,36,.92);font-size:1.1rem;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.35)';
+    fab.style.cssText = 'position:fixed;bottom:5.5rem;left:1rem;z-index:99990;width:2.85rem;height:2.85rem;border-radius:999px;border:1px solid rgba(148,163,184,.45);background:rgba(22,27,36,.96);font-size:1.15rem;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.4);pointer-events:auto';
     fab.onclick = openNotes;
     document.body.appendChild(fab);
   }, 2000);
