@@ -1,607 +1,623 @@
 /**
- * tilo-notes.js — دفترچه یادداشت مستقل
- * فقط این فایل را بعد از tilo-upgrade.js اضافه کن؛ بقیه فایل‌ها دست‌نخورده می‌مانند.
+ * tilo-notes.js v2 — دفترچه یادداشت مستقل و پایدار
+ * در index.html: <script src="./tilo-notes.js?v=2"></script>
  */
-(function initTiloNotes() {
+(function () {
   'use strict';
-  if (window.__TiloNotesLoaded) return;
-  window.__TiloNotesLoaded = true;
+  if (window.__TiloNotesV2) return;
+  window.__TiloNotesV2 = true;
 
-  var STORAGE = 'tilo_notebook_v1';
-  var PIN_KEY = 'tilo_notebook_pin';
-  var BG_KEY = 'tilo_notebook_bg';
+  var STORE = 'tilo_notebook_v2';
+  var PIN = 'tilo_notebook_pin_v2';
+  var BG = 'tilo_notebook_bg_v2';
 
   var COLORS = [
-    { id: 'default', name: 'عادی', fg: 'inherit', bg: 'transparent' },
-    { id: 'red', name: 'قرمز', fg: '#f87171', bg: 'rgba(248,113,113,.08)' },
-    { id: 'orange', name: 'نارنجی', fg: '#fb923c', bg: 'rgba(251,146,60,.08)' },
-    { id: 'amber', name: 'کهربایی', fg: '#fbbf24', bg: 'rgba(251,191,36,.08)' },
-    { id: 'green', name: 'سبز', fg: '#4ade80', bg: 'rgba(74,222,128,.08)' },
-    { id: 'teal', name: 'فیروزه‌ای', fg: '#2dd4bf', bg: 'rgba(45,212,191,.08)' },
-    { id: 'blue', name: 'آبی', fg: '#60a5fa', bg: 'rgba(96,165,250,.08)' },
-    { id: 'purple', name: 'بنفش', fg: '#c084fc', bg: 'rgba(192,132,252,.08)' },
-    { id: 'pink', name: 'صورتی', fg: '#f472b6', bg: 'rgba(244,114,182,.08)' }
+    { id: 'def', label: 'عادی', c: '#e2e8f0' },
+    { id: 'red', label: 'قرمز', c: '#f87171' },
+    { id: 'ora', label: 'نارنجی', c: '#fb923c' },
+    { id: 'yel', label: 'زرد', c: '#fbbf24' },
+    { id: 'grn', label: 'سبز', c: '#4ade80' },
+    { id: 'tea', label: 'فیروزه', c: '#2dd4bf' },
+    { id: 'blu', label: 'آبی', c: '#60a5fa' },
+    { id: 'pur', label: 'بنفش', c: '#c084fc' },
+    { id: 'pnk', label: 'صورتی', c: '#f472b6' }
   ];
 
-  var BACKGROUNDS = [
-    { id: 'night', name: 'شب آرام', css: 'linear-gradient(165deg,#0f1419 0%,#1a1f2e 50%,#12161f 100%)', paper: '#161b24', text: '#e8edf5' },
-    { id: 'paper', name: 'کاغذ کرم', css: 'linear-gradient(165deg,#f5f0e6 0%,#ebe4d6 100%)', paper: '#fffcf5', text: '#1f2937' },
-    { id: 'forest', name: 'سبز ملایم', css: 'linear-gradient(165deg,#0f1a14 0%,#152820 100%)', paper: '#13241c', text: '#d8efe4' },
-    { id: 'ocean', name: 'آبی عمیق', css: 'linear-gradient(165deg,#0c1520 0%,#122033 100%)', paper: '#121c2c', text: '#d6e6f7' },
-    { id: 'lavender', name: 'یاسی', css: 'linear-gradient(165deg,#1a1424 0%,#221a30 100%)', paper: '#1e1730', text: '#ebe4f7' },
-    { id: 'slate', name: 'خاکستری', css: 'linear-gradient(165deg,#18181b 0%,#27272a 100%)', paper: '#1f1f23', text: '#e4e4e7' }
+  var BGS = [
+    { id: 'ink', name: 'مرکب شب', page: '#12151c', ui: '#0c0e14', text: '#e8edf5', line: 'rgba(255,255,255,.08)' },
+    { id: 'cream', name: 'کاغذ کرم', page: '#fffcf7', ui: '#f3eee6', text: '#1f2937', line: 'rgba(0,0,0,.08)' },
+    { id: 'sage', name: 'سبز ملایم', page: '#14201a', ui: '#0e1612', text: '#d9efe4', line: 'rgba(255,255,255,.08)' },
+    { id: 'ocean', name: 'آبی آرام', page: '#121a28', ui: '#0d131c', text: '#d7e6f8', line: 'rgba(255,255,255,.08)' },
+    { id: 'plum', name: 'بنفش کم‌رنگ', page: '#1a1524', ui: '#120f1a', text: '#ebe4f8', line: 'rgba(255,255,255,.08)' }
   ];
 
   var DEFAULT_CATS = [
-    { id: 'study', name: 'درس و مطالعه', icon: '📚' },
-    { id: 'daily', name: 'روند روز', icon: '📅' },
-    { id: 'life', name: 'زندگی و کار', icon: '💼' },
-    { id: 'idea', name: 'ایده', icon: '💡' },
-    { id: 'mood', name: 'حال و انرژی', icon: '🌱' },
-    { id: 'other', name: 'متفرقه', icon: '📝' }
+    { id: 'study', name: 'درس و نکته', emoji: '📚' },
+    { id: 'daily', name: 'روند روز', emoji: '📅' },
+    { id: 'work', name: 'کار و زندگی', emoji: '💼' },
+    { id: 'idea', name: 'ایده', emoji: '💡' },
+    { id: 'review', name: 'مرور و جمع‌بندی', emoji: '🔁' },
+    { id: 'other', name: 'متفرقه', emoji: '📝' }
   ];
 
-  function load() {
-    try {
-      var raw = localStorage.getItem(STORAGE);
-      if (!raw) return emptyData();
-      var d = JSON.parse(raw);
-      if (!d.pages) d.pages = [];
-      if (!d.categories) d.categories = DEFAULT_CATS.slice();
-      return d;
-    } catch (e) {
-      return emptyData();
-    }
-  }
+  function now() { return Date.now(); }
 
-  function emptyData() {
-    var now = Date.now();
+  function empty() {
+    var id = now();
     return {
+      activeId: id,
+      cats: DEFAULT_CATS.slice(),
       pages: [{
-        id: now,
+        id: id,
         title: 'صفحه اول',
         body: '',
-        color: 'default',
-        categoryId: 'daily',
+        color: 'def',
+        cat: 'study',
         pinned: false,
-        createdAt: now,
-        updatedAt: now
-      }],
-      categories: DEFAULT_CATS.slice(),
-      activeId: now
+        createdAt: id,
+        updatedAt: id
+      }]
     };
   }
 
-  function save(data) {
+  function load() {
     try {
-      localStorage.setItem(STORAGE, JSON.stringify(data));
+      var r = localStorage.getItem(STORE);
+      if (!r) {
+        // migrate v1 if exists
+        var old = localStorage.getItem('tilo_notebook_v1');
+        if (old) {
+          var o = JSON.parse(old);
+          var d = empty();
+          if (o.pages && o.pages.length) {
+            d.pages = o.pages.map(function (p) {
+              return {
+                id: p.id || now(),
+                title: p.title || 'بدون عنوان',
+                body: p.body || '',
+                color: p.color === 'default' ? 'def' : (p.color || 'def'),
+                cat: p.categoryId || 'other',
+                pinned: !!p.pinned,
+                createdAt: p.createdAt || now(),
+                updatedAt: p.updatedAt || now()
+              };
+            });
+            d.activeId = d.pages[0].id;
+          }
+          if (o.categories && o.categories.length) {
+            d.cats = o.categories.map(function (c) {
+              return { id: c.id, name: c.name, emoji: c.icon || '🏷️' };
+            });
+          }
+          save(d);
+          return d;
+        }
+        return empty();
+      }
+      var d2 = JSON.parse(r);
+      if (!d2.pages) d2.pages = empty().pages;
+      if (!d2.cats) d2.cats = DEFAULT_CATS.slice();
+      return d2;
     } catch (e) {
-      alert('فضای ذخیره‌سازی پر است. چند یادداشت قدیمی را حذف کن.');
+      return empty();
     }
   }
 
-  function hashPin(pin) {
-    var h = 0;
-    var s = 'tilo-notes-' + String(pin);
-    for (var i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i) | 0;
-    return String(h);
+  function save(d) {
+    try { localStorage.setItem(STORE, JSON.stringify(d)); }
+    catch (e) { alert('حافظه پر است. چند صفحه قدیمی را حذف کن.'); }
+  }
+
+  function hash(s) {
+    var h = 2166136261;
+    s = 'tn2:' + String(s);
+    for (var i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return String(h >>> 0);
+  }
+
+  function faTime(ts) {
+    try {
+      return new Intl.DateTimeFormat('fa-IR', {
+        timeZone: 'Asia/Tehran', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      }).format(new Date(ts));
+    } catch (e) {
+      return '';
+    }
   }
 
   function todayISO() {
     return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tehran' }).format(new Date());
   }
 
-  function faDate(ts) {
-    try {
-      return new Intl.DateTimeFormat('fa-IR', {
-        timeZone: 'Asia/Tehran',
-        year: 'numeric', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit'
-      }).format(new Date(ts));
-    } catch (e) {
-      return new Date(ts).toLocaleString('fa-IR');
-    }
-  }
-
   function esc(s) {
-    return String(s || '')
+    return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  function colorOf(id) {
+  function color(id) {
     for (var i = 0; i < COLORS.length; i++) if (COLORS[i].id === id) return COLORS[i];
     return COLORS[0];
   }
 
-  function bgOf(id) {
-    for (var i = 0; i < BACKGROUNDS.length; i++) if (BACKGROUNDS[i].id === id) return BACKGROUNDS[i];
-    return BACKGROUNDS[0];
+  function theme() {
+    var id = localStorage.getItem(BG) || 'ink';
+    for (var i = 0; i < BGS.length; i++) if (BGS[i].id === id) return BGS[i];
+    return BGS[0];
   }
 
-  function injectStyles() {
-    if (document.getElementById('tilo-notes-css')) return;
-    var css = document.createElement('style');
-    css.id = 'tilo-notes-css';
-    css.textContent = [
-      '#tilo-notes-root{position:fixed;inset:0;z-index:120000;display:none!important;flex-direction:column;font-family:inherit}',
-      '#tilo-notes-root.open{display:flex!important}',
-      '#tilo-notes-root *{box-sizing:border-box}',
-      '.tn-bar{display:flex;align-items:center;gap:.5rem;padding:.65rem .85rem;border-bottom:1px solid rgba(255,255,255,.08);backdrop-filter:blur(12px);flex-shrink:0}',
-      '.tn-btn{border:0;border-radius:.75rem;padding:.45rem .7rem;font-size:12px;font-weight:700;cursor:pointer;background:rgba(255,255,255,.08);color:inherit;transition:.15s}',
-      '.tn-btn:hover{background:rgba(255,255,255,.14)}',
-      '.tn-btn-primary{background:#6366f1;color:#fff}',
-      '.tn-btn-primary:hover{background:#4f46e5}',
-      '.tn-btn-danger{background:rgba(248,113,113,.15);color:#f87171}',
-      '.tn-layout{display:flex;flex:1;min-height:0}',
-      '.tn-sidebar{width:min(300px,42vw);border-left:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;min-height:0;flex-shrink:0}',
-      '.tn-sidebar-scroll{flex:1;overflow:auto;padding:.6rem}',
-      '.tn-page-item{display:block;width:100%;text-align:right;padding:.7rem .75rem;border-radius:.9rem;border:1px solid transparent;background:transparent;color:inherit;cursor:pointer;margin-bottom:.35rem}',
-      '.tn-page-item:hover{background:rgba(255,255,255,.05)}',
-      '.tn-page-item.active{background:rgba(99,102,241,.18);border-color:rgba(99,102,241,.35)}',
-      '.tn-page-item .tn-title{font-size:13px;font-weight:800;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
-      '.tn-page-item .tn-meta{font-size:10px;opacity:.65;margin-top:.2rem}',
-      '.tn-main{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}',
-      '.tn-editor-wrap{flex:1;display:flex;flex-direction:column;padding:.75rem;min-height:0}',
-      '.tn-title-input{width:100%;background:transparent;border:0;font-size:1.15rem;font-weight:900;color:inherit;outline:none;margin-bottom:.5rem;padding:.25rem 0}',
-      '.tn-body{flex:1;width:100%;resize:none;border:0;outline:none;background:transparent;color:inherit;font-size:15px;line-height:1.85;padding:.25rem 0;min-height:180px}',
-      '.tn-tools{display:flex;flex-wrap:wrap;gap:.4rem;padding:.5rem .75rem;border-top:1px solid rgba(255,255,255,.08);align-items:center}',
-      '.tn-chip{width:22px;height:22px;border-radius:999px;border:2px solid transparent;cursor:pointer;padding:0}',
-      '.tn-chip.on{border-color:#fff;box-shadow:0 0 0 2px rgba(99,102,241,.6)}',
-      '.tn-lock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(8,10,14,.92);z-index:5;padding:1.5rem}',
-      '.tn-lock-card{width:min(340px,100%);padding:1.4rem;border-radius:1.25rem;background:rgba(22,27,36,.95);border:1px solid rgba(255,255,255,.1);text-align:center}',
-      '.tn-input{width:100%;padding:.7rem .85rem;border-radius:.85rem;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:inherit;outline:none;font-size:14px;margin:.4rem 0}',
-      '.tn-ai{margin:.5rem .75rem;padding:.85rem;border-radius:1rem;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);font-size:12px;line-height:1.7;display:none}',
-      '.tn-ai.open{display:block}',
-      '.tn-empty{opacity:.5;text-align:center;padding:2rem 1rem;font-size:13px}',
-      '@media (max-width:720px){.tn-sidebar{width:100%;max-height:38vh;border-left:0;border-bottom:1px solid rgba(255,255,255,.08)}.tn-layout{flex-direction:column}}'
-    ].join('');
-    document.head.appendChild(css);
+  function catLabel(d, id) {
+    for (var i = 0; i < d.cats.length; i++) {
+      if (d.cats[i].id === id) return (d.cats[i].emoji || '') + ' ' + d.cats[i].name;
+    }
+    return '📝 متفرقه';
   }
 
-  var data = load();
-  var unlocked = !localStorage.getItem(PIN_KEY);
-  var filterCat = '';
-  var searchQ = '';
-  var aiOpen = false;
-
-  function activePage() {
-    var id = data.activeId;
-    for (var i = 0; i < data.pages.length; i++) if (data.pages[i].id === id) return data.pages[i];
-    return data.pages[0] || null;
+  function analyze(text) {
+    var t = (text || '').trim();
+    if (!t) return 'هنوز متنی نیست. نکته درس، خلاصه یا روند روز را بنویس تا جمع‌بندی نشان داده شود.';
+    var words = t.split(/\s+/).filter(Boolean).length;
+    var lines = t.split(/\n/).filter(function (x) { return x.trim(); }).length;
+    var bits = [];
+    bits.push('تقریباً <b>' + words + '</b> کلمه در <b>' + lines + '</b> خط.');
+    if (/تست|درست|غلط|درصد|گزینه/.test(t)) bits.push('ردپای <b>تست‌زنی</b> هست — تعداد و درصد را هم ثبت کن.');
+    if (/نکته|فرمول|تعریف|قانون|قضیه/.test(t)) bits.push('حالت <b>نکته‌نویسی</b>؛ برای مرور بعدی عالی است.');
+    if (/فردا|باید|هدف|برنامه/.test(t)) bits.push('عبارات برنامه‌محور دیدی؛ سه اولویت فردا را جدا بنویس.');
+    if (/خست|استرس|نگران|خوب|بد/.test(t)) bits.push('حال‌وهوا ثبت شده؛ الگوی انرژی را هفتگی مرور کن.');
+    if (words < 40) bits.push('کمی کوتاه است؛ یک مثال یا نتیجه هم اضافه کن.');
+    if (words > 250) bits.push('یادداشت کامل است — با «کپی» می‌توانی برای مشاور بفرستی.');
+    return bits.map(function (b) { return '• ' + b; }).join('<br>');
   }
 
-  function ensureRoot() {
-    var root = document.getElementById('tilo-notes-root');
-    if (root) return root;
-    root = document.createElement('div');
-    root.id = 'tilo-notes-root';
-    document.body.appendChild(root);
-    return root;
+  var state = load();
+  var unlocked = !localStorage.getItem(PIN);
+  var filter = '';
+  var q = '';
+  var showAi = false;
+  var listMode = true; // mobile: list first
+
+  function page() {
+    for (var i = 0; i < state.pages.length; i++) {
+      if (state.pages[i].id === state.activeId) return state.pages[i];
+    }
+    return state.pages[0] || null;
   }
 
-  function applyBg(root) {
-    var bgId = localStorage.getItem(BG_KEY) || 'night';
-    var bg = bgOf(bgId);
-    root.style.background = bg.css;
-    root.style.color = bg.text;
-    root.dataset.bg = bgId;
-  }
-
-  function filteredPages() {
-    var list = data.pages.slice().sort(function (a, b) {
-      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+  function filtered() {
+    var list = state.pages.slice().sort(function (a, b) {
+      if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
       return (b.updatedAt || 0) - (a.updatedAt || 0);
     });
-    if (filterCat) list = list.filter(function (p) { return p.categoryId === filterCat; });
-    if (searchQ) {
-      var q = searchQ.toLowerCase();
+    if (filter) list = list.filter(function (p) { return p.cat === filter; });
+    if (q) {
+      var qq = q.toLowerCase();
       list = list.filter(function (p) {
-        return (p.title || '').toLowerCase().indexOf(q) !== -1 ||
-          (p.body || '').toLowerCase().indexOf(q) !== -1;
+        return (p.title || '').toLowerCase().indexOf(qq) >= 0 ||
+          (p.body || '').toLowerCase().indexOf(qq) >= 0;
       });
     }
     return list;
   }
 
-  function catName(id) {
-    for (var i = 0; i < data.categories.length; i++) {
-      if (data.categories[i].id === id) {
-        return (data.categories[i].icon || '') + ' ' + data.categories[i].name;
-      }
+  function css() {
+    if (document.getElementById('tn2-css')) return;
+    var s = document.createElement('style');
+    s.id = 'tn2-css';
+    s.textContent = [
+      '#tn2-root{position:fixed!important;inset:0!important;z-index:2147483000!important;display:none!important;flex-direction:column!important;font-family:Tahoma,Vazirmatn,system-ui,sans-serif!important}',
+      '#tn2-root.tn2-on{display:flex!important}',
+      '#tn2-root *{box-sizing:border-box}',
+      '#tn2-root button{font-family:inherit}',
+      '.tn2-top{display:flex;align-items:center;gap:8px;padding:10px 12px;flex-shrink:0;border-bottom:1px solid var(--tn2-line)}',
+      '.tn2-ico{width:36px;height:36px;border-radius:10px;border:1px solid var(--tn2-line);background:transparent;color:inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}',
+      '.tn2-ico:active{transform:scale(.96)}',
+      '.tn2-primary{background:#6366f1!important;border-color:#6366f1!important;color:#fff!important}',
+      '.tn2-body{flex:1;min-height:0;display:flex}',
+      '.tn2-side{width:min(320px,100%);display:flex;flex-direction:column;min-height:0;border-inline-start:1px solid var(--tn2-line);background:var(--tn2-ui)}',
+      '.tn2-main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;background:var(--tn2-page)}',
+      '.tn2-search{width:100%;padding:10px 12px;border:1px solid var(--tn2-line);border-radius:12px;background:transparent;color:inherit;outline:none;font-size:14px}',
+      '.tn2-select{width:100%;padding:9px 12px;border:1px solid var(--tn2-line);border-radius:12px;background:transparent;color:inherit;outline:none;font-size:13px}',
+      '.tn2-list{flex:1;overflow:auto;padding:8px}',
+      '.tn2-item{width:100%;text-align:right;padding:12px;border-radius:14px;border:1px solid transparent;background:transparent;color:inherit;cursor:pointer;margin-bottom:6px}',
+      '.tn2-item.on{border-color:#6366f1;background:rgba(99,102,241,.14)}',
+      '.tn2-item b{display:block;font-size:13px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.tn2-item span{font-size:11px;opacity:.65}',
+      '.tn2-title{width:100%;border:0;background:transparent;color:inherit;font-size:20px;font-weight:800;outline:none;padding:16px 16px 8px}',
+      '.tn2-text{width:100%;flex:1;border:0;resize:none;background:transparent;color:inherit;outline:none;padding:8px 16px 16px;font-size:16px;line-height:1.9;min-height:220px}',
+      '.tn2-foot{flex-shrink:0;border-top:1px solid var(--tn2-line);padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:var(--tn2-ui)}',
+      '.tn2-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}',
+      '.tn2-chip{width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}',
+      '.tn2-chip.on{border-color:#fff;box-shadow:0 0 0 2px #6366f1}',
+      '.tn2-btn{border:1px solid var(--tn2-line);background:transparent;color:inherit;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:700;cursor:pointer}',
+      '.tn2-btn.danger{color:#f87171;border-color:rgba(248,113,113,.35)}',
+      '.tn2-ai{display:none;padding:10px 12px;margin:0 12px 8px;border-radius:12px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.28);font-size:12px;line-height:1.75}',
+      '.tn2-ai.on{display:block}',
+      '.tn2-lock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.72);z-index:5;padding:20px}',
+      '.tn2-card{width:min(360px,100%);padding:22px;border-radius:18px;background:var(--tn2-page);border:1px solid var(--tn2-line);text-align:center}',
+      '.tn2-fab{position:fixed!important;bottom:88px!important;left:14px!important;z-index:99990!important;width:48px!important;height:48px!important;border-radius:14px!important;border:1px solid rgba(148,163,184,.35)!important;background:linear-gradient(145deg,#312e81,#4f46e5)!important;color:#fff!important;cursor:pointer!important;box-shadow:0 10px 28px rgba(79,70,229,.45)!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;font-size:18px!important;pointer-events:auto!important}',
+      '@media (min-width:860px){.tn2-side{display:flex!important}.tn2-main{display:flex!important}}',
+      '@media (max-width:859px){',
+      '.tn2-body.list .tn2-main{display:none!important}',
+      '.tn2-body.list .tn2-side{width:100%;border:0}',
+      '.tn2-body.edit .tn2-side{display:none!important}',
+      '.tn2-body.edit .tn2-main{width:100%}',
+      '}'
+    ].join('\n');
+    document.head.appendChild(s);
+  }
+
+  function rootEl() {
+    var el = document.getElementById('tn2-root');
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = 'tn2-root';
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function persistFields() {
+    var p = page();
+    if (!p) return;
+    var t = document.getElementById('tn2-title');
+    var b = document.getElementById('tn2-text');
+    var c = document.getElementById('tn2-cat');
+    if (t) p.title = t.value;
+    if (b) p.body = b.value;
+    if (c) p.cat = c.value;
+    p.updatedAt = now();
+  }
+
+  function open() {
+    css();
+    unlocked = !localStorage.getItem(PIN);
+    var el = rootEl();
+    el.className = 'tn2-on';
+    el.style.cssText = 'display:flex!important;position:fixed!important;inset:0!important;z-index:2147483000!important';
+    document.body.style.overflow = 'hidden';
+    listMode = true;
+    paint();
+  }
+
+  function close() {
+    persistFields();
+    save(state);
+    var el = document.getElementById('tn2-root');
+    if (el) {
+      el.className = '';
+      el.style.cssText = 'display:none!important';
     }
-    return '📝 متفرقه';
+    document.body.style.overflow = '';
   }
 
-  function analyzeText(text) {
-    var t = (text || '').trim();
-    if (!t) return 'متنی برای تحلیل نیست. چند خط از روند روز یا نکات درس بنویس.';
-    var lines = t.split(/\n+/).filter(Boolean);
-    var words = t.split(/\s+/).filter(Boolean).length;
-    var hasStudy = /درس|مطالعه|تست|کنکور|فیزیک|ریاضی|شیمی|زیست|عربی|حفظ/.test(t);
-    var hasMood = /خست|استرس|نگران|امید|انرژی|خوب|بد|موفق/.test(t);
-    var hasPlan = /فردا|برنامه|باید|هدف|تموم|تمام/.test(t);
-    var tips = [];
-    tips.push('حدود <strong>' + words + ' کلمه</strong> در <strong>' + lines.length + ' بند</strong> ثبت شده.');
-    if (hasStudy) tips.push('ردپای <strong>مطالعه/درس</strong> دیده می‌شود — اگر تست زدی، تعداد و درصد را هم یادداشت کن تا روند مشخص شود.');
-    if (hasMood) tips.push('نشانه‌های <strong>حال‌وهوا</strong> هست؛ ثبت کوتاه انرژی روزانه به شناسایی الگوی خستگی کمک می‌کند.');
-    if (hasPlan) tips.push('عبارات برنامه‌محور دیدی؛ یک خط «سه کار اولویت فردا» در همان صفحه بنویس.');
-    if (!hasStudy && !hasMood) tips.push('می‌توانی با برچسب دسته «روند روز» یا «درس» نظم بیشتری بدهی.');
-    if (words < 30) tips.push('یادداشت کوتاه است؛ برای تحلیل بهتر، ۲–۳ جمله درباره نتیجه یا احساس بعد از کار اضافه کن.');
-    else if (words > 200) tips.push('یادداشت مفصل است — عالی برای مرور هفتگی. با دکمه کپی می‌توانی برای مشاور بفرستی.');
-    return tips.map(function (x) { return '• ' + x; }).join('<br>');
-  }
-
-  function render() {
-    injectStyles();
-    var root = ensureRoot();
-    applyBg(root);
-    var bg = bgOf(localStorage.getItem(BG_KEY) || 'night');
-    var page = activePage();
-    var col = colorOf(page && page.color);
+  function paint() {
+    css();
+    var el = rootEl();
+    var th = theme();
+    el.style.setProperty('--tn2-page', th.page);
+    el.style.setProperty('--tn2-ui', th.ui);
+    el.style.setProperty('--tn2-line', th.line);
+    el.style.background = th.ui;
+    el.style.color = th.text;
 
     if (!unlocked) {
-      root.innerHTML =
-        '<div class="tn-lock">' +
-        '<div class="tn-lock-card">' +
-        '<div style="font-size:2rem;margin-bottom:.4rem">🔒</div>' +
-        '<h3 style="margin:0 0 .35rem;font-size:1rem">دفترچه قفل است</h3>' +
-        '<p style="font-size:12px;opacity:.7;margin:0 0 .8rem">رمز ورود را وارد کن</p>' +
-        '<input id="tn-pin-in" class="tn-input" type="password" inputmode="numeric" placeholder="رمز" dir="ltr">' +
-        '<button type="button" class="tn-btn tn-btn-primary" id="tn-pin-ok" style="width:100%;margin-top:.4rem">ورود</button>' +
-        '<button type="button" class="tn-btn" id="tn-pin-close" style="width:100%;margin-top:.4rem">بستن</button>' +
+      el.innerHTML =
+        '<div class="tn2-lock"><div class="tn2-card">' +
+        '<div style="font-size:28px;margin-bottom:8px"><i class="fas fa-lock"></i></div>' +
+        '<div style="font-weight:800;margin-bottom:6px">دفترچه قفل است</div>' +
+        '<input id="tn2-pin" type="password" inputmode="numeric" class="tn2-search" placeholder="رمز ورود" dir="ltr" style="margin:10px 0;text-align:center">' +
+        '<button type="button" class="tn2-btn tn2-primary" id="tn2-pin-ok" style="width:100%;padding:12px">ورود</button>' +
+        '<button type="button" class="tn2-btn" id="tn2-pin-x" style="width:100%;margin-top:8px;padding:12px">بستن</button>' +
         '</div></div>';
-      root.querySelector('#tn-pin-ok').onclick = function () {
-        var v = root.querySelector('#tn-pin-in').value;
-        if (hashPin(v) === localStorage.getItem(PIN_KEY)) {
-          unlocked = true;
-          render();
-        } else alert('رمز نادرست است.');
+      el.querySelector('#tn2-pin-ok').onclick = function () {
+        var v = el.querySelector('#tn2-pin').value;
+        if (hash(v) === localStorage.getItem(PIN)) { unlocked = true; paint(); }
+        else alert('رمز نادرست است');
       };
-      root.querySelector('#tn-pin-close').onclick = closeNotes;
-      root.querySelector('#tn-pin-in').addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') root.querySelector('#tn-pin-ok').click();
-      });
+      el.querySelector('#tn2-pin-x').onclick = close;
       return;
     }
 
-    var pages = filteredPages();
-    var listHtml = pages.length ? pages.map(function (p) {
-      var c = colorOf(p.color);
-      return '<button type="button" class="tn-page-item' + (p.id === data.activeId ? ' active' : '') + '" data-id="' + p.id + '">' +
-        '<span class="tn-title" style="color:' + c.fg + '">' + (p.pinned ? '📌 ' : '') + esc(p.title || 'بدون عنوان') + '</span>' +
-        '<span class="tn-meta">' + esc(catName(p.categoryId)) + ' · ' + faDate(p.updatedAt || p.createdAt) + '</span>' +
-        '</button>';
-    }).join('') : '<div class="tn-empty">صفحه‌ای در این فیلتر نیست</div>';
+    var p = page();
+    var list = filtered();
+    var items = list.map(function (x) {
+      var col = color(x.color);
+      return '<button type="button" class="tn2-item' + (x.id === state.activeId ? ' on' : '') + '" data-id="' + x.id + '">' +
+        '<b style="color:' + col.c + '">' + (x.pinned ? '📌 ' : '') + esc(x.title || 'بدون عنوان') + '</b>' +
+        '<span>' + esc(catLabel(state, x.cat)) + ' · ' + faTime(x.updatedAt) + '</span></button>';
+    }).join('') || '<div style="opacity:.5;text-align:center;padding:24px;font-size:13px">موردی نیست</div>';
 
-    var catOpts = data.categories.map(function (c) {
-      return '<option value="' + esc(c.id) + '"' + ((page && page.categoryId === c.id) ? ' selected' : '') + '>' +
-        esc((c.icon || '') + ' ' + c.name) + '</option>';
+    var catOpts = state.cats.map(function (c) {
+      return '<option value="' + esc(c.id) + '"' + (p && p.cat === c.id ? ' selected' : '') + '>' +
+        esc((c.emoji || '') + ' ' + c.name) + '</option>';
     }).join('');
 
-    var filterOpts = '<option value="">همه دسته‌ها</option>' + data.categories.map(function (c) {
-      return '<option value="' + esc(c.id) + '"' + (filterCat === c.id ? ' selected' : '') + '>' +
-        esc((c.icon || '') + ' ' + c.name) + '</option>';
+    var filterOpts = '<option value="">همه دسته‌ها</option>' + state.cats.map(function (c) {
+      return '<option value="' + esc(c.id) + '"' + (filter === c.id ? ' selected' : '') + '>' +
+        esc((c.emoji || '') + ' ' + c.name) + '</option>';
     }).join('');
 
-    var colorChips = COLORS.map(function (c) {
-      return '<button type="button" class="tn-chip' + ((page && page.color === c.id) ? ' on' : '') +
-        '" data-color="' + c.id + '" title="' + c.name + '" style="background:' + (c.fg === 'inherit' ? '#94a3b8' : c.fg) + '"></button>';
+    var chips = COLORS.map(function (c) {
+      return '<button type="button" class="tn2-chip' + (p && p.color === c.id ? ' on' : '') +
+        '" data-color="' + c.id + '" title="' + c.label + '" style="background:' + c.c + '"></button>';
     }).join('');
 
-    var bgChips = BACKGROUNDS.map(function (b) {
-      var on = (localStorage.getItem(BG_KEY) || 'night') === b.id;
-      return '<button type="button" class="tn-btn" data-bg="' + b.id + '" style="font-size:11px;' +
+    var bgBtns = BGS.map(function (b) {
+      var on = (localStorage.getItem(BG) || 'ink') === b.id;
+      return '<button type="button" class="tn2-btn" data-bg="' + b.id + '" style="' +
         (on ? 'outline:2px solid #818cf8' : '') + '">' + esc(b.name) + '</button>';
     }).join('');
 
-    root.innerHTML =
-      '<div class="tn-bar">' +
-      '<button type="button" class="tn-btn" id="tn-close" title="بستن">✕</button>' +
-      '<strong style="flex:1;font-size:13px">📓 دفترچه یادداشت</strong>' +
-      '<button type="button" class="tn-btn" id="tn-new">+ صفحه</button>' +
-      '<button type="button" class="tn-btn tn-btn-primary" id="tn-save">ذخیره</button>' +
+    el.innerHTML =
+      '<div class="tn2-top">' +
+      '<button type="button" class="tn2-ico" id="tn2-close" title="بستن"><i class="fas fa-times"></i></button>' +
+      '<div style="flex:1;font-weight:900;font-size:14px">دفترچه یادداشت</div>' +
+      '<button type="button" class="tn2-btn" id="tn2-new"><i class="fas fa-plus"></i> صفحه</button>' +
+      '<button type="button" class="tn2-btn tn2-primary" id="tn2-save">ذخیره</button>' +
       '</div>' +
-      '<div class="tn-layout">' +
-      '<aside class="tn-sidebar" style="background:' + bg.paper + '">' +
-      '<div style="padding:.6rem;display:flex;flex-direction:column;gap:.4rem">' +
-      '<input class="tn-input" id="tn-search" placeholder="جست‌وجو در یادداشت‌ها..." value="' + esc(searchQ) + '" style="margin:0">' +
-      '<select class="tn-input" id="tn-filter" style="margin:0">' + filterOpts + '</select>' +
+      '<div class="tn2-body ' + (listMode ? 'list' : 'edit') + '" id="tn2-body-wrap">' +
+      '<aside class="tn2-side">' +
+      '<div style="padding:10px;display:grid;gap:8px">' +
+      '<input class="tn2-search" id="tn2-q" placeholder="جست‌وجو در نکات و یادداشت‌ها..." value="' + esc(q) + '">' +
+      '<select class="tn2-select" id="tn2-filter">' + filterOpts + '</select>' +
       '</div>' +
-      '<div class="tn-sidebar-scroll">' + listHtml + '</div>' +
+      '<div class="tn2-list">' + items + '</div>' +
       '</aside>' +
-      '<section class="tn-main">' +
-      (page ? (
-        '<div class="tn-editor-wrap" style="background:' + bg.paper + ';border-radius:0">' +
-        '<input class="tn-title-input" id="tn-title" value="' + esc(page.title) + '" placeholder="عنوان صفحه...">' +
-        '<textarea class="tn-body" id="tn-body" placeholder="اینجا بنویس... درس، روند روز، کار، ایده یا هر چیزی که می‌خواهی نگه داری." style="color:' +
-          (col.fg === 'inherit' ? 'inherit' : col.fg) + ';background:' + col.bg + '">' + esc(page.body) + '</textarea>' +
-        '</div>' +
-        '<div class="tn-ai' + (aiOpen ? ' open' : '') + '" id="tn-ai-box">' + (aiOpen ? analyzeText(page.body) : '') + '</div>' +
-        '<div class="tn-tools">' +
-        '<span style="font-size:11px;opacity:.7">رنگ متن:</span>' + colorChips +
-        '<select class="tn-input" id="tn-cat" style="width:auto;margin:0;padding:.35rem .5rem;font-size:11px">' + catOpts + '</select>' +
-        '<button type="button" class="tn-btn" id="tn-pin">' + (page.pinned ? 'برداشتن سنجاق' : 'سنجاق') + '</button>' +
-        '<button type="button" class="tn-btn" id="tn-copy">کپی</button>' +
-        '<button type="button" class="tn-btn" id="tn-ai">تحلیل</button>' +
-        '<button type="button" class="tn-btn" id="tn-today">یادداشت امروز</button>' +
-        '<button type="button" class="tn-btn tn-btn-danger" id="tn-del">حذف صفحه</button>' +
-        '</div>' +
-        '<div class="tn-tools" style="border-top:0;padding-top:0">' +
-        '<span style="font-size:11px;opacity:.7">پس‌زمینه:</span>' + bgChips +
-        '<button type="button" class="tn-btn" id="tn-add-cat">+ دسته</button>' +
-        '<button type="button" class="tn-btn" id="tn-pin-set">' + (localStorage.getItem(PIN_KEY) ? 'تغییر/حذف رمز' : 'گذاشتن رمز') + '</button>' +
+      '<section class="tn2-main">' +
+      (p ? (
+        '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--tn2-line)">' +
+        '<button type="button" class="tn2-ico" id="tn2-back" title="لیست" style="display:none"><i class="fas fa-arrow-right"></i></button>' +
+        '<div style="flex:1;font-size:11px;opacity:.65">' + faTime(p.updatedAt) + '</div></div>' +
+        '<input class="tn2-title" id="tn2-title" value="' + esc(p.title) + '" placeholder="عنوان نکته یا صفحه...">' +
+        '<textarea class="tn2-text" id="tn2-text" placeholder="نکته‌ها، خلاصه درس، روند روز، ایده‌ها... اینجا مکتوب کن. ذخیره خودکار است." style="color:' +
+          color(p.color).c + '">' + esc(p.body) + '</textarea>' +
+        '<div class="tn2-ai' + (showAi ? ' on' : '') + '" id="tn2-ai">' + (showAi ? analyze(p.body) : '') + '</div>' +
+        '<div class="tn2-foot">' +
+        '<div class="tn2-row"><span style="font-size:11px;opacity:.7">رنگ:</span>' + chips +
+        '<select class="tn2-select" id="tn2-cat" style="width:auto;min-width:140px">' + catOpts + '</select></div>' +
+        '<div class="tn2-row">' +
+        '<button type="button" class="tn2-btn" id="tn2-copy"><i class="fas fa-copy"></i> کپی</button>' +
+        '<button type="button" class="tn2-btn" id="tn2-ai-btn"><i class="fas fa-magic"></i> تحلیل</button>' +
+        '<button type="button" class="tn2-btn" id="tn2-today"><i class="fas fa-calendar-day"></i> امروز</button>' +
+        '<button type="button" class="tn2-btn" id="tn2-pin">' + (p.pinned ? 'برداشتن سنجاق' : 'سنجاق') + '</button>' +
+        '<button type="button" class="tn2-btn danger" id="tn2-del">حذف</button></div>' +
+        '<div class="tn2-row"><span style="font-size:11px;opacity:.7">پس‌زمینه:</span>' + bgBtns +
+        '<button type="button" class="tn2-btn" id="tn2-addcat">+ دسته</button>' +
+        '<button type="button" class="tn2-btn" id="tn2-setpin">' + (localStorage.getItem(PIN) ? 'رمز' : 'گذاشتن رمز') + '</button></div>' +
         '</div>'
-      ) : '<div class="tn-empty">صفحه‌ای نیست. «+ صفحه» را بزن.</div>') +
+      ) : '<div style="padding:40px;text-align:center;opacity:.6">صفحه‌ای نیست</div>') +
       '</section></div>';
 
-    // events
-    root.querySelector('#tn-close').onclick = closeNotes;
-
-    root.querySelector('#tn-new').onclick = function () {
-      persistEditor();
-      var now = Date.now();
-      var p = {
-        id: now, title: 'یادداشت جدید', body: '', color: 'default',
-        categoryId: filterCat || 'daily', pinned: false, createdAt: now, updatedAt: now
-      };
-      data.pages.unshift(p);
-      data.activeId = now;
-      save(data);
-      aiOpen = false;
-      render();
-    };
-
-    root.querySelector('#tn-save').onclick = function () {
-      persistEditor();
-      save(data);
-      var b = root.querySelector('#tn-save');
-      if (b) { b.textContent = 'ذخیره شد'; setTimeout(function () { if (b) b.textContent = 'ذخیره'; }, 900); }
-    };
-
-    var searchEl = root.querySelector('#tn-search');
-    if (searchEl) {
-      searchEl.addEventListener('input', function () {
-        searchQ = searchEl.value.trim();
-        // soft re-list without full persist disruption
-        persistEditor();
-        render();
-        var s2 = document.querySelector('#tn-search');
-        if (s2) { s2.focus(); s2.selectionStart = s2.selectionEnd = s2.value.length; }
-      });
-    }
-
-    var filterEl = root.querySelector('#tn-filter');
-    if (filterEl) {
-      filterEl.onchange = function () {
-        filterCat = filterEl.value;
-        persistEditor();
-        render();
-      };
-    }
-
-    root.querySelectorAll('.tn-page-item').forEach(function (btn) {
-      btn.onclick = function () {
-        persistEditor();
-        data.activeId = Number(btn.getAttribute('data-id'));
-        save(data);
-        aiOpen = false;
-        render();
-      };
-    });
-
-    if (!page) return;
-
-    root.querySelectorAll('[data-color]').forEach(function (chip) {
-      chip.onclick = function () {
-        persistEditor();
-        page.color = chip.getAttribute('data-color');
-        page.updatedAt = Date.now();
-        save(data);
-        render();
-      };
-    });
-
-    root.querySelectorAll('[data-bg]').forEach(function (btn) {
-      btn.onclick = function () {
-        localStorage.setItem(BG_KEY, btn.getAttribute('data-bg'));
-        persistEditor();
-        render();
-      };
-    });
-
-    var catEl = root.querySelector('#tn-cat');
-    if (catEl) {
-      catEl.onchange = function () {
-        page.categoryId = catEl.value;
-        page.updatedAt = Date.now();
-        save(data);
-      };
-    }
-
-    root.querySelector('#tn-pin').onclick = function () {
-      persistEditor();
-      page.pinned = !page.pinned;
-      page.updatedAt = Date.now();
-      save(data);
-      render();
-    };
-
-    root.querySelector('#tn-copy').onclick = function () {
-      persistEditor();
-      var text = (page.title || '') + '\n\n' + (page.body || '');
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(function () {
-          alert('متن صفحه کپی شد.');
-        }).catch(function () {
-          prompt('کپی کن:', text);
-        });
-      } else prompt('کپی کن:', text);
-    };
-
-    root.querySelector('#tn-ai').onclick = function () {
-      persistEditor();
-      aiOpen = !aiOpen;
-      render();
-    };
-
-    root.querySelector('#tn-today').onclick = function () {
-      persistEditor();
-      var stamp = faDate(Date.now());
-      var block = '\n\n—— ' + stamp + ' ——\n';
-      page.body = (page.body || '') + block;
-      page.updatedAt = Date.now();
-      if (!page.title || page.title === 'یادداشت جدید') page.title = 'روند روز ' + todayISO();
-      page.categoryId = 'daily';
-      save(data);
-      render();
-      var body = document.getElementById('tn-body');
-      if (body) { body.focus(); body.scrollTop = body.scrollHeight; }
-    };
-
-    root.querySelector('#tn-del').onclick = function () {
-      if (data.pages.length <= 1) {
-        alert('حداقل یک صفحه باید بماند.');
-        return;
+    // mobile back button visibility
+    var back = el.querySelector('#tn2-back');
+    if (back) {
+      if (window.innerWidth < 860) {
+        back.style.display = listMode ? 'none' : 'inline-flex';
       }
-      if (!confirm('این صفحه حذف شود؟')) return;
-      data.pages = data.pages.filter(function (p) { return p.id !== page.id; });
-      data.activeId = data.pages[0].id;
-      save(data);
-      aiOpen = false;
-      render();
+    }
+
+    el.querySelector('#tn2-close').onclick = close;
+
+    el.querySelector('#tn2-new').onclick = function () {
+      persistFields();
+      var id = now();
+      state.pages.unshift({
+        id: id, title: 'نکته جدید', body: '', color: 'def',
+        cat: filter || 'study', pinned: false, createdAt: id, updatedAt: id
+      });
+      state.activeId = id;
+      save(state);
+      listMode = false;
+      showAi = false;
+      paint();
     };
 
-    root.querySelector('#tn-add-cat').onclick = function () {
+    el.querySelector('#tn2-save').onclick = function () {
+      persistFields();
+      save(state);
+      var b = el.querySelector('#tn2-save');
+      b.textContent = 'ذخیره شد';
+      setTimeout(function () { b.textContent = 'ذخیره'; }, 800);
+    };
+
+    el.querySelector('#tn2-q').oninput = function (e) {
+      q = e.target.value.trim();
+      persistFields();
+      paint();
+      var nq = document.getElementById('tn2-q');
+      if (nq) { nq.focus(); nq.selectionStart = nq.selectionEnd = nq.value.length; }
+    };
+    el.querySelector('#tn2-filter').onchange = function (e) {
+      filter = e.target.value;
+      persistFields();
+      paint();
+    };
+
+    el.querySelectorAll('.tn2-item').forEach(function (btn) {
+      btn.onclick = function () {
+        persistFields();
+        state.activeId = Number(btn.getAttribute('data-id'));
+        save(state);
+        listMode = false;
+        showAi = false;
+        paint();
+      };
+    });
+
+    if (back) back.onclick = function () {
+      persistFields();
+      save(state);
+      listMode = true;
+      paint();
+    };
+
+    if (!p) return;
+
+    el.querySelectorAll('[data-color]').forEach(function (ch) {
+      ch.onclick = function () {
+        persistFields();
+        p.color = ch.getAttribute('data-color');
+        p.updatedAt = now();
+        save(state);
+        paint();
+      };
+    });
+    el.querySelectorAll('[data-bg]').forEach(function (b) {
+      b.onclick = function () {
+        localStorage.setItem(BG, b.getAttribute('data-bg'));
+        persistFields();
+        paint();
+      };
+    });
+
+    el.querySelector('#tn2-copy').onclick = function () {
+      persistFields();
+      var text = (p.title || '') + '\n\n' + (p.body || '');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { alert('کپی شد'); })
+          .catch(function () { prompt('کپی:', text); });
+      } else prompt('کپی:', text);
+    };
+
+    el.querySelector('#tn2-ai-btn').onclick = function () {
+      persistFields();
+      showAi = !showAi;
+      paint();
+    };
+
+    el.querySelector('#tn2-today').onclick = function () {
+      persistFields();
+      p.body = (p.body || '') + '\n\n—— ' + faTime(now()) + ' ——\n';
+      if (!p.title || p.title === 'نکته جدید' || p.title === 'صفحه اول') p.title = 'روند ' + todayISO();
+      p.cat = 'daily';
+      p.updatedAt = now();
+      save(state);
+      paint();
+      var ta = document.getElementById('tn2-text');
+      if (ta) { ta.focus(); ta.scrollTop = ta.scrollHeight; }
+    };
+
+    el.querySelector('#tn2-pin').onclick = function () {
+      persistFields();
+      p.pinned = !p.pinned;
+      p.updatedAt = now();
+      save(state);
+      paint();
+    };
+
+    el.querySelector('#tn2-del').onclick = function () {
+      if (state.pages.length <= 1) return alert('حداقل یک صفحه لازم است');
+      if (!confirm('حذف این صفحه؟')) return;
+      state.pages = state.pages.filter(function (x) { return x.id !== p.id; });
+      state.activeId = state.pages[0].id;
+      save(state);
+      listMode = true;
+      paint();
+    };
+
+    el.querySelector('#tn2-addcat').onclick = function () {
       var name = prompt('نام دسته جدید:');
       if (!name || !name.trim()) return;
-      var id = 'c' + Date.now();
-      data.categories.push({ id: id, name: name.trim(), icon: '🏷️' });
-      save(data);
-      render();
+      state.cats.push({ id: 'c' + now(), name: name.trim(), emoji: '🏷️' });
+      save(state);
+      paint();
     };
 
-    root.querySelector('#tn-pin-set').onclick = function () {
-      var has = !!localStorage.getItem(PIN_KEY);
+    el.querySelector('#tn2-setpin').onclick = function () {
+      var has = !!localStorage.getItem(PIN);
       if (has) {
-        var cur = prompt('رمز فعلی را وارد کن (برای حذف یا تغییر):');
-        if (hashPin(cur) !== localStorage.getItem(PIN_KEY)) {
-          alert('رمز نادرست است.');
-          return;
-        }
-        var next = prompt('رمز جدید (خالی = حذف قفل):');
-        if (next === null) return;
-        if (!String(next).trim()) {
-          localStorage.removeItem(PIN_KEY);
-          alert('قفل برداشته شد.');
-        } else {
-          localStorage.setItem(PIN_KEY, hashPin(String(next).trim()));
-          alert('رمز به‌روز شد.');
-        }
+        var cur = prompt('رمز فعلی:');
+        if (hash(cur) !== localStorage.getItem(PIN)) return alert('نادرست');
+        var nx = prompt('رمز جدید (خالی = حذف قفل):');
+        if (nx === null) return;
+        if (!String(nx).trim()) localStorage.removeItem(PIN);
+        else localStorage.setItem(PIN, hash(String(nx).trim()));
       } else {
-        var n1 = prompt('رمز جدید (فقط عدد پیشنهاد می‌شود):');
-        if (!n1 || !String(n1).trim()) return;
-        var n2 = prompt('تکرار رمز:');
-        if (n1 !== n2) {
-          alert('رمزها یکسان نیستند.');
-          return;
-        }
-        localStorage.setItem(PIN_KEY, hashPin(String(n1).trim()));
-        alert('رمز ذخیره شد. از این به بعد برای ورود لازم است.');
+        var a = prompt('رمز جدید:');
+        if (!a || !String(a).trim()) return;
+        var b = prompt('تکرار رمز:');
+        if (a !== b) return alert('یکسان نیست');
+        localStorage.setItem(PIN, hash(String(a).trim()));
       }
-      render();
+      paint();
     };
 
-    // autosave on blur
-    var titleEl = root.querySelector('#tn-title');
-    var bodyEl = root.querySelector('#tn-body');
-    if (titleEl) titleEl.addEventListener('blur', function () { persistEditor(); save(data); });
-    if (bodyEl) {
-      bodyEl.addEventListener('blur', function () { persistEditor(); save(data); });
-      var tmr;
-      bodyEl.addEventListener('input', function () {
-        clearTimeout(tmr);
-        tmr = setTimeout(function () { persistEditor(); save(data); }, 600);
-      });
+    var title = el.querySelector('#tn2-title');
+    var text = el.querySelector('#tn2-text');
+    var cat = el.querySelector('#tn2-cat');
+    var timer;
+    function auto() {
+      clearTimeout(timer);
+      timer = setTimeout(function () { persistFields(); save(state); }, 500);
     }
+    if (title) title.addEventListener('input', auto);
+    if (text) text.addEventListener('input', auto);
+    if (cat) cat.addEventListener('change', function () { persistFields(); save(state); });
   }
 
-  function persistEditor() {
-    var page = activePage();
-    if (!page) return;
-    var titleEl = document.getElementById('tn-title');
-    var bodyEl = document.getElementById('tn-body');
-    var catEl = document.getElementById('tn-cat');
-    if (titleEl) page.title = titleEl.value;
-    if (bodyEl) page.body = bodyEl.value;
-    if (catEl) page.categoryId = catEl.value;
-    page.updatedAt = Date.now();
+  function mountFab() {
+    if (document.getElementById('tn2-fab')) return;
+    var fab = document.createElement('button');
+    fab.id = 'tn2-fab';
+    fab.type = 'button';
+    fab.className = 'tn2-fab';
+    fab.title = 'دفترچه یادداشت';
+    fab.setAttribute('aria-label', 'دفترچه یادداشت');
+    fab.innerHTML = '<i class="fas fa-pen-fancy"></i>';
+    fab.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      open();
+    }, true);
+    document.body.appendChild(fab);
   }
 
-  function openNotes() {
-    unlocked = !localStorage.getItem(PIN_KEY);
-    injectStyles();
-    var root = ensureRoot();
-    root.classList.add('open');
-    root.style.display = 'flex';
-    root.style.position = 'fixed';
-    root.style.inset = '0';
-    root.style.zIndex = '120000';
-    document.body.style.overflow = 'hidden';
-    render();
-  }
-
-  function closeNotes() {
-    persistEditor();
-    save(data);
-    var root = document.getElementById('tilo-notes-root');
-    if (root) {
-      root.classList.remove('open');
-      root.style.display = 'none';
-    }
-    document.body.style.overflow = '';
-    unlocked = !localStorage.getItem(PIN_KEY);
-  }
-
-  function injectMenuButton() {
+  function mountMenu() {
     var navs = document.getElementById('tilo-drawer-navs');
-    if (!navs || document.getElementById('tilo-notes-menu-btn')) return;
+    if (!navs || document.getElementById('tn2-menu')) return;
     var btn = document.createElement('button');
     btn.type = 'button';
-    btn.id = 'tilo-notes-menu-btn';
+    btn.id = 'tn2-menu';
     btn.className = 'w-full text-right px-3 py-2.5 rounded-xl text-sm font-bold text-slate-300 hover:bg-slate-800/80 transition';
-    btn.innerHTML = '<i class="fas fa-book me-1"></i> دفترچه یادداشت';
+    btn.innerHTML = '<i class="fas fa-pen-fancy" style="margin-left:6px"></i> دفترچه یادداشت';
     btn.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
-      var backdrop = document.querySelector('.tilo-drawer-backdrop');
-      var panel = document.querySelector('.tilo-drawer-panel');
-      if (backdrop) backdrop.classList.remove('open');
-      if (panel) panel.classList.remove('open');
-      setTimeout(openNotes, 50);
-    });
+      var bd = document.querySelector('.tilo-drawer-backdrop');
+      var pn = document.querySelector('.tilo-drawer-panel');
+      if (bd) bd.classList.remove('open');
+      if (pn) pn.classList.remove('open');
+      setTimeout(open, 30);
+    }, true);
     navs.appendChild(btn);
   }
 
-  // اگر منوی همبرگری بعداً ساخته شد، دکمه را اضافه کن
-  var obs = setInterval(function () {
-    injectMenuButton();
-  }, 800);
-  setTimeout(function () { injectMenuButton(); }, 1200);
+  // remove old v1 fab if present
+  function cleanupOld() {
+    var old = document.getElementById('tilo-notes-fab');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+    var oldBtn = document.getElementById('tilo-notes-menu-btn');
+    if (oldBtn && oldBtn.parentNode) oldBtn.parentNode.removeChild(oldBtn);
+    var oldRoot = document.getElementById('tilo-notes-root');
+    if (oldRoot && oldRoot.parentNode) oldRoot.parentNode.removeChild(oldRoot);
+  }
 
-  // میانبر اختیاری از کنسول / بیرون
-  window.TiloNotes = { open: openNotes, close: closeNotes };
+  window.TiloNotes = { open: open, close: close };
 
-  // دکمه شناور کوچک (اگر منو دیر لود شد)
-  setTimeout(function () {
-    if (document.getElementById('tilo-notes-fab')) return;
-    var fab = document.createElement('button');
-    fab.id = 'tilo-notes-fab';
-    fab.type = 'button';
-    fab.title = 'دفترچه یادداشت';
-    fab.textContent = '📓';
-    fab.style.cssText = 'position:fixed;bottom:5.5rem;left:1rem;z-index:99990;width:2.85rem;height:2.85rem;border-radius:999px;border:1px solid rgba(148,163,184,.45);background:rgba(22,27,36,.96);font-size:1.15rem;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.4);pointer-events:auto';
-    fab.onclick = openNotes;
-    document.body.appendChild(fab);
-  }, 2000);
+  function boot() {
+    cleanupOld();
+    css();
+    mountFab();
+    mountMenu();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+  setInterval(function () { mountFab(); mountMenu(); }, 1000);
 })();
