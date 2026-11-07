@@ -1,5 +1,8 @@
-/* tilo-ui.css — جایگزین کامل؛ بدون تغییر رفتار برنامه */
-:root {
+/* tilo-ui.css — نسخهٔ ۲ | فقط ظاهر؛ منطق و جای عناصر تغییر نمی‌کند */
+
+/* ───── ۱. توکن‌ها (پیش‌فرض: شب) ───── */
+:root,
+body.tilo-theme-night {
   color-scheme: dark;
   --t-bg: #111716;
   --t-card: #1b2321;
@@ -7,11 +10,14 @@
   --t-muted: #b0bcb6;
   --t-accent: #a9d0bd;
   --t-accent-solid: #386557;
+  --t-on-accent: #ffffff;
   --t-border: #34433d;
+  --t-field-border: #6f8279;
   --t-radius: 14px;
+  --t-control-radius: 10px;
   --t-shadow: 0 2px 8px rgba(0, 0, 0, .10);
 }
-:root:has(body.tilo-theme-day) {
+body.tilo-theme-day {
   color-scheme: light;
   --t-bg: #f3f3ed;
   --t-card: #fffefb;
@@ -19,85 +25,174 @@
   --t-muted: #586a60;
   --t-accent: #386557;
   --t-accent-solid: #386557;
+  --t-on-accent: #ffffff;
   --t-border: #d6ded6;
+  --t-field-border: #7a857e;
   --t-shadow: 0 2px 8px rgba(34, 46, 38, .04);
 }
+/* فقط برای اسکرول‌بار و کنترل‌های مرورگر */
+:root:has(body.tilo-theme-day) { color-scheme: light; }
+
+/* ───── ۲. پایه (رفتار قبلی حفظ شده) ───── */
 html body.h-screen { height: 100vh; height: 100dvh; }
-html body.tilo-theme-night, html body.tilo-theme-day {
-  background: var(--t-bg) !important; color: var(--t-text) !important;
+html body.tilo-theme-night,
+html body.tilo-theme-day {
+  background: var(--t-bg) !important;
+  color: var(--t-text) !important;
 }
+
+/* ───── ۳. کارت‌ها، هدر، ناوبری ───── */
 html body.tilo-theme-night .soft-card,
 html body.tilo-theme-day .soft-card,
-html body.tilo-theme-night nav.soft-card,
-html body.tilo-theme-day nav.soft-card,
 html body.tilo-theme-night main > header:first-child,
 html body.tilo-theme-day main > header:first-child {
-  background: var(--t-card) !important; border-color: var(--t-border) !important;
-  box-shadow: var(--t-shadow) !important; backdrop-filter: none;
+  background: var(--t-card) !important;
+  border-color: var(--t-border) !important;
+  box-shadow: var(--t-shadow) !important;
+  backdrop-filter: none;
 }
 html body .soft-card { border-radius: var(--t-radius); }
 html body .soft-card:hover { transform: none !important; }
 html body main > header:first-child { position: sticky; top: .5rem; z-index: 30; }
-html body.tilo-theme-night .input-calm,
-html body.tilo-theme-day .input-calm {
-  background: var(--t-bg) !important; color: var(--t-text) !important;
-  border-color: var(--t-border) !important; border-radius: 10px;
-}
+html body.tilo-theme-day .fixed.inset-0 .soft-card { background: var(--t-card) !important; }
+
+/* ───── ۴. متن‌ها ───── */
 html body.tilo-theme-night .text-slate-400,
 html body.tilo-theme-night .text-slate-500,
 html body.tilo-theme-day .text-slate-400,
 html body.tilo-theme-day .text-slate-500 { color: var(--t-muted) !important; }
+html body.tilo-theme-day .text-slate-200,
+html body.tilo-theme-day .text-slate-300,
 html body.tilo-theme-day .text-white { color: var(--t-text) !important; }
-html body.tilo-theme-day .bg-slate-900,
-html body.tilo-theme-day .bg-slate-800,
-html body.tilo-theme-day .bg-slate-950,
-html body.tilo-theme-day [class*="bg-[#162032]"] {
-  background-color: var(--t-bg) !important; color: var(--t-text) !important;
-}
-html body.tilo-theme-day .fixed.inset-0 .soft-card { background: var(--t-card) !important; }
 html body.tilo-theme-night .text-primarySoft,
 html body.tilo-theme-day .text-primarySoft,
 html body.tilo-theme-night .text-tealSoft,
 html body.tilo-theme-day .text-tealSoft { color: var(--t-accent) !important; }
-html body.tilo-theme-night .bg-primary,
-html body.tilo-theme-day .bg-primary,
-html body.tilo-theme-night button.bg-gradient-to-r,
-html body.tilo-theme-day button.bg-gradient-to-r {
-  background: var(--t-accent-solid) !important; color: #fff !important; box-shadow: none !important;
-}
-html body.tilo-theme-night button.bg-primary *,
-html body.tilo-theme-day button.bg-primary * { color: inherit !important; }
-html body .bg-gradient-to-tr { background: #b7d1c4 !important; box-shadow: none !important; }
-html body .bg-gradient-to-tr .text-white { color: #223b30 !important; }
-html body nav .bg-primary\/20 { background: color-mix(in srgb, var(--t-accent) 18%, transparent) !important; }
-html body .tilo-chip { background: var(--t-bg); border-color: var(--t-border); color: var(--t-text); }
-html body .tilo-chip.active { background: var(--t-card); border-color: var(--t-accent); color: var(--t-accent); }
 html body .text-\[10px\] { font-size: 11px; }
 html body .text-\[11px\] { font-size: 12px; }
-html body .tilo-stat-value, html body main .font-mono.font-black { font-variant-numeric: tabular-nums; }
-html body .btn-calm { border-radius: 10px; }
-html body .btn-calm:hover { transform: none; filter: brightness(1.04); }
-html body :is(button, a, summary, input, select, textarea):focus-visible {
-  outline: 2px solid var(--t-accent) !important; outline-offset: 2px;
+
+/* متن‌های گرادیانی → متن ساده */
+html body .bg-clip-text {
+  background: none !important;
+  color: var(--t-text) !important;
+  -webkit-text-fill-color: currentColor;
 }
-/* خوانایی فرم، تایمر و دفترچه؛ چیدمان و رفتار حفظ می‌شود. */
+
+/* ───── ۵. زمینه‌ها و حاشیه‌های تیرهٔ جامانده در تم روز ───── */
+html body.tilo-theme-day .bg-slate-900,
+html body.tilo-theme-day .bg-slate-800,
+html body.tilo-theme-day .bg-slate-950,
+html body.tilo-theme-day [class*="bg-[#162032]"] {
+  background-color: var(--t-bg) !important;
+  color: var(--t-text) !important;
+}
+html body.tilo-theme-day [class*="border-white"],
+html body.tilo-theme-day .border-slate-700,
+html body.tilo-theme-day .border-slate-800 { border-color: var(--t-border) !important; }
+
+/* ───── ۶. دکمهٔ اصلی: یک رنگ، بدون گرادیان و درخشش ───── */
+html body:is(.tilo-theme-day, .tilo-theme-night) :is(.bg-primary, button.bg-gradient-to-r) {
+  background: var(--t-accent-solid) !important;
+  color: var(--t-on-accent) !important;
+  box-shadow: none !important;
+}
+html body:is(.tilo-theme-day, .tilo-theme-night) :is(.bg-primary, button.bg-gradient-to-r) * {
+  color: inherit !important;
+}
+html body nav .bg-primary\/20 {
+  background: color-mix(in srgb, var(--t-accent) 18%, transparent) !important;
+}
+/* حذف سایه‌های رنگی درخشان */
+html body [class*="shadow-primary"],
+html body [class*="shadow-teal"] { box-shadow: var(--t-shadow) !important; }
+
+/* کارت‌ها و نشان‌های گرادیانی → زمینهٔ ملایم سازگار با هر دو تم */
+html body .bg-gradient-to-tr {
+  background: color-mix(in srgb, var(--t-accent) 16%, var(--t-card)) !important;
+  color: var(--t-text) !important;
+  box-shadow: none !important;
+}
+html body .bg-gradient-to-tr .text-white { color: var(--t-text) !important; }
+
+/* دکمهٔ شناور یادداشت */
+html body #tn2-fab {
+  background: var(--t-accent-solid) !important;
+  box-shadow: var(--t-shadow) !important;
+}
+html body #tn2-fab,
+html body #tn2-fab * { color: var(--t-on-accent) !important; }
+
+/* ───── ۷. دکمه‌ها و چیپ‌ها ───── */
+html body .btn-calm { border-radius: var(--t-control-radius); }
+html body .btn-calm:hover { transform: none; filter: brightness(1.04); }
+html body .tilo-chip { background: var(--t-bg); border-color: var(--t-border); color: var(--t-text); }
+html body .tilo-chip.active { background: var(--t-card); border-color: var(--t-accent); color: var(--t-accent); }
+
+/* ───── ۸. فرم‌ها، پارت، تایمر، دفترچه ───── */
+html body.tilo-theme-night .input-calm,
+html body.tilo-theme-day .input-calm {
+  background: var(--t-bg) !important;
+  color: var(--t-text) !important;
+  border-color: var(--t-field-border) !important;
+  border-radius: var(--t-control-radius);
+}
 html body .input-calm { line-height: 1.65; }
+html body .input-calm::placeholder { color: var(--t-muted); opacity: 1; }
 html body textarea.input-calm { min-height: 6rem; }
-html body.tilo-theme-night .tilo-part-option, html body.tilo-theme-day .tilo-part-option { border-color: var(--t-border) !important; background: var(--t-card) !important; color: var(--t-text) !important; }
-html body.tilo-theme-night .tilo-part-option.is-selected, html body.tilo-theme-day .tilo-part-option.is-selected { background: var(--t-bg) !important; border-color: var(--t-accent) !important; }
+
+html body.tilo-theme-night .tilo-part-option,
+html body.tilo-theme-day .tilo-part-option {
+  border-color: var(--t-border) !important;
+  background: var(--t-card) !important;
+  color: var(--t-text) !important;
+}
+html body.tilo-theme-night .tilo-part-option.is-selected,
+html body.tilo-theme-day .tilo-part-option.is-selected {
+  background: var(--t-bg) !important;
+  border-color: var(--t-accent) !important;
+}
+
+html body .tilo-stat-value,
+html body main .font-mono.font-black { font-variant-numeric: tabular-nums; }
 html body main .font-mono.font-black { letter-spacing: .03em; }
+
 html body #tn2-root .tn2-text { line-height: 1.9; }
-html body #tn2-root :is(.tn2-search, .tn2-select, .tn2-title, .tn2-text):focus-visible { outline: 2px solid var(--t-accent) !important; outline-offset: -2px; }
-html body #tn2-fab { background: var(--t-accent-solid) !important; box-shadow: var(--t-shadow) !important; }
+html body #tn2-root :is(.tn2-search, .tn2-select, .tn2-title, .tn2-text):focus-visible {
+  outline: 2px solid var(--t-accent) !important;
+  outline-offset: -2px;
+}
+
+/* ───── ۹. فوکوس صفحه‌کلید ───── */
+html body :is(button, a, summary, input, select, textarea):focus-visible {
+  outline: 2px solid var(--t-accent) !important;
+  outline-offset: 2px;
+}
+
+/* ───── ۱۰. موبایل ───── */
 @media (max-width: 767px) {
   input:not([type=checkbox]):not([type=radio]), select, textarea { font-size: 16px !important; }
-  html body nav.soft-card { padding: .3rem .3rem calc(.3rem + env(safe-area-inset-bottom)); gap: .15rem; }
-  html body nav.soft-card > button { flex: 1 1 0; min-width: 0; min-height: 3.4rem; padding: .3rem .1rem; border-radius: 10px; justify-content: center; text-align: center; line-height: 1.25; }
+  html body nav.soft-card {
+    padding: .3rem .3rem calc(.3rem + env(safe-area-inset-bottom));
+    gap: .15rem;
+  }
+  html body nav.soft-card > button {
+    flex: 1 1 0; min-width: 0; min-height: 3.4rem;
+    padding: .3rem .1rem; border-radius: var(--t-control-radius);
+    justify-content: center; text-align: center; line-height: 1.25;
+  }
   html body nav.soft-card > button span { white-space: normal; }
-  html body main { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)) !important; }
+  html body nav.soft-card :is(.text-\[10px\], .text-\[11px\]) { font-size: 12px; }
+  html body main { padding-bottom: calc(6rem + env(safe-area-inset-bottom)) !important; }
 }
-@media (pointer: coarse) { .btn-calm { min-height: 2.75rem; } .tilo-chip { min-height: 2.25rem; } }
+@media (pointer: coarse) {
+  .btn-calm { min-height: 2.75rem; }
+  .tilo-chip { min-height: 44px; }
+}
 @media (hover: none) { .btn-calm:hover { transform: none; filter: none; } }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
 }
