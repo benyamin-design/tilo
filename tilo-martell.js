@@ -284,7 +284,8 @@
   }
 
   const CSS = `
-#tilo-martell-launcher{position:fixed;z-index:9990;min-height:46px;padding:10px 16px;border:1px solid #4b7861;border-radius:16px;background:#35634e;color:#fff;font:inherit;font-size:13px;cursor:pointer;box-shadow:0 5px 20px #0002;left:14px;bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+#tilo-martell-launcher{position:fixed;z-index:9990;width:48px;height:48px;padding:0;border:1px solid rgba(148,163,184,.35);border-radius:14px;background:linear-gradient(145deg,#2b5441,#35634e);color:#fff;font:inherit;font-size:18px;cursor:pointer;box-shadow:0 10px 28px rgba(53,99,78,.45);display:inline-flex;align-items:center;justify-content:center;right:14px;left:auto;bottom:calc(5.5rem + env(safe-area-inset-bottom,0px))}
+#tilo-martell-launcher span{font-size:11px;position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
 #tilo-martell{--tm-bg:var(--t-bg,#f4f6f2);--tm-card:var(--t-card,#fff);--tm-text:var(--t-text,#253b31);--tm-muted:var(--t-muted,#68766d);--tm-border:var(--t-border,#dbe3dc);--tm-accent:#35634e;position:fixed;inset:0;z-index:10000;direction:rtl;color:var(--tm-text);background:var(--tm-bg);font-family:inherit;font-size:14px;line-height:1.7;overflow:auto;overscroll-behavior:contain;padding-bottom:env(safe-area-inset-bottom,0px)}
 body.tilo-theme-night #tilo-martell{--tm-bg:var(--t-bg,#121c18);--tm-card:var(--t-card,#1b2822);--tm-text:var(--t-text,#e2ebe5);--tm-muted:var(--t-muted,#acbbb2);--tm-border:var(--t-border,#35463c)}
 #tilo-martell *,#tilo-martell *::before,#tilo-martell *::after{box-sizing:border-box}
@@ -367,6 +368,15 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
 #tilo-martell .tm-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:5px}
 #tilo-martell .tm-actions>.tm-primary{flex:1}
 #tilo-martell .tm-footer{text-align:center;padding:20px 0 8px;font-size:11px;color:var(--tm-muted)}
+
+#tilo-martell .tm-swatches{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+#tilo-martell .tm-swatch{width:36px;height:36px;border-radius:50%;border:2px solid transparent;padding:0;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+#tilo-martell .tm-swatch.on{box-shadow:0 0 0 3px var(--tm-card),0 0 0 5px #548068;border-color:#fff}
+#tilo-martell .tm-time-pick{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:end}
+#tilo-martell .tm-time-pick select{direction:ltr;text-align:center;font-variant-numeric:tabular-nums;font-size:16px}
+#tilo-martell .tm-time-colon{font-size:20px;font-weight:700;padding-bottom:10px;text-align:center}
+#tilo-martell .tm-date-fa{font-size:13px;color:var(--tm-muted);margin-top:4px}
+#tilo-martell input[type="date"]{direction:ltr}
 @media(min-width:760px){#tilo-martell .tm-wrap{padding:20px}#tilo-martell .tm-summary{grid-template-columns:1fr 1fr}}
 `;
 
@@ -600,6 +610,44 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
     }
   }
 
+
+  const SWATCHES = [
+    "#6366f1", "#10b981", "#f59e0b", "#06b6d4", "#64748b",
+    "#35634e", "#8b5cf6", "#ef4444", "#ec4899", "#14b8a6",
+    "#a3e635", "#f97316"
+  ];
+
+  function colorSwatchesHTML(existing) {
+    const current = (existing && existing.color) || (existing && CATS[existing.category] && CATS[existing.category].color) || CATS.deep.color;
+    const set = new Set(SWATCHES);
+    if (current && !set.has(current.toLowerCase()) && !set.has(current)) set.add(current);
+    return [...set].map(c => {
+      const on = current && c.toLowerCase() === String(current).toLowerCase();
+      return `<button type="button" class="tm-swatch${on ? " on" : ""}" data-swatch="${c}" style="background:${c}" aria-label="رنگ ${c}" aria-pressed="${on}"></button>`;
+    }).join("");
+  }
+
+  function timeSelectsHTML(prefix, minutes) {
+    minutes = Number.isInteger(minutes) ? minutes : 0;
+    if (minutes >= 1440) minutes = 1439;
+    const hh = Math.floor(minutes / 60);
+    const mm = minutes % 60;
+    const hours = Array.from({ length: 24 }, (_, h) =>
+      `<option value="${String(h).padStart(2, "0")}" ${h === hh ? "selected" : ""}>${String(h).padStart(2, "0")}</option>`
+    ).join("");
+    const mins = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(m =>
+      `<option value="${String(m).padStart(2, "0")}" ${m === mm ? "selected" : ""}>${String(m).padStart(2, "0")}</option>`
+    ).join("");
+    // snap mm to nearest 5 if not in list
+    const snapOpts = mins.includes(`value="${String(mm).padStart(2, "0")}"`) ? mins :
+      mins + `<option value="${String(mm).padStart(2, "0")}" selected>${String(mm).padStart(2, "0")}</option>`;
+    return `<div class="tm-time-pick">
+      <select name="${prefix}-h" aria-label="ساعت">${hours}</select>
+      <span class="tm-time-colon">:</span>
+      <select name="${prefix}-m" aria-label="دقیقه">${snapOpts}</select>
+    </div>`;
+  }
+
   function openEditor(opts) {
     opts = opts || {};
     if (storageProblem) {
@@ -633,24 +681,28 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
         </label>
         <label class="tm-field">روز
           <input type="date" name="date" required value="${esc(date)}">
+          <span class="tm-date-fa" data-fa-date>${esc(dayLabel(date))}</span>
         </label>
         <label class="tm-field">دسته انرژی
           <select name="category">${catOpts}</select>
         </label>
-        <label class="tm-field">رنگ سفارشی (اختیاری)
-          <input name="color" placeholder="#35634e" value="${esc(existing?.color || "")}">
-        </label>
+        <div class="tm-field">رنگ بلاک
+          <div class="tm-swatches" role="listbox" aria-label="رنگ">
+            ${colorSwatchesHTML(existing)}
+          </div>
+          <input type="hidden" name="color" value="${esc((existing && existing.color) || "")}">
+        </div>
         <label class="tm-checklabel">
           <input type="checkbox" name="quick" ${quick ? "checked" : ""}>
           خرده‌کار بدون ساعت مشخص
         </label>
-        <div class="tm-fields-2" data-time-fields ${quick ? "hidden" : ""}>
-          <label class="tm-field">شروع
-            <input name="start" placeholder="08:00" value="${existing && timed(existing) ? timeText(existing.start) : "08:00"}">
-          </label>
-          <label class="tm-field">پایان
-            <input name="end" placeholder="09:30" value="${existing && timed(existing) ? timeText(existing.end) : "09:00"}">
-          </label>
+        <div class="tm-stack" data-time-fields ${quick ? "hidden" : ""}>
+          <div class="tm-field">ساعت شروع
+            ${timeSelectsHTML("start", existing && timed(existing) ? existing.start : 8 * 60)}
+          </div>
+          <div class="tm-field">ساعت پایان
+            ${timeSelectsHTML("end", existing && timed(existing) ? existing.end : 9 * 60)}
+          </div>
         </div>
         <label class="tm-checklabel">
           <input type="checkbox" name="domino" ${wantDomino ? "checked" : ""}>
@@ -688,9 +740,17 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
       const title = String(values.get("title") || "").trim();
       const note = String(values.get("note") || "").trim();
       const category = String(values.get("category") || "deep");
-      const color = String(values.get("color") || "").trim();
-      const start = quick ? null : parseTime(normalizeDigits(values.get("start")));
-      const end = quick ? null : parseTime(normalizeDigits(values.get("end")));
+      let color = String(values.get("color") || "").trim();
+      if (!color) {
+        const cat = String(values.get("category") || "deep");
+        color = (CATS[cat] && CATS[cat].color) || "";
+      }
+      const start = quick ? null : parseTime(
+        normalizeDigits(values.get("start-h")) + ":" + normalizeDigits(values.get("start-m"))
+      );
+      const end = quick ? null : parseTime(
+        normalizeDigits(values.get("end-h")) + ":" + normalizeDigits(values.get("end-m"))
+      );
 
       if (!title) throw new Error("عنوان لازم است.");
       if (!validDate(date)) throw new Error("تاریخ معتبر نیست.");
@@ -977,7 +1037,9 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
     launcher = document.createElement("button");
     launcher.id = "tilo-martell-launcher";
     launcher.type = "button";
-    launcher.textContent = "تایم‌بلاک زندگی";
+    launcher.innerHTML = '<i class="fas fa-calendar-week" aria-hidden="true"></i><span>تایم‌بلاک زندگی</span>';
+    launcher.title = "تایم‌بلاک زندگی";
+    launcher.setAttribute("aria-label", "تایم‌بلاک زندگی");
     launcher.setAttribute("aria-haspopup", "dialog");
     launcher.setAttribute("aria-controls", "tilo-martell");
     launcher.addEventListener("click", open);
@@ -1010,6 +1072,39 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
       if (event.target.name === "quick") {
         const fields = editor.querySelector("[data-time-fields]");
         if (fields) fields.hidden = event.target.checked;
+      }
+      if (event.target.name === "date") {
+        const fa = editor.querySelector("[data-fa-date]");
+        if (fa && validDate(event.target.value)) fa.textContent = dayLabel(event.target.value);
+      }
+      if (event.target.name === "category") {
+        const hidden = editor.querySelector('input[name="color"]');
+        const cat = event.target.value;
+        if (hidden && CATS[cat] && !(hidden.dataset.userColor === "1")) {
+          hidden.value = CATS[cat].color;
+          editor.querySelectorAll("[data-swatch]").forEach(btn => {
+            const on = btn.getAttribute("data-swatch").toLowerCase() === CATS[cat].color.toLowerCase();
+            btn.classList.toggle("on", on);
+            btn.setAttribute("aria-pressed", on ? "true" : "false");
+          });
+        }
+      }
+    });
+    editor.addEventListener("click", event => {
+      const sw = event.target.closest("[data-swatch]");
+      if (sw && editor.contains(sw)) {
+        event.preventDefault();
+        const color = sw.getAttribute("data-swatch");
+        const hidden = editor.querySelector('input[name="color"]');
+        if (hidden) {
+          hidden.value = color;
+          hidden.dataset.userColor = "1";
+        }
+        editor.querySelectorAll("[data-swatch]").forEach(btn => {
+          const on = btn === sw;
+          btn.classList.toggle("on", on);
+          btn.setAttribute("aria-pressed", on ? "true" : "false");
+        });
       }
     });
     editor.addEventListener("click", event => {
