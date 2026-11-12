@@ -412,6 +412,22 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
 #tilo-martell .tm-time-wheel{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;background:var(--tm-inset,#15201b);border:1px solid var(--tm-border);border-radius:16px;padding:12px}
 #tilo-martell .tm-time-wheel select{appearance:none;-webkit-appearance:none;text-align:center;font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;direction:ltr;min-height:52px;border-radius:12px;background:var(--tm-card);border:1px solid var(--tm-border);padding:8px 4px}
 #tilo-martell .tm-time-colon{font-size:26px;font-weight:800;opacity:.8}
+
+#tilo-martell .tm-toolbar{padding:12px!important}
+#tilo-martell .tm-tool-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#tilo-martell .tm-tool-grid .tm-primary{grid-column:1/-1}
+#tilo-martell .tm-days{display:flex!important;grid-template-columns:none!important;gap:8px;overflow-x:auto;padding-bottom:8px}
+#tilo-martell .tm-days button{flex:0 0 auto;min-width:4.6rem;padding:10px 12px;border-radius:14px}
+#tilo-martell .tm-energy{height:14px;border-radius:999px;margin:10px 0}
+#tilo-martell .tm-energy-meta{display:grid;gap:6px;font-size:12px}
+#tilo-martell .tm-energy-meta div{display:flex;justify-content:space-between;gap:8px;align-items:center}
+#tilo-martell .tm-coach-list{margin:10px 0 0;padding-inline-start:1.1rem;display:grid;gap:8px;font-size:12.5px;line-height:1.75;color:var(--tm-text)}
+#tilo-martell .tm-fab-add{position:fixed;z-index:10020;inset-inline-end:16px;bottom:calc(1.2rem + env(safe-area-inset-bottom,0px));width:56px;height:56px;border-radius:18px;border:0;background:#35634e;color:#fff;font-size:28px;line-height:1;box-shadow:0 12px 30px rgba(53,99,78,.45);display:flex;align-items:center;justify-content:center}
+#tilo-martell .tm-fab-add:hover{filter:brightness(1.08);transform:translateY(-2px)}
+#tilo-martell .tm-select-on{box-shadow:inset 0 0 0 2px #548068;background:color-mix(in srgb,#548068 18%,var(--tm-card))!important}
+#tilo-martell .tm-item.tm-picked,#tilo-martell .tm-block.tm-picked{outline:2px solid #7fac91;outline-offset:1px}
+#tilo-martell dialog .tm-time-wheel select{font-size:24px;min-height:56px}
+#tilo-martell .tm-sub-empty{opacity:.75}
 @media(min-width:760px){#tilo-martell .tm-wrap{padding:20px}#tilo-martell .tm-summary{grid-template-columns:1fr 1fr}}
 `;
 
@@ -504,6 +520,69 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
     return Number(p.hour) * 60 + Number(p.minute || 0);
   }
 
+
+  const SUBJECT_HINTS = [
+    { cat: "deep", keys: ["حسابان", "دیفرانسیل", "فیزیک", "شیمی", "هندسه", "گسسته", "آمار", "ریاضی", "زیست", "مکانیک", "الکتریسیته", "آلی", "معدنی"] },
+    { cat: "general", keys: ["فارسی", "ادبیات", "عربی", "دین", "دینی", "زبان", "english", "قرآن", "بهداشت"] },
+    { cat: "health", keys: ["ورزش", "تمرین", "بدنسازی", "دویدن", "شنا", "پیاده‌روی", "پیاده روی", "یوگا"] },
+    { cat: "growth", keys: ["کتاب", "مطالعه کتاب", "مدیتیشن", "عادت", "زبان انگلیسی آزاد", "پادکست", "ویدیو آموزشی"] },
+    { cat: "recovery", keys: ["استراحت", "ناهار", "شام", "صبحانه", "خواب", "چرت", "تفریح", "موبایل", "ریکاوری", "بازیابی"] }
+  ];
+
+  function autoCategory(title, note) {
+    const text = (String(title || "") + " " + String(note || "")).toLowerCase();
+    for (const row of SUBJECT_HINTS) {
+      for (const k of row.keys) {
+        if (text.includes(k.toLowerCase())) return row.cat;
+      }
+    }
+    return "deep";
+  }
+
+  function guessSubject(title) {
+    const t0 = String(title || "").trim();
+    for (const row of SUBJECT_HINTS) {
+      for (const k of row.keys) {
+        if (t0.includes(k)) return k;
+      }
+    }
+    return "";
+  }
+
+  function lastBlockEnd(date) {
+    const timedBlocks = blocksOn(date).filter(timed);
+    if (!timedBlocks.length) return 8 * 60;
+    return Math.max(...timedBlocks.map(b => b.end));
+  }
+
+  function offlineCoachHTML(list) {
+    const total = list.reduce((s, b) => s + duration(b), 0) || 1;
+    const deep = list.filter(b => b.category === "deep").reduce((s, b) => s + duration(b), 0);
+    const rec = list.filter(b => b.category === "recovery").reduce((s, b) => s + duration(b), 0);
+    const health = list.filter(b => b.category === "health").reduce((s, b) => s + duration(b), 0);
+    const tips = [];
+    const deepPct = Math.round((deep / total) * 100);
+    const recPct = Math.round((rec / total) * 100);
+    if (deepPct >= 70) tips.push("کار عمیق زیاد است؛ یک بلاک ریکاوری ۱۵–۲۰ دقیقه‌ای بین دروس تخصصی بگذار.");
+    if (recPct < 10 && total >= 180) tips.push("ریکاوری کم است؛ بدون استراحت کوتاه، بازدهی بعدازظهر افت می‌کند.");
+    if (health < 20) tips.push("برای انرژی پایدار، حداقل یک بلاک کوتاه ورزش/تحرک در خانه اضافه کن.");
+    const domino = list.find(b => b.domino);
+    if (!domino) tips.push("سنگ بزرگ امروز مشخص نیست؛ یک کار مهم را با ★ علامت بزن.");
+    const gaps = [];
+    const sortedTimed = list.filter(timed);
+    for (let i = 1; i < sortedTimed.length; i++) {
+      if (sortedTimed[i].start - sortedTimed[i - 1].end >= 40) {
+        gaps.push(timeText(sortedTimed[i - 1].end) + "–" + timeText(sortedTimed[i].start));
+      }
+    }
+    if (gaps.length) tips.push("بازه خالی: " + gaps.slice(0, 2).join("، ") + " — می‌توانی مرور یا استراحت کوتاه بگذاری.");
+    if (!tips.length) tips.push("تعادل نسبتاً خوب است؛ سنگ بزرگ را اول صبح یا در اوج انرژی انجام بده.");
+    return `<section class="tm-card tm-coach">
+      <div class="tm-row tm-between"><strong>دستیار برنامه (آفلاین)</strong><span class="tm-muted">بدون API</span></div>
+      <ul class="tm-coach-list">${tips.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+    </section>`;
+  }
+
   function canSend(b) {
     return b && !b.done && SENDABLE.has(b.category);
   }
@@ -529,14 +608,18 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
         date: b.date,
         source: "tilo-martell"
       };
+      let sent = false;
       try {
         if (typeof window.tiloMartellToTimer === "function") {
           window.tiloMartellToTimer(detail);
+          sent = true;
         }
       } catch (_) {}
-      try {
-        window.dispatchEvent(new CustomEvent("tilo:queue-part", { detail }));
-      } catch (_) {}
+      if (!sent) {
+        try {
+          window.dispatchEvent(new CustomEvent("tilo:queue-part", { detail }));
+        } catch (_) {}
+      }
       n++;
     });
     if (!n) throw new Error("این موارد برای تایمر مطالعه مناسب نیستند یا انجام شده‌اند.");
@@ -737,22 +820,26 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
               </button>`;
             }).join("")}
           </div>
-          <div class="tm-row">
-            <button type="button" class="tm-primary" data-action="add">+ بلاک زمانی</button>
-            <button type="button" data-action="quick">خرده‌کار</button>
-            <button type="button" data-action="copy">کپی روتین روز</button>
-            <button type="button" data-action="review">بازبینی ۸ شب</button>
-            <button type="button" data-action="toggle-select" aria-pressed="${ui.selectMode}">${ui.selectMode ? "خروج از انتخاب" : "انتخاب"}</button>
+          <div class="tm-tool-grid">
+            <button type="button" class="tm-primary" data-action="add">+ کار جدید</button>
+            <button type="button" data-action="copy">کپی روتین</button>
+            <button type="button" data-action="review">بازبینی شب</button>
+            <button type="button" class="${ui.selectMode ? "tm-select-on" : ""}" data-action="toggle-select" aria-pressed="${ui.selectMode}">
+              ${ui.selectMode ? "✓ حالت انتخاب" : "انتخاب برای تایمر"}
+            </button>
           </div>
           ${ui.selectMode ? `<div class="tm-select-bar">
-            <button type="button" class="tm-primary" data-action="send-selected">ارسال انتخاب‌ها به تایمر</button>
-            <button type="button" data-action="done-selected">انجام‌شده گروهی</button>
-            <span class="tm-muted">${nf.format(ui.selectedIds.size)} مورد</span>
+            <p class="tm-muted" style="flex:1 1 100%;margin:0">روی دایره‌های کنار کارها بزن تا انتخاب شوند.</p>
+            <button type="button" class="tm-primary" data-action="send-selected">ارسال به تایمر (${nf.format(ui.selectedIds.size)})</button>
+            <button type="button" data-action="done-selected">انجام‌شده</button>
+            <button type="button" data-action="toggle-select">انصراف</button>
           </div>` : ""}
         </div>
 
         ${summaryHTML(list)}
+        ${offlineCoachHTML(list)}
         ${ui.view === "week" ? weekHTML() : dailyHTML(list)}
+        <button type="button" class="tm-fab-add" data-action="add" aria-label="افزودن کار">+</button>
         ${checklistHTML(list)}
         ${reviewHTML()}
         <p class="tm-footer">ذخیره محلی · کلید ${esc(KEY)}</p>
@@ -834,8 +921,17 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
           <h3 id="tm-editor-title">${existing ? "ویرایش کار" : "کار جدید"}</h3>
           <button type="button" data-dialog-close aria-label="بستن">×</button>
         </div>
+        <label class="tm-field">درس / موضوع
+          <select name="subject" class="tm-sub-empty">
+            <option value="">— هیچی (انتخاب نشده) —</option>
+            ${["حسابان","فیزیک","شیمی","هندسه","گسسته","آمار","زیست","فارسی","ادبیات فارسی","عربی","دین و زندگی","زبان انگلیسی","ورزش","استراحت","ناهار","کتاب"].map(s => {
+              const cur = existing ? guessSubject(existing.title) : "";
+              return `<option value="${esc(s)}" ${cur === s ? "selected" : ""}>${esc(s)}</option>`;
+            }).join("")}
+          </select>
+        </label>
         <label class="tm-field">عنوان
-          <input name="title" required maxlength="120" value="${esc(existing?.title || "")}" placeholder="مثلاً حسابان / تمرین بدن / کتاب">
+          <input name="title" maxlength="120" value="${esc(existing?.title || "")}" placeholder="اگر خالی بماند از درس پر می‌شود">
         </label>
         <label class="tm-field">توضیح کوتاه
           <textarea name="note" maxlength="600" placeholder="اختیاری">${esc(existing?.note || "")}</textarea>
@@ -845,7 +941,11 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
           <span class="tm-date-fa" data-fa-date>${esc(dayLabel(date))}</span>
         </label>
         <label class="tm-field">دسته انرژی
-          <select name="category">${catOpts}</select>
+          <select name="category">${Object.keys(CATS).map(k => {
+      const suggested = existing?.category || autoCategory(existing?.title || "", "");
+      return `<option value="${k}" ${suggested === k ? "selected" : ""}>${esc(CATS[k].name)}</option>`;
+    }).join("")}</select>
+          <span class="tm-muted">اگر درس را درست بنویسی، دسته تا حدی خودکار حدس زده می‌شود.</span>
         </label>
         <div class="tm-field">رنگ بلاک
           <div class="tm-swatches" role="listbox" aria-label="رنگ">
@@ -859,10 +959,10 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
         </label>
         <div class="tm-stack" data-time-fields ${quick ? "hidden" : ""}>
           <div class="tm-field">ساعت شروع
-            ${timeSelectsHTML("start", existing && timed(existing) ? existing.start : 8 * 60)}
+            ${timeSelectsHTML("start", existing && timed(existing) ? existing.start : lastBlockEnd(date))}
           </div>
           <div class="tm-field">ساعت پایان
-            ${timeSelectsHTML("end", existing && timed(existing) ? existing.end : 9 * 60)}
+            ${timeSelectsHTML("end", existing && timed(existing) ? existing.end : Math.min(1440, lastBlockEnd(date) + 90))}
           </div>
         </div>
         <label class="tm-checklabel">
@@ -898,9 +998,17 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
       const values = new FormData(form);
       const date = String(values.get("date") || "");
       const quick = values.has("quick");
-      const title = String(values.get("title") || "").trim();
+      const subject = String(values.get("subject") || "").trim();
+      let title = String(values.get("title") || "").trim();
+      if (!title && subject) title = subject;
+      if (subject && title && !title.includes(subject)) {
+        /* keep title as user wrote */
+      }
       const note = String(values.get("note") || "").trim();
-      const category = String(values.get("category") || "deep");
+      let category = String(values.get("category") || "");
+      if (!category || !Object.prototype.hasOwnProperty.call(CATS, category)) {
+        category = autoCategory(title || subject, note);
+      }
       let color = String(values.get("color") || "").trim();
       if (!color) {
         const cat = String(values.get("category") || "deep");
@@ -913,7 +1021,8 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
         normalizeDigits(values.get("end-h")) + ":" + normalizeDigits(values.get("end-m"))
       );
 
-      if (!title) throw new Error("عنوان لازم است.");
+      if (!title && !subject) throw new Error("درس یا عنوان را مشخص کن.");
+      if (!title) title = subject;
       if (!validDate(date)) throw new Error("تاریخ معتبر نیست.");
       if (!Object.prototype.hasOwnProperty.call(CATS, category)) throw new Error("دسته نامعتبر.");
       if (color && !/^#[0-9a-fA-F]{6}$/.test(color)) throw new Error("رنگ مثل #35634e باشد.");
@@ -1084,8 +1193,10 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
   function handleAction(event) {
     const button = event.target.closest("[data-action]");
     if (!button || !screen.contains(button)) return;
-    const action = button.dataset.action;
+    let action = button.dataset.action;
     const id = button.dataset.id;
+    // در حالت انتخاب، لمس کارت هم انتخاب کند
+    if (ui.selectMode && (action === "edit") && id) action = "pick";
     renderFocus = focusKey(button);
     try {
       switch (action) {
@@ -1309,6 +1420,21 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
             btn.classList.toggle("on", on);
             btn.setAttribute("aria-pressed", on ? "true" : "false");
           });
+        }
+      }
+      if (event.target.name === "title" || event.target.name === "subject") {
+        const form = editor.querySelector("form");
+        if (!form) return;
+        const title = form.title?.value || "";
+        const subject = form.subject?.value || "";
+        const note = form.note?.value || "";
+        const cat = autoCategory(title || subject, note);
+        if (form.category && !form.category.dataset.locked) {
+          form.category.value = cat;
+          form.category.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        if (event.target.name === "subject" && subject && form.title && !String(form.title.value || "").trim()) {
+          form.title.value = subject;
         }
       }
     });
