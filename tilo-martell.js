@@ -296,8 +296,11 @@
   }
 
   const CSS = `
-#tilo-martell-launcher{position:fixed;z-index:9990;width:48px;height:48px;padding:0;border:1px solid rgba(148,163,184,.35);border-radius:14px;background:linear-gradient(145deg,#2b5441,#35634e);color:#fff;font:inherit;font-size:18px;cursor:pointer;box-shadow:0 10px 28px rgba(53,99,78,.45);display:inline-flex;align-items:center;justify-content:center;right:14px;left:auto;bottom:calc(5.5rem + env(safe-area-inset-bottom,0px))}
+#tilo-martell-launcher{position:fixed;z-index:9990;width:52px;height:52px;padding:0;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:linear-gradient(145deg,#2f6a50,#35634e);color:#fff;font:inherit;font-size:18px;cursor:pointer;box-shadow:0 8px 24px rgba(53,99,78,.4),0 0 0 0 rgba(53,99,78,.35);display:inline-flex;align-items:center;justify-content:center;right:14px;left:auto;bottom:calc(5.6rem + env(safe-area-inset-bottom,0px));transition:transform .18s ease,box-shadow .18s ease,filter .18s ease}
+#tilo-martell-launcher:hover,#tilo-martell-launcher:focus-visible{transform:translateY(-3px) scale(1.05);box-shadow:0 14px 32px rgba(53,99,78,.55),0 0 0 4px rgba(141,188,162,.25);filter:brightness(1.06);outline:none}
+#tilo-martell-launcher:active{transform:translateY(-1px) scale(1.02)}
 #tilo-martell-launcher span{font-size:11px;position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+@media(hover:none){#tilo-martell-launcher:hover{transform:none;filter:none}}
 #tilo-martell{--tm-bg:var(--t-bg,#f4f6f2);--tm-card:var(--t-card,#fff);--tm-text:var(--t-text,#253b31);--tm-muted:var(--t-muted,#68766d);--tm-border:var(--t-border,#dbe3dc);--tm-accent:#35634e;position:fixed;inset:0;z-index:10000;direction:rtl;color:var(--tm-text);background:var(--tm-bg);font-family:inherit;font-size:14px;line-height:1.7;overflow:auto;overscroll-behavior:contain;padding-bottom:env(safe-area-inset-bottom,0px)}
 body.tilo-theme-night #tilo-martell{--tm-bg:var(--t-bg,#121c18);--tm-card:var(--t-card,#1b2822);--tm-text:var(--t-text,#e2ebe5);--tm-muted:var(--t-muted,#acbbb2);--tm-border:var(--t-border,#35463c)}
 #tilo-martell *,#tilo-martell *::before,#tilo-martell *::after{box-sizing:border-box}
@@ -400,6 +403,15 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
 #tilo-martell .tm-send{font-size:11px;min-height:36px;padding:4px 8px}
 #tilo-martell .tm-summary-collapsed{display:grid;gap:8px}
 #tilo-martell .tm-chip-mini{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border:1px solid var(--tm-border);border-radius:10px;font-size:12px}
+
+#tilo-martell .tm-block{background:color-mix(in srgb,var(--bc) 22%,var(--tm-card))!important;border-color:color-mix(in srgb,var(--bc) 45%,var(--tm-border))!important}
+#tilo-martell .tm-block.tm-done{background:color-mix(in srgb,var(--bc) 10%,var(--tm-card))!important}
+#tilo-martell .tm-mini{background:color-mix(in srgb,var(--bc) 18%,var(--tm-card))!important}
+#tilo-martell .tm-item{border-radius:12px;padding:10px 8px;margin-bottom:6px;background:color-mix(in srgb,var(--bc,var(--tm-border)) 12%,var(--tm-card));border:1px solid color-mix(in srgb,var(--bc,var(--tm-border)) 30%,var(--tm-border));border-inline-start-width:4px;border-inline-start-color:var(--bc,#64748b)}
+#tilo-martell .tm-item.tm-done{opacity:.62}
+#tilo-martell .tm-time-wheel{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;background:var(--tm-inset,#15201b);border:1px solid var(--tm-border);border-radius:16px;padding:12px}
+#tilo-martell .tm-time-wheel select{appearance:none;-webkit-appearance:none;text-align:center;font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;direction:ltr;min-height:52px;border-radius:12px;background:var(--tm-card);border:1px solid var(--tm-border);padding:8px 4px}
+#tilo-martell .tm-time-colon{font-size:26px;font-weight:800;opacity:.8}
 @media(min-width:760px){#tilo-martell .tm-wrap{padding:20px}#tilo-martell .tm-summary{grid-template-columns:1fr 1fr}}
 `;
 
@@ -564,9 +576,6 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
       const top = b.start * PX;
       const height = Math.max(duration(b) * PX, 28);
       const picked = ui.selectedIds.has(b.id);
-      const sendBtn = canSend(b)
-        ? `<button type="button" class="tm-send tm-primary" data-action="send-timer" data-id="${esc(b.id)}">تایمر</button>`
-        : "";
       const pick = ui.selectMode
         ? `<button type="button" class="tm-check" data-action="pick" data-id="${esc(b.id)}" aria-pressed="${picked}">${picked ? "✓" : "○"}</button>`
         : "";
@@ -578,7 +587,6 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
         <div class="tm-row" style="position:absolute;inset-inline-end:2px;top:2px;gap:2px">
           ${pick}
           ${duration(b) >= 35 ? toggleButton(b, "tm-block-toggle") : ""}
-          ${!ui.selectMode && duration(b) >= 50 ? sendBtn : ""}
         </div>
       </div>`;
     }).join("");
@@ -638,7 +646,7 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
         ? `<button type="button" class="tm-check" data-action="pick" data-id="${esc(b.id)}" aria-pressed="${ui.selectedIds.has(b.id)}">${ui.selectedIds.has(b.id) ? "✓" : "○"}</button>`
         : toggleButton(b);
       return `
-      <div class="tm-item ${b.done ? "tm-done" : ""} ${ui.selectedIds.has(b.id) ? "tm-picked" : ""}" data-bid="${esc(b.id)}">
+      <div class="tm-item ${b.done ? "tm-done" : ""} ${ui.selectedIds.has(b.id) ? "tm-picked" : ""}" data-bid="${esc(b.id)}" style="--bc:${blockColor(b)}">
         ${pick}
         <button type="button" class="tm-edit" data-action="edit" data-id="${esc(b.id)}">
           <strong class="tm-title">${b.domino ? "★ " : ""}${esc(b.title)}</strong>
@@ -787,16 +795,17 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
     const hours = Array.from({ length: 24 }, (_, h) =>
       `<option value="${String(h).padStart(2, "0")}" ${h === hh ? "selected" : ""}>${String(h).padStart(2, "0")}</option>`
     ).join("");
-    const mins = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(m =>
+    const minuteValues = [];
+    for (let m = 0; m < 60; m += 5) minuteValues.push(m);
+    if (!minuteValues.includes(mm)) minuteValues.push(mm);
+    minuteValues.sort((a, b) => a - b);
+    const mins = minuteValues.map(m =>
       `<option value="${String(m).padStart(2, "0")}" ${m === mm ? "selected" : ""}>${String(m).padStart(2, "0")}</option>`
     ).join("");
-    // snap mm to nearest 5 if not in list
-    const snapOpts = mins.includes(`value="${String(mm).padStart(2, "0")}"`) ? mins :
-      mins + `<option value="${String(mm).padStart(2, "0")}" selected>${String(mm).padStart(2, "0")}</option>`;
-    return `<div class="tm-time-pick">
+    return `<div class="tm-time-wheel" role="group" aria-label="انتخاب ساعت">
       <select name="${prefix}-h" aria-label="ساعت">${hours}</select>
-      <span class="tm-time-colon">:</span>
-      <select name="${prefix}-m" aria-label="دقیقه">${snapOpts}</select>
+      <span class="tm-time-colon" aria-hidden="true">:</span>
+      <select name="${prefix}-m" aria-label="دقیقه">${mins}</select>
     </div>`;
   }
 
@@ -1122,7 +1131,10 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
         case "send-timer": {
           const b = data.blocks.find(item => item.id === id);
           const n = queueToTimer(b);
-          tell(n ? "به صف تایمر ارسال شد. اگر تایمر باز نشد، برو تب تایمر." : "ارسال نشد.");
+          if (n) {
+            tell("پارت به تایمر اضافه شد…");
+            setTimeout(() => { try { close(); } catch (_) {} }, 280);
+          } else tell("ارسال نشد.");
           break;
         }
         case "send-selected": {
@@ -1130,7 +1142,10 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
           const n = queueToTimer(blocks);
           ui.selectMode = false;
           ui.selectedIds.clear();
-          tell(`${nf.format(n)} مورد به تایمر/صف ارسال شد.`);
+          if (n) {
+            tell(`${nf.format(n)} مورد به تایمر اضافه شد…`);
+            setTimeout(() => { try { close(); } catch (_) {} }, 280);
+          } else tell("ارسال نشد.");
           break;
         }
         case "done-selected": {
