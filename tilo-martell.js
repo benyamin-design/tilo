@@ -61,7 +61,14 @@
     message: "",
     selectMode: false,
     selectedIds: new Set(),
-    timelineOpen: true
+    timelineOpen: true,
+    collapsed: {
+      coach: true,
+      energy: false,
+      checklist: false,
+      review: true,
+      trash: true
+    }
   };
 
   try {
@@ -443,6 +450,14 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
 #tilo-martell .tm-chip-row button.on{background:#35634e;color:#fff;border-color:#35634e}
 #tilo-martell .tm-subgrid{display:grid;gap:8px;margin-top:8px;padding:10px;border:1px solid var(--tm-border);border-radius:12px;background:var(--tm-bg)}
 #tilo-martell .tm-delay-banner{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+#tilo-martell .tm-fold-btn{min-height:36px;padding:6px 10px;font-size:12px}
+#tilo-martell .tm-move{display:flex;flex-direction:column;gap:2px}
+#tilo-martell .tm-move button{min-height:28px;padding:0 8px;font-size:12px;line-height:1}
+#tilo-martell .tm-subj-drop{max-height:240px;overflow:auto;border:1px solid var(--tm-border);border-radius:12px;padding:10px;background:var(--tm-bg)}
+#tilo-martell .tm-subj-group{margin-bottom:10px}
+#tilo-martell .tm-subj-group h4{margin:0 0 6px;font-size:12px;color:var(--tm-muted)}
+#tilo-martell .tm-subj-group label{display:flex;align-items:center;gap:8px;min-height:36px;font-size:13px}
 @media(min-width:760px){#tilo-martell .tm-wrap{padding:20px}#tilo-martell .tm-summary{grid-template-columns:1fr 1fr}}
 `;
 
@@ -614,9 +629,33 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
     if (gaps.length) tips.push("بازه خالی: " + gaps.slice(0, 2).join("، ") + " — می‌توانی مرور یا استراحت کوتاه بگذاری.");
     if (!tips.length) tips.push("تعادل نسبتاً خوب است؛ سنگ بزرگ را اول صبح یا در اوج انرژی انجام بده.");
     return `<section class="tm-card tm-coach">
-      <div class="tm-row tm-between"><strong>دستیار برنامه (آفلاین)</strong><span class="tm-muted">بدون API</span></div>
-      <ul class="tm-coach-list">${tips.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+      ${sectionHead("دستیار برنامه (آفلاین)", "coach")}
+      ${ui.collapsed.coach ? "" : `<ul class="tm-coach-list">${tips.map(x => `<li>${esc(x)}</li>`).join("")}</ul>`}
     </section>`;
+  }
+
+
+  function getSubjectGroups() {
+    try {
+      const raw = localStorage.getItem("sp_pro_subjects");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length) return parsed;
+      }
+    } catch (_) {}
+    return [
+      { category: "تخصصی", items: ["حسابان ۱", "حسابان ۲", "فیزیک ۱", "فیزیک ۲", "فیزیک ۳", "شیمی ۱", "شیمی ۲", "شیمی ۳", "هندسه ۱", "هندسه ۲", "هندسه ۳", "گسسته", "آمار و احتمال", "زیست‌شناسی ۱", "زیست‌شناسی ۲", "زیست‌شناسی ۳"] },
+      { category: "عمومی", items: ["فارسی", "نگارش", "عربی عمومی", "دین و زندگی", "زبان انگلیسی"] },
+      { category: "زندگی", items: ["صبحانه", "ناهار", "شام", "ورزش", "کتاب", "استراحت"] }
+    ];
+  }
+
+  function sectionHead(title, key) {
+    const open = !ui.collapsed[key];
+    return `<div class="tm-row tm-between">
+      <strong>${title}</strong>
+      <button type="button" class="tm-fold-btn" data-action="toggle-section" data-section="${key}">${open ? "▴ بستن" : "▾ باز کردن"}</button>
+    </div>`;
   }
 
   function canSend(b) {
@@ -752,11 +791,15 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
   function checklistHTML(list) {
     if (!list.length) {
       return `<section class="tm-card tm-empty">
-        <p>برای این روز هنوز کاری نیست.</p>
-        <button type="button" class="tm-primary" data-action="add">اولین کار</button>
+        ${sectionHead("چک‌لیست اجرایی", "checklist")}
+        ${ui.collapsed.checklist ? "" : `<p>برای این روز هنوز کاری نیست.</p>
+        <button type="button" class="tm-primary" data-action="add">اولین کار</button>`}
       </section>`;
     }
-    const items = list.map(b => {
+    if (ui.collapsed.checklist) {
+      return `<section class="tm-card">${sectionHead("چک‌لیست اجرایی (" + nf.format(list.length) + ")", "checklist")}</section>`;
+    }
+    const items = list.map((b, index) => {
       const send = canSend(b)
         ? `<button type="button" class="tm-send" data-action="send-timer" data-id="${esc(b.id)}">تایمر</button>`
         : "";
@@ -764,8 +807,11 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
         ? `<button type="button" class="tm-check" data-action="pick" data-id="${esc(b.id)}" aria-pressed="${ui.selectedIds.has(b.id)}">${ui.selectedIds.has(b.id) ? "✓" : "○"}</button>`
         : toggleButton(b);
       return `
-      <div class="tm-item ${b.done ? "tm-done" : ""} ${ui.selectedIds.has(b.id) ? "tm-picked" : ""}" data-bid="${esc(b.id)}" data-id="${esc(b.id)}" draggable="true" style="--bc:${blockColor(b)}">
-        <button type="button" class="tm-drag" data-action="noop" title="بکش برای جابه‌جایی" aria-label="جابه‌جایی">⠿</button>
+      <div class="tm-item ${b.done ? "tm-done" : ""} ${ui.selectedIds.has(b.id) ? "tm-picked" : ""}" data-bid="${esc(b.id)}" data-id="${esc(b.id)}" style="--bc:${blockColor(b)}">
+        <div class="tm-move">
+          <button type="button" data-action="move-up" data-id="${esc(b.id)}" ${index === 0 ? "disabled" : ""} aria-label="بالا">↑</button>
+          <button type="button" data-action="move-down" data-id="${esc(b.id)}" ${index === list.length - 1 ? "disabled" : ""} aria-label="پایین">↓</button>
+        </div>
         ${pick}
         <button type="button" class="tm-edit" data-action="edit" data-id="${esc(b.id)}">
           <strong class="tm-title">${b.domino ? "★ " : ""}${esc(b.title)}</strong>
@@ -777,14 +823,13 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
     }).join("");
 
     return `<section class="tm-card" data-checklist>
-      <div class="tm-row tm-between">
-        <h3>چک‌لیست اجرایی</h3>
-        <div class="tm-row">
-          <button type="button" data-action="delay-day">تأخیر…</button>
-          <button type="button" data-action="quick">+ خرده‌کار</button>
-        </div>
+      ${sectionHead("چک‌لیست اجرایی", "checklist")}
+      <div class="tm-row" style="margin-bottom:8px">
+        <button type="button" data-action="delay-day">تأخیر…</button>
+        <button type="button" data-action="advance-day">جلو انداختن…</button>
+        <button type="button" data-action="quick">+ خرده‌کار</button>
       </div>
-      <p class="tm-muted">برای جابه‌جایی، دستگیره ⠿ را بکش. تأخیر همهٔ کارهای بعدی را جلو می‌برد.</p>
+      <p class="tm-muted">با ↑ ↓ ترتیب و ساعت‌ها عوض می‌شود.</p>
       ${items}
     </section>`;
   }
@@ -830,9 +875,12 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
         <button type="button" data-action="restore" data-id="${esc(b.id)}">برگرداندن</button>
         <button type="button" class="tm-x" data-action="hard-delete" data-id="${esc(b.id)}">×</button>
       </div>`).join("");
+    if (ui.collapsed.trash) {
+      return `<section class="tm-card tm-trash-box">${sectionHead("حذف‌شده‌ها (" + nf.format(trash.length) + ")", "trash")}</section>`;
+    }
     return `<section class="tm-card tm-trash-box">
-      <div class="tm-row tm-between"><h3>حذف‌شده‌ها</h3>
-        <button type="button" data-action="empty-trash">خالی کردن</button></div>
+      ${sectionHead("حذف‌شده‌ها", "trash")}
+      <button type="button" data-action="empty-trash">خالی کردن</button>
       ${items}
     </section>`;
   }
@@ -986,31 +1034,36 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
         </div>
         <div class="tm-field">
           <div class="tm-row tm-between">
-            <span>درس / موضوع</span>
+            <span>انتخاب درس یا فعالیت</span>
             <label class="tm-checklabel" style="min-height:auto;gap:6px;font-size:12px">
-              <input type="checkbox" name="studyMode" id="tm-study-mode">
-              حالت درسی (جزئیات)
+              <input type="checkbox" name="studyMode" ${existing && existing.category !== "recovery" && existing.category !== "health" ? "checked" : ""}>
+              درسی (مثل پارت‌ها)
             </label>
           </div>
-          <input type="hidden" name="subject" value="">
-          <div class="tm-chip-row" data-life-subjects>
-            ${["", "صبحانه", "ناهار", "شام", "ورزش", "کتاب", "استراحت"].map((s, i) =>
-              `<button type="button" data-chip="${esc(s)}" class="${!s ? "on" : ""}">${s ? esc(s) : "هیچی"}</button>`
-            ).join("")}
-          </div>
-          <div class="tm-subgrid" data-study-panel hidden>
-            <p class="tm-muted">درس اصلی را بزن، بعد زیر‌مبحث (مثل فیزیک ۱/۲/۳). چندتایی مجاز است.</p>
-            <div class="tm-chip-row" data-study-main>
-              ${["حسابان","فیزیک","شیمی","هندسه","گسسته","آمار","زیست","فارسی","عربی","دین و زندگی","زبان انگلیسی"].map(s =>
-                `<button type="button" data-main="${esc(s)}">${esc(s)}</button>`
-              ).join("")}
+          <input type="hidden" name="subject" value="${esc(existing?.title || "")}">
+          <button type="button" class="input-calm" data-action-open-subjects style="width:100%;text-align:right;min-height:44px">
+            <span data-subj-label>${existing?.title ? esc(existing.title) : "روی فلش بزنید و درس‌ها را انتخاب کنید..."}</span>
+          </button>
+          <div class="tm-subj-drop" data-subj-panel hidden>
+            <div class="tm-row tm-between" style="margin-bottom:8px">
+              <span class="tm-muted" data-subj-count>۰ انتخاب</span>
+              <button type="button" data-subj-close class="tm-primary" style="min-height:36px">تأیید و بستن</button>
             </div>
-            <div class="tm-chip-row" data-study-sub></div>
-            <div class="tm-muted" data-study-picked>انتخاب‌شده: —</div>
+            ${getSubjectGroups().map(g => `
+              <div class="tm-subj-group">
+                <h4>${esc(g.category)}</h4>
+                ${(g.items || []).map(sub => `
+                  <label>
+                    <input type="checkbox" data-subj-item value="${esc(sub)}" ${existing && String(existing.title || "").includes(sub) ? "checked" : ""}>
+                    ${esc(sub)}
+                  </label>
+                `).join("")}
+              </div>
+            `).join("")}
           </div>
         </div>
-        <label class="tm-field">عنوان
-          <input name="title" maxlength="120" value="${esc(existing?.title || "")}" placeholder="اگر خالی بماند از درس پر می‌شود">
+        <label class="tm-field">مبحث دقیق / عنوان
+          <input name="title" maxlength="120" value="${esc(existing?.title || "")}" placeholder="مثلاً: حرکت بر خط راست / مشتق">
         </label>
         <label class="tm-field">توضیح کوتاه
           <textarea name="note" maxlength="600" placeholder="اختیاری">${esc(existing?.note || "")}</textarea>
@@ -1281,7 +1334,31 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
   }
 
 
+  function shiftDayTimes(mins) {
+    if (!Number.isFinite(mins) || mins === 0) return;
+    const day = ui.selected;
+    const pivot = day === today() ? nowMinutes() : 0;
+    transaction(next => {
+      next.blocks.forEach(b => {
+        if (b.date !== day || !timed(b)) return;
+        if (day === today() && b.start < pivot) return;
+        let s = b.start + mins;
+        let e = b.end + mins;
+        if (s < 0) { e -= s; s = 0; }
+        if (e > 1440) { s -= (e - 1440); e = 1440; }
+        if (s < 0) s = 0;
+        if (s >= e) e = Math.min(1440, s + 5);
+        b.start = s;
+        b.end = e;
+      });
+    }, [day]);
+    tell(mins > 0
+      ? `تأخیر ${nf.format(mins)} دقیقه‌ای اعمال شد.`
+      : `جلو انداختن ${nf.format(Math.abs(mins))} دقیقه‌ای اعمال شد.`);
+  }
+
   function reorderBlocks(fromId, toId) {
+
     const day = ui.selected;
     const list = blocksOn(day);
     const from = list.find(b => b.id === fromId);
@@ -1452,24 +1529,31 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
           break;
         }
         case "delay-day": {
-          const mins = Number(prompt("چند دقیقه همهٔ کارهای بعد از الان (یا از اول روز) جلو بروند؟", "30"));
+          shiftDayTimes(Number(prompt("تأخیر: چند دقیقه کارها جلوتر بروند؟", "30")));
+          break;
+        }
+        case "advance-day": {
+          const mins = Number(prompt("جلو انداختن: چند دقیقه زودتر؟ (برعکس تأخیر)", "30"));
           if (!Number.isFinite(mins) || mins === 0) break;
-          const day = ui.selected;
-          const pivot = day === today() ? nowMinutes() : 0;
-          transaction(next => {
-            next.blocks.forEach(b => {
-              if (b.date !== day || !timed(b)) return;
-              if (b.end <= pivot && day === today()) return;
-              if (b.start < pivot && day === today()) {
-                // started already: only push end if needed skip
-                return;
-              }
-              b.start = Math.min(1439, b.start + mins);
-              b.end = Math.min(1440, b.end + mins);
-              if (b.start >= b.end) b.end = Math.min(1440, b.start + 5);
-            });
-          }, [day]);
-          tell(`تأخیر ${nf.format(mins)} دقیقه‌ای اعمال شد.`);
+          shiftDayTimes(-Math.abs(mins));
+          break;
+        }
+        case "toggle-section": {
+          const key = button.dataset.section;
+          if (key && key in ui.collapsed) {
+            ui.collapsed[key] = !ui.collapsed[key];
+            render();
+          }
+          break;
+        }
+        case "move-up":
+        case "move-down": {
+          const list = blocksOn(ui.selected);
+          const idx = list.findIndex(b => b.id === id);
+          if (idx < 0) break;
+          const swap = action === "move-up" ? idx - 1 : idx + 1;
+          if (swap < 0 || swap >= list.length) break;
+          reorderBlocks(list[idx].id, list[swap].id);
           break;
         }
         case "copy": openCopy(); break;
@@ -1623,53 +1707,47 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
     });
 
     
-    const studyPicked = new Set();
+    function syncSubjectPicks() {
+      const items = [...editor.querySelectorAll("[data-subj-item]:checked")].map(el => el.value);
+      const hidden = editor.querySelector('input[name="subject"]');
+      const joined = items.join("، ");
+      if (hidden) hidden.value = joined;
+      const label = editor.querySelector("[data-subj-label]");
+      if (label) label.textContent = joined || "روی فلش بزنید و درس‌ها را انتخاب کنید...";
+      const count = editor.querySelector("[data-subj-count]");
+      if (count) count.textContent = nf.format(items.length) + " انتخاب";
+      const title = editor.querySelector('input[name="title"]');
+      if (title && items.length && !String(title.value || "").trim()) title.value = joined;
+    }
     editor.addEventListener("click", event => {
-      const life = event.target.closest("[data-chip]");
-      if (life && editor.contains(life)) {
+      if (event.target.closest("[data-action-open-subjects]")) {
         event.preventDefault();
-        editor.querySelectorAll("[data-chip]").forEach(b => b.classList.remove("on"));
-        life.classList.add("on");
-        const v = life.getAttribute("data-chip") || "";
-        const hidden = editor.querySelector('input[name="subject"]');
-        if (hidden) hidden.value = v;
-        const title = editor.querySelector('input[name="title"]');
-        if (title && v && !String(title.value || "").trim()) title.value = v;
+        const panel = editor.querySelector("[data-subj-panel]");
+        if (panel) panel.hidden = !panel.hidden;
         return;
       }
-      const main = event.target.closest("[data-main]");
-      if (main && editor.contains(main)) {
+      if (event.target.closest("[data-subj-close]")) {
         event.preventDefault();
-        const name = main.getAttribute("data-main");
-        const sub = editor.querySelector("[data-study-sub]");
-        const subs = [name + " ۱", name + " ۲", name + " ۳", name + " پایه", name + " جمع‌بندی"];
-        sub.innerHTML = subs.map(s => `<button type="button" data-sub="${esc(s)}">${esc(s)}</button>`).join("");
-        return;
-      }
-      const subBtn = event.target.closest("[data-sub]");
-      if (subBtn && editor.contains(subBtn)) {
-        event.preventDefault();
-        const s = subBtn.getAttribute("data-sub");
-        if (studyPicked.has(s)) studyPicked.delete(s);
-        else studyPicked.add(s);
-        subBtn.classList.toggle("on");
-        const hidden = editor.querySelector('input[name="subject"]');
-        const joined = [...studyPicked].join("، ");
-        if (hidden) hidden.value = joined;
-        const picked = editor.querySelector("[data-study-picked]");
-        if (picked) picked.textContent = "انتخاب‌شده: " + (joined || "—");
-        const title = editor.querySelector('input[name="title"]');
-        if (title && joined) title.value = joined;
+        const panel = editor.querySelector("[data-subj-panel]");
+        if (panel) panel.hidden = true;
+        syncSubjectPicks();
         return;
       }
     });
     editor.addEventListener("change", event => {
+      if (event.target.matches && event.target.matches("[data-subj-item]")) {
+        syncSubjectPicks();
+        const form = editor.querySelector("form");
+        const subject = form?.subject?.value || "";
+        const title = form?.title?.value || "";
+        if (form?.category && !form.category.dataset.locked) {
+          form.category.value = autoCategory(title || subject, form.note?.value || "");
+          form.category.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      }
       if (event.target.name === "studyMode") {
-        const panel = editor.querySelector("[data-study-panel]");
-        const life = editor.querySelector("[data-life-subjects]");
-        if (panel) panel.hidden = !event.target.checked;
-        if (life) life.style.display = event.target.checked ? "none" : "flex";
-        studyPicked.clear();
+        const panel = editor.querySelector("[data-subj-panel]");
+        if (panel && event.target.checked) panel.hidden = false;
       }
     });
 
