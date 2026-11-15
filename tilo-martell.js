@@ -173,18 +173,65 @@
     return sorted(source.blocks.filter(b => b.date === date));
   }
 
-  function checkData(source) {
-    if (!source || source.version !== VERSION ||
-        !Array.isArray(source.blocks) ||
-        !source.finalized || typeof source.finalized !== "object" ||
-        Array.isArray(source.finalized)) {
+  function checkData(source, opts) {
+    opts = opts || {};
+    const repair = !!opts.repair;
+    if (!source || typeof source !== "object") {
       throw new Error("ساختار داده قابل خواندن نیست.");
     }
+    if (!Array.isArray(source.blocks)) throw new Error("ساختار داده قابل خواندن نیست.");
+    if (source.version == null) source.version = VERSION;
+    if (!source.finalized || typeof source.finalized !== "object" || Array.isArray(source.finalized)) {
+      source.finalized = {};
+    }
+    if (!Array.isArray(source.trash)) source.trash = [];
+
     const ids = new Set();
     const dominoDates = new Set();
     const byDate = new Map();
+    const cleaned = [];
 
-    for (const b of source.blocks) {
+    for (const raw of source.blocks) {
+      let b = raw;
+      if (!b || typeof b !== "object") {
+        if (repair) continue;
+        throw new Error("یکی از کارهای ذخیره‌شده معتبر نیست.");
+      }
+      // تعمیرهای ملایم
+      if (repair) {
+        if (typeof b.id !== "string" || !b.id) b.id = uid();
+        if (typeof b.title !== "string" || !b.title.trim()) {
+          if (repair) continue;
+        }
+        b.title = String(b.title || "").trim().slice(0, 120);
+        b.note = typeof b.note === "string" ? b.note.slice(0, 600) : "";
+        if (!Object.prototype.hasOwnProperty.call(CATS, b.category)) b.category = "deep";
+        b.done = !!b.done;
+        b.domino = !!b.domino;
+        if (!(b.color === "" || (typeof b.color === "string" && /^#[0-9a-fA-F]{6}$/.test(b.color)))) {
+          b.color = CATS[b.category] ? CATS[b.category].color : "";
+        }
+        if (!validDate(b.date)) {
+          if (repair) continue;
+          throw new Error("تاریخ نامعتبر");
+        }
+        if (b.start === null || b.start === undefined) {
+          b.start = null;
+          b.end = null;
+        } else {
+          b.start = Number(b.start);
+          b.end = Number(b.end);
+          if (!Number.isFinite(b.start) || !Number.isFinite(b.end)) { b.start = null; b.end = null; }
+          else {
+            b.start = Math.round(b.start);
+            b.end = Math.round(b.end);
+            if (b.start < 0) b.start = 0;
+            if (b.end > 1440) b.end = 1440;
+            if (b.start >= b.end) b.end = Math.min(1440, b.start + 30);
+          }
+        }
+      }
+
       if (!b || typeof b.id !== "string" || !b.id || ids.has(b.id) ||
           !validDate(b.date) ||
           typeof b.title !== "string" || !b.title.trim() || b.title.length > 120 ||
@@ -192,6 +239,7 @@
           !Object.prototype.hasOwnProperty.call(CATS, b.category) ||
           typeof b.done !== "boolean" || typeof b.domino !== "boolean" ||
           !(b.color === "" || /^#[0-9a-fA-F]{6}$/.test(b.color))) {
+        if (repair) continue;
         throw new Error("یکی از کارهای ذخیره‌شده معتبر نیست.");
       }
       ids.add(b.id);
@@ -200,25 +248,43 @@
         Number.isInteger(b.start) && Number.isInteger(b.end) &&
         b.start >= 0 && b.end <= 1440 && b.start < b.end
       )) {
-        throw new Error("ساعت شروع و پایان معتبر نیست.");
+        if (repair) { b.start = null; b.end = null; }
+        else throw new Error("ساعت شروع و پایان معتبر نیست.");
       }
       if (b.domino) {
-        if (dominoDates.has(b.date)) throw new Error("هر روز فقط یک سنگ بزرگ.");
-        dominoDates.add(b.date);
+        if (dominoDates.has(b.date)) {
+          if (repair) b.domino = false;
+          else throw new Error("هر روز فقط یک سنگ بزرگ.");
+        } else dominoDates.add(b.date);
       }
-      if (!quick) {
+      cleaned.push(b);
+      if (!(b.start === null && b.end === null)) {
         if (!byDate.has(b.date)) byDate.set(b.date, []);
         byDate.get(b.date).push(b);
       }
     }
+
+    // رفع تداخل ساعت در حالت تعمیر: بلاک بعدی را جابه‌جا کن
     for (const list of byDate.values()) {
       list.sort((a, b) => a.start - b.start);
       for (let i = 1; i < list.length; i++) {
         if (list[i].start < list[i - 1].end) {
-          throw new Error("تداخل ساعت بین دو بلاک وجود دارد.");
+          if (repair) {
+            const dur = list[i].end - list[i].start;
+            list[i].start = list[i - 1].end;
+            list[i].end = Math.min(1440, list[i].start + Math.max(5, dur));
+            if (list[i].start >= list[i].end) {
+              list[i].start = null;
+              list[i].end = null;
+            }
+          } else {
+            throw new Error("تداخل ساعت بین دو بلاک وجود دارد.");
+          }
         }
       }
     }
+
+    if (repair) source.blocks = cleaned;
   }
 
   function load() {
@@ -227,7 +293,16 @@
       if (rawSnapshot === null) data = emptyData();
       else {
         const parsed = JSON.parse(rawSnapshot);
-        checkData(parsed);
+        try {
+          checkData(parsed);
+        } catch (e1) {
+          // تلاش برای تعمیر داده خراب (مثلاً چند سنگ بزرگ بعد از AI)
+          checkData(parsed, { repair: true });
+          try {
+            localStorage.setItem(KEY, JSON.stringify(parsed));
+            rawSnapshot = localStorage.getItem(KEY);
+          } catch (_) {}
+        }
         if (!Array.isArray(parsed.trash)) parsed.trash = [];
         data = parsed;
       }
@@ -900,6 +975,7 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
         </div>
         <div class="tm-row">
           <button type="button" data-action="backup">پشتیبان</button>
+          <button type="button" data-action="import-backup">ورود فایل</button>
           <button type="button" data-action="close" aria-label="بستن">×</button>
         </div>
       </header>
@@ -1333,6 +1409,70 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
     }
   }
 
+  function importBackupFromText(text) {
+    const parsed = JSON.parse(text);
+    // پشتیبانی از چند شکل فایل
+    let payload = parsed;
+    if (parsed && Array.isArray(parsed.blocks)) payload = parsed;
+    else if (parsed && parsed.data && Array.isArray(parsed.data.blocks)) payload = parsed.data;
+    else if (Array.isArray(parsed)) payload = { version: VERSION, updatedAt: null, blocks: parsed, trash: [], finalized: {} };
+    else throw new Error("این فایل شبیه پشتیبان تایم‌بلاک نیست.");
+
+    checkData(payload, { repair: true });
+    if (!Array.isArray(payload.trash)) payload.trash = [];
+    if (!payload.finalized || typeof payload.finalized !== "object") payload.finalized = {};
+    payload.version = VERSION;
+    payload.updatedAt = new Date().toISOString();
+
+    // پشتیبان از وضعیت فعلی قبل از جایگزینی
+    try {
+      const cur = localStorage.getItem(KEY);
+      if (cur) localStorage.setItem(KEY + "_before_import", cur);
+    } catch (_) {}
+
+    localStorage.setItem(KEY, JSON.stringify(payload));
+    storageProblem = "";
+    load();
+    if (storageProblem) throw new Error(storageProblem);
+    render();
+    tell("فایل وارد شد: " + nf.format(data.blocks.length) + " کار.");
+  }
+
+  function importBackupFile() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json,.json,text/plain";
+    input.hidden = true;
+    input.addEventListener("change", () => {
+      const file = input.files && input.files[0];
+      input.remove();
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          importBackupFromText(String(reader.result || ""));
+        } catch (error) {
+          tell(error.message || "ورود فایل نشد.");
+        }
+      };
+      reader.onerror = () => tell("خواندن فایل نشد.");
+      reader.readAsText(file, "utf-8");
+    });
+    root.appendChild(input);
+    input.click();
+  }
+
+  function clearStorageLock() {
+    storageProblem = "";
+    try {
+      load();
+      render();
+      tell(storageProblem ? storageProblem : "قفل ذخیره برداشته شد.");
+    } catch (e) {
+      tell(e.message || "درست نشد.");
+    }
+  }
+
 
   function shiftDayTimes(mins) {
     if (!Number.isFinite(mins) || mins === 0) return;
@@ -1577,6 +1717,8 @@ body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
         case "dismiss": ui.message = ""; render(); break;
         case "reload": load(); render(); break;
         case "backup": downloadBackup(); break;
+        case "import-backup": importBackupFile(); break;
+        case "clear-lock": clearStorageLock(); break;
       }
     } catch (error) {
       tell(error.message || "انجام نشد.");
