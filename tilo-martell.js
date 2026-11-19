@@ -1,2049 +1,2397 @@
 /**
- * tilo-martell.js — تایم‌بلاک زندگی (سبک دن مارتل)
- * اتصال: قبل از </body>
- *   <script src="./tilo-martell.js?v=1" defer></script>
- * اختیاری در منو: <button type="button" data-tilo-martell-open>تایم‌بلاک زندگی</button>
- * API: window.tiloMartell.open() / .close()
- * تایمر: رویداد "tilo:queue-part" یا window.tiloMartellToTimer(detail)
- * نسخه قابلیت‌ها: انتخاب چندتایی، ویبره، جمع تایم‌لاین، خط الان
+ * tilo | ماژول تایم‌بلاک زندگی (سبک دن مارتل)
+ * کلید ذخیره‌سازی: tilo_martell_planner
+ * منطقه زمانی مرجع: Asia/Tehran | شروع هفته: شنبه
  */
-(() => {
-  "use strict";
-  if (window.tiloMartell) return;
+(function () {
+    'use strict';
 
-  const KEY = "tilo_martell_planner";
-  const VERSION = 1;
-  const DAYS = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
-  const CATS = {
-    deep: { name: "کار عمیق / تخصصی", color: "#6366f1" },
-    health: { name: "ورزش و سلامت", color: "#10b981" },
-    growth: { name: "رشد فردی", color: "#f59e0b" },
-    general: { name: "نیمه‌عمیق / عمومی", color: "#06b6d4" },
-    recovery: { name: "ریکاوری و استراحت", color: "#64748b" }
-  };
-  const SENDABLE = new Set(["deep", "general", "health"]);
-  const TL_KEY = "tilo_martell_timeline_open";
-  const PX = 1.2;
+    if (window.__TILO_LIFE_TIMEBLOCK_LOADED__) return;
+    window.__TILO_LIFE_TIMEBLOCK_LOADED__ = true;
 
-  const tehranParts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Tehran",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", hourCycle: "h23"
-  });
-  const persianDate = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
-    timeZone: "UTC", day: "numeric", month: "long"
-  });
-  const persianFullDate = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
-    timeZone: "UTC", year: "numeric", month: "long", day: "numeric"
-  });
-  const nf = new Intl.NumberFormat("fa-IR");
+    const STORAGE_KEY = 'tilo_martell_planner';
+    const BACKUP_KEY = 'tilo_martell_planner_ai_backup';
+    const TILO_PARTS_KEY = 'sp_pro_parts';
+    const SCHEMA_VERSION = 2;
 
-  let root, launcher, screen, editor, copyDialog;
-  let data = emptyData();
-  let rawSnapshot = null;
-  let storageProblem = "";
-  let opened = false;
-  let returnFocus = null;
-  let oldOverflow = "";
-  let inertSnapshot = [];
-  let renderFocus = null;
-  let editingId = null;
-  let editorSnapshot = null;
-  let editorTrigger = null;
-  let copySnapshot = null;
-  let copyTrigger = null;
+    const WEEKDAYS_FA = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
 
-  const ui = {
-    selected: today(),
-    week: weekStart(today()),
-    view: "day",
-    review: false,
-    message: "",
-    selectMode: false,
-    selectedIds: new Set(),
-    timelineOpen: true,
-    collapsed: {
-      coach: true,
-      energy: false,
-      checklist: false,
-      review: true,
-      trash: true
-    }
-  };
-
-  try {
-    ui.timelineOpen = localStorage.getItem(TL_KEY) !== "0";
-  } catch (_) {}
-
-  function emptyData() {
-    return { version: VERSION, updatedAt: null, blocks: [], trash: [], finalized: {} };
-  }
-
-  function esc(value) {
-    return String(value ?? "").replace(/[&<>"']/g, c =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]
-    );
-  }
-
-  function partsNow() {
-    return Object.fromEntries(
-      tehranParts.formatToParts(new Date())
-        .filter(p => p.type !== "literal")
-        .map(p => [p.type, p.value])
-    );
-  }
-
-  function today() {
-    const p = partsNow();
-    return `${p.year}-${p.month}-${p.day}`;
-  }
-
-  function utcDate(key) {
-    return new Date(`${key}T12:00:00Z`);
-  }
-
-  function validDate(key) {
-    if (typeof key !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(key)) return false;
-    const d = utcDate(key);
-    return Number.isFinite(d.getTime()) && d.toISOString().slice(0, 10) === key;
-  }
-
-  function addDays(key, count) {
-    const d = utcDate(key);
-    d.setUTCDate(d.getUTCDate() + count);
-    return d.toISOString().slice(0, 10);
-  }
-
-  function dayIndex(key) {
-    return (utcDate(key).getUTCDay() + 1) % 7;
-  }
-
-  function weekStart(key) {
-    return addDays(key, -dayIndex(key));
-  }
-
-  function dateLabel(key, full) {
-    return (full ? persianFullDate : persianDate).format(utcDate(key));
-  }
-
-  function dayLabel(key) {
-    return `${DAYS[dayIndex(key)]}، ${dateLabel(key)}`;
-  }
-
-  function uid() {
-    return window.crypto?.randomUUID?.() ||
-      `tm-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-  }
-
-  function timeText(minutes) {
-    const m = Math.max(0, Math.min(1440, minutes | 0));
-    if (m === 1440) return "24:00";
-    return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-  }
-
-  function parseTime(value) {
-    if (!/^\d{2}:\d{2}$/.test(value)) return null;
-    const [h, m] = value.split(":").map(Number);
-    if (h === 24 && m === 0) return 1440;
-    if (h > 23 || m > 59) return null;
-    return h * 60 + m;
-  }
-
-  function timed(b) {
-    return Number.isInteger(b.start) && Number.isInteger(b.end);
-  }
-
-  function duration(b) {
-    return timed(b) ? b.end - b.start : 0;
-  }
-
-  function blockColor(b) {
-    return /^#[0-9a-fA-F]{6}$/.test(b.color || "") ? b.color : (CATS[b.category] || CATS.deep).color;
-  }
-
-  function sorted(blocks) {
-    return [...blocks].sort((a, b) =>
-      (a.start ?? 1500) - (b.start ?? 1500) ||
-      String(a.title).localeCompare(String(b.title), "fa")
-    );
-  }
-
-  function blocksOn(date, source) {
-    source = source || data;
-    return sorted(source.blocks.filter(b => b.date === date));
-  }
-
-  function checkData(source, opts) {
-    opts = opts || {};
-    const repair = !!opts.repair;
-    if (!source || typeof source !== "object") {
-      throw new Error("ساختار داده قابل خواندن نیست.");
-    }
-    if (!Array.isArray(source.blocks)) throw new Error("ساختار داده قابل خواندن نیست.");
-    if (source.version == null) source.version = VERSION;
-    if (!source.finalized || typeof source.finalized !== "object" || Array.isArray(source.finalized)) {
-      source.finalized = {};
-    }
-    if (!Array.isArray(source.trash)) source.trash = [];
-
-    const ids = new Set();
-    const dominoDates = new Set();
-    const byDate = new Map();
-    const cleaned = [];
-
-    for (const raw of source.blocks) {
-      let b = raw;
-      if (!b || typeof b !== "object") {
-        if (repair) continue;
-        throw new Error("یکی از کارهای ذخیره‌شده معتبر نیست.");
-      }
-      // تعمیرهای ملایم
-      if (repair) {
-        if (typeof b.id !== "string" || !b.id) b.id = uid();
-        if (typeof b.title !== "string" || !b.title.trim()) {
-          if (repair) continue;
+    const CATEGORIES = {
+        deep: {
+            id: 'deep',
+            label: 'کار عمیق / تخصصی',
+            short: 'عمیق',
+            icon: '🎯',
+            studyRelevant: true,
+            defaultColor: '#10b981',
+            palette: ['#10b981', '#059669', '#14b8a6', '#34d399']
+        },
+        general: {
+            id: 'general',
+            label: 'نیمه‌عمیق / عمومی',
+            short: 'عمومی',
+            icon: '📘',
+            studyRelevant: true,
+            defaultColor: '#38bdf8',
+            palette: ['#38bdf8', '#6366f1', '#60a5fa', '#818cf8']
+        },
+        recovery: {
+            id: 'recovery',
+            label: 'ریکاوری و استراحت',
+            short: 'استراحت',
+            icon: '☕',
+            studyRelevant: false,
+            defaultColor: '#64748b',
+            palette: ['#64748b']
+        },
+        growth: {
+            id: 'growth',
+            label: 'رشد فردی',
+            short: 'رشد فردی',
+            icon: '🌱',
+            studyRelevant: true,
+            defaultColor: '#f59e0b',
+            palette: ['#f59e0b', '#eab308', '#d97706']
+        },
+        health: {
+            id: 'health',
+            label: 'ورزش و سلامت',
+            short: 'سلامت',
+            icon: '💪',
+            studyRelevant: false,
+            defaultColor: '#f43f5e',
+            palette: ['#f43f5e', '#fb7185', '#ec4899']
         }
-        b.title = String(b.title || "").trim().slice(0, 120);
-        b.note = typeof b.note === "string" ? b.note.slice(0, 600) : "";
-        if (!Object.prototype.hasOwnProperty.call(CATS, b.category)) b.category = "deep";
-        b.done = !!b.done;
-        b.domino = !!b.domino;
-        if (!(b.color === "" || (typeof b.color === "string" && /^#[0-9a-fA-F]{6}$/.test(b.color)))) {
-          b.color = CATS[b.category] ? CATS[b.category].color : "";
-        }
-        if (!validDate(b.date)) {
-          if (repair) continue;
-          throw new Error("تاریخ نامعتبر");
-        }
-        if (b.start === null || b.start === undefined) {
-          b.start = null;
-          b.end = null;
-        } else {
-          b.start = Number(b.start);
-          b.end = Number(b.end);
-          if (!Number.isFinite(b.start) || !Number.isFinite(b.end)) { b.start = null; b.end = null; }
-          else {
-            b.start = Math.round(b.start);
-            b.end = Math.round(b.end);
-            if (b.start < 0) b.start = 0;
-            if (b.end > 1440) b.end = 1440;
-            if (b.start >= b.end) b.end = Math.min(1440, b.start + 30);
-          }
-        }
-      }
+    };
 
-      if (!b || typeof b.id !== "string" || !b.id || ids.has(b.id) ||
-          !validDate(b.date) ||
-          typeof b.title !== "string" || !b.title.trim() || b.title.length > 120 ||
-          typeof b.note !== "string" || b.note.length > 600 ||
-          !Object.prototype.hasOwnProperty.call(CATS, b.category) ||
-          typeof b.done !== "boolean" || typeof b.domino !== "boolean" ||
-          !(b.color === "" || /^#[0-9a-fA-F]{6}$/.test(b.color))) {
-        if (repair) continue;
-        throw new Error("یکی از کارهای ذخیره‌شده معتبر نیست.");
-      }
-      ids.add(b.id);
-      const quick = b.start === null && b.end === null;
-      if (!quick && !(
-        Number.isInteger(b.start) && Number.isInteger(b.end) &&
-        b.start >= 0 && b.end <= 1440 && b.start < b.end
-      )) {
-        if (repair) { b.start = null; b.end = null; }
-        else throw new Error("ساعت شروع و پایان معتبر نیست.");
-      }
-      if (b.domino) {
-        if (dominoDates.has(b.date)) {
-          if (repair) b.domino = false;
-          else throw new Error("هر روز فقط یک سنگ بزرگ.");
-        } else dominoDates.add(b.date);
-      }
-      cleaned.push(b);
-      if (!(b.start === null && b.end === null)) {
-        if (!byDate.has(b.date)) byDate.set(b.date, []);
-        byDate.get(b.date).push(b);
-      }
+    /* ==================== ابزارهای تاریخ و زمان تهران ==================== */
+
+    function toEnDigits(str) {
+        return String(str || '')
+            .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+            .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
     }
 
-    // رفع تداخل ساعت در حالت تعمیر: بلاک بعدی را جابه‌جا کن
-    for (const list of byDate.values()) {
-      list.sort((a, b) => a.start - b.start);
-      for (let i = 1; i < list.length; i++) {
-        if (list[i].start < list[i - 1].end) {
-          if (repair) {
-            const dur = list[i].end - list[i].start;
-            list[i].start = list[i - 1].end;
-            list[i].end = Math.min(1440, list[i].start + Math.max(5, dur));
-            if (list[i].start >= list[i].end) {
-              list[i].start = null;
-              list[i].end = null;
+    function toFaDigits(str) {
+        return String(str ?? '').replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]);
+    }
+
+    function getTehranTodayISO() {
+        try {
+            return toEnDigits(new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'Asia/Tehran',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            }).format(new Date()));
+        } catch (_) {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+    }
+
+    function getTehranNowMinutes() {
+        try {
+            const parts = new Intl.DateTimeFormat('en-GB', {
+                timeZone: 'Asia/Tehran',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            }).formatToParts(new Date());
+            const h = Number(parts.find(p => p.type === 'hour')?.value || 0);
+            const m = Number(parts.find(p => p.type === 'minute')?.value || 0);
+            return h * 60 + m;
+        } catch (_) {
+            const d = new Date();
+            return d.getHours() * 60 + d.getMinutes();
+        }
+    }
+
+    function parseISOToUTCNoon(iso) {
+        const [y, m, d] = String(iso || getTehranTodayISO()).split('-').map(Number);
+        return new Date(Date.UTC(y, (m || 1) - 1, d || 1, 12, 0, 0));
+    }
+
+    function addDaysISO(iso, deltaDays) {
+        const dt = parseISOToUTCNoon(iso);
+        dt.setUTCDate(dt.getUTCDate() + deltaDays);
+        const y = dt.getUTCFullYear();
+        const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(dt.getUTCDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    function getSaturdayOfWeekISO(iso) {
+        const dt = parseISOToUTCNoon(iso);
+        const jsDay = dt.getUTCDay(); // Sun=0 .. Sat=6
+        const offsetFromSaturday = (jsDay + 1) % 7;
+        return addDaysISO(iso, -offsetFromSaturday);
+    }
+
+    function getPersianDateInfo(iso) {
+        try {
+            const dt = parseISOToUTCNoon(iso);
+            const weekday = new Intl.DateTimeFormat('fa-IR', {
+                timeZone: 'Asia/Tehran',
+                weekday: 'long'
+            }).format(dt);
+            const dayNum = new Intl.DateTimeFormat('fa-IR', {
+                timeZone: 'Asia/Tehran',
+                day: 'numeric'
+            }).format(dt);
+            const monthName = new Intl.DateTimeFormat('fa-IR', {
+                timeZone: 'Asia/Tehran',
+                month: 'long'
+            }).format(dt);
+            const fullDate = new Intl.DateTimeFormat('fa-IR', {
+                timeZone: 'Asia/Tehran',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            }).format(dt);
+            return { weekday, dayNum, monthName, fullDate, shortDate: `${dayNum} ${monthName}` };
+        } catch (_) {
+            return { weekday: 'روز', dayNum: '', monthName: '', fullDate: iso, shortDate: iso };
+        }
+    }
+
+    function minutesToHHMM(mins, fa = true) {
+        if (mins === null || mins === undefined || Number.isNaN(Number(mins))) return '';
+        const clamped = Math.max(0, Math.min(1440, Math.round(Number(mins))));
+        const h = Math.floor(clamped / 60);
+        const m = clamped % 60;
+        const raw = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        return fa ? toFaDigits(raw) : raw;
+    }
+
+    function hhmmToMinutes(str) {
+        const clean = toEnDigits(str).trim();
+        const match = clean.match(/^(\d{1,2}):(\d{2})$/);
+        if (!match) return null;
+        const h = Number(match[1]);
+        const m = Number(match[2]);
+        if (h < 0 || h > 24 || m < 0 || m > 59) return null;
+        const total = h * 60 + m;
+        return total > 1440 ? 1440 : total;
+    }
+
+    function formatDurationFa(mins) {
+        const m = Math.max(0, Math.round(Number(mins) || 0));
+        if (m === 0) return '۰ دقیقه';
+        const h = Math.floor(m / 60);
+        const rem = m % 60;
+        if (h > 0 && rem > 0) return `${toFaDigits(h)} ساعت و ${toFaDigits(rem)} دقیقه`;
+        if (h > 0) return `${toFaDigits(h)} ساعت`;
+        return `${toFaDigits(rem)} دقیقه`;
+    }
+
+    function generateId(prefix = 'blk') {
+        return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    }
+
+    /* ==================== مدیریت داده و ایمنی localStorage ==================== */
+
+    function normalizeBlock(raw, index = 0) {
+        const catKey = CATEGORIES[raw?.category] ? raw.category : 'deep';
+        const catObj = CATEGORIES[catKey];
+        let start = raw?.start !== null && raw?.start !== undefined && raw?.start !== '' ? Number(raw.start) : null;
+        let end = raw?.end !== null && raw?.end !== undefined && raw?.end !== '' ? Number(raw.end) : null;
+
+        if (start !== null && (Number.isNaN(start) || start < 0 || start > 1440)) start = null;
+        if (end !== null && (Number.isNaN(end) || end < 0 || end > 1440)) end = null;
+        if (start !== null && end !== null && end <= start) {
+            end = Math.min(1440, start + 30);
+        }
+        if (start === null || end === null) {
+            start = null;
+            end = null;
+        }
+
+        let color = raw?.color || catObj.palette[index % catObj.palette.length];
+        if (catKey === 'recovery') color = CATEGORIES.recovery.defaultColor;
+
+        return {
+            id: String(raw?.id || generateId('blk')),
+            date: /^\d{4}-\d{2}-\d{2}$/.test(String(raw?.date || '')) ? raw.date : getTehranTodayISO(),
+            title: String(raw?.title || 'بدون عنوان').trim(),
+            note: String(raw?.note || '').trim(),
+            category: catKey,
+            color,
+            start,
+            end,
+            done: Boolean(raw?.done),
+            domino: Boolean(raw?.domino)
+        };
+    }
+
+    function enforceSingleDominoPerDay(blocks, preferredDominoId = null) {
+        const seenDates = new Set();
+        if (preferredDominoId) {
+            const target = blocks.find(b => b.id === preferredDominoId && b.domino);
+            if (target) {
+                seenDates.add(target.date);
+                blocks.forEach(b => {
+                    if (b.date === target.date && b.id !== target.id) b.domino = false;
+                });
             }
-          } else {
-            throw new Error("تداخل ساعت بین دو بلاک وجود دارد.");
-          }
         }
-      }
+        blocks.forEach(b => {
+            if (!b.domino) return;
+            if (seenDates.has(b.date)) {
+                b.domino = false;
+            } else {
+                seenDates.add(b.date);
+            }
+        });
+        return blocks;
     }
 
-    if (repair) source.blocks = cleaned;
-  }
+    function normalizeStore(raw) {
+        let parsed = raw;
+        if (typeof raw === 'string') {
+            try { parsed = JSON.parse(raw); } catch (_) { parsed = null; }
+        }
+        if (Array.isArray(parsed)) {
+            parsed = { blocks: parsed };
+        }
+        if (!parsed || typeof parsed !== 'object') {
+            parsed = {};
+        }
 
-  function load() {
-    try {
-      rawSnapshot = localStorage.getItem(KEY);
-      if (rawSnapshot === null) data = emptyData();
-      else {
-        const parsed = JSON.parse(rawSnapshot);
+        const blocks = Array.isArray(parsed.blocks)
+            ? enforceSingleDominoPerDay(parsed.blocks.map((b, i) => normalizeBlock(b, i)))
+            : [];
+        const trash = Array.isArray(parsed.trash)
+            ? parsed.trash.map((b, i) => normalizeBlock(b, i))
+            : [];
+        const finalized = parsed.finalized && typeof parsed.finalized === 'object' && !Array.isArray(parsed.finalized)
+            ? parsed.finalized
+            : {};
+
+        return {
+            version: SCHEMA_VERSION,
+            updatedAt: Number(parsed.updatedAt) || Date.now(),
+            blocks,
+            trash,
+            finalized
+        };
+    }
+
+    function loadStore() {
         try {
-          checkData(parsed);
-        } catch (e1) {
-          // تلاش برای تعمیر داده خراب (مثلاً چند سنگ بزرگ بعد از AI)
-          checkData(parsed, { repair: true });
-          try {
-            localStorage.setItem(KEY, JSON.stringify(parsed));
-            rawSnapshot = localStorage.getItem(KEY);
-          } catch (_) {}
+            const raw = localStorage.getItem(STORAGE_KEY);
+            return normalizeStore(raw);
+        } catch (_) {
+            return normalizeStore(null);
         }
-        if (!Array.isArray(parsed.trash)) parsed.trash = [];
-        data = parsed;
-      }
-      if (!Array.isArray(data.trash)) data.trash = [];
-      storageProblem = "";
-    } catch (error) {
-      storageProblem = "ذخیره قابل استفاده نیست. " + (error.message || "");
     }
-  }
 
-  function transaction(mutator, affectedDates) {
-    affectedDates = affectedDates || [];
-    if (storageProblem) throw new Error("مشکل ذخیره‌سازی؛ داده قبلی دست‌نخورده است.");
-    let currentRaw;
-    try { currentRaw = localStorage.getItem(KEY); }
-    catch { throw new Error("دسترسی به حافظه محلی نیست."); }
-    if (currentRaw !== rawSnapshot) {
-      load();
-      render();
-      throw new Error("در تب دیگر تغییر کرده؛ دوباره امتحان کن.");
-    }
-    const next = JSON.parse(JSON.stringify(data));
-    mutator(next);
-    for (const date of affectedDates) delete next.finalized[date];
-    checkData(next);
-    next.updatedAt = new Date().toISOString();
-    const json = JSON.stringify(next);
-    try { localStorage.setItem(KEY, json); }
-    catch { throw new Error("ذخیره نشد؛ حافظه پر است."); }
-    data = next;
-    rawSnapshot = json;
-    ui.message = "";
-  }
-
-  function tell(message) {
-    ui.message = message;
-    render();
-  }
-
-  function focusKey(el) {
-    if (!el || !el.getAttribute) return null;
-    return el.getAttribute("data-action") + "|" + (el.getAttribute("data-id") || el.getAttribute("data-date") || "");
-  }
-
-  function restoreActionFocus(key) {
-    if (!key || !screen) return;
-    const [action, rest] = key.split("|");
-    const el = [...screen.querySelectorAll("[data-action]")].find(n =>
-      n.getAttribute("data-action") === action &&
-      (n.getAttribute("data-id") || n.getAttribute("data-date") || "") === (rest || "")
-    );
-    el?.focus({ preventScroll: true });
-  }
-
-  function ensureFresh(snapshot) {
-    try {
-      if (localStorage.getItem(KEY) !== snapshot) {
-        load();
-        throw new Error("داده عوض شده؛ فرم را ببند و دوباره باز کن.");
-      }
-    } catch (e) {
-      if (e.message && e.message.includes("عوض")) throw e;
-      load();
-    }
-  }
-
-  function dialogError(dialog, msg) {
-    const box = dialog.querySelector(".tm-form-error");
-    if (box) {
-      box.hidden = false;
-      box.textContent = msg;
-    } else {
-      alert(msg);
-    }
-  }
-
-  const CSS = `
-#tilo-martell-launcher{position:fixed;z-index:9990;width:52px;height:52px;padding:0;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:linear-gradient(145deg,#2f6a50,#35634e);color:#fff;font:inherit;font-size:18px;cursor:pointer;box-shadow:0 8px 24px rgba(53,99,78,.4),0 0 0 0 rgba(53,99,78,.35);display:inline-flex;align-items:center;justify-content:center;right:14px;left:auto;bottom:calc(5.6rem + env(safe-area-inset-bottom,0px));transition:transform .18s ease,box-shadow .18s ease,filter .18s ease}
-#tilo-martell-launcher:hover,#tilo-martell-launcher:focus-visible{transform:translateY(-3px) scale(1.05);box-shadow:0 14px 32px rgba(53,99,78,.55),0 0 0 4px rgba(141,188,162,.25);filter:brightness(1.06);outline:none}
-#tilo-martell-launcher:active{transform:translateY(-1px) scale(1.02)}
-#tilo-martell-launcher span{font-size:11px;position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
-@media(hover:none){#tilo-martell-launcher:hover{transform:none;filter:none}}
-#tilo-martell{--tm-bg:var(--t-bg,#f4f6f2);--tm-card:var(--t-card,#fff);--tm-text:var(--t-text,#253b31);--tm-muted:var(--t-muted,#68766d);--tm-border:var(--t-border,#dbe3dc);--tm-accent:#35634e;position:fixed;inset:0;z-index:10000;direction:rtl;color:var(--tm-text);background:var(--tm-bg);font-family:inherit;font-size:14px;line-height:1.7;overflow:auto;overscroll-behavior:contain;padding-bottom:env(safe-area-inset-bottom,0px)}
-body.tilo-theme-night #tilo-martell{--tm-bg:var(--t-bg,#121c18);--tm-card:var(--t-card,#1b2822);--tm-text:var(--t-text,#e2ebe5);--tm-muted:var(--t-muted,#acbbb2);--tm-border:var(--t-border,#35463c)}
-#tilo-martell *,#tilo-martell *::before,#tilo-martell *::after{box-sizing:border-box}
-#tilo-martell[hidden],#tilo-martell [hidden]{display:none!important}
-#tilo-martell button,#tilo-martell input,#tilo-martell select,#tilo-martell textarea{font:inherit;color:inherit}
-#tilo-martell button{cursor:pointer;min-height:44px;border:1px solid var(--tm-border);border-radius:12px;background:var(--tm-card);padding:8px 12px;line-height:1.5;touch-action:manipulation}
-#tilo-martell button:disabled{opacity:.5;cursor:not-allowed}
-#tilo-martell :focus-visible{outline:3px solid #7fac91;outline-offset:3px}
-#tilo-martell .tm-primary{background:#35634e;color:#fff;border-color:#35634e}
-#tilo-martell .tm-danger{color:#b94738}
-body.tilo-theme-night #tilo-martell .tm-danger{color:#ffb0a3}
-#tilo-martell .tm-muted{color:var(--tm-muted);font-size:12px}
-#tilo-martell .tm-top{position:sticky;top:0;z-index:5;display:flex;gap:12px;align-items:center;justify-content:space-between;background:var(--tm-card);border-bottom:1px solid var(--tm-border);padding:12px max(14px,env(safe-area-inset-right,0px))}
-#tilo-martell h2,#tilo-martell h3,#tilo-martell p{margin:0}
-#tilo-martell h2{font-size:17px}
-#tilo-martell h3{font-size:15px}
-#tilo-martell .tm-wrap{max-width:1150px;margin:auto;padding:14px}
-#tilo-martell .tm-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-#tilo-martell .tm-between{justify-content:space-between}
-#tilo-martell .tm-stack{display:grid;gap:12px}
-#tilo-martell .tm-card{background:var(--tm-card);border:1px solid var(--tm-border);padding:15px;border-radius:17px}
-#tilo-martell .tm-days{display:grid;grid-template-columns:repeat(7,minmax(82px,1fr));gap:6px;overflow-x:auto;padding:4px 2px 9px}
-#tilo-martell .tm-days button{text-align:center;padding:8px 5px}
-#tilo-martell .tm-days small{display:block;font-size:11px;white-space:nowrap}
-#tilo-martell .tm-selected{box-shadow:inset 0 0 0 2px #548068;border-color:#548068}
-#tilo-martell .tm-today::after{content:"امروز";display:block;font-size:10px;color:var(--tm-muted)}
-#tilo-martell .tm-tabs button[aria-pressed="true"]{background:#35634e;color:#fff;border-color:#35634e}
-#tilo-martell .tm-notice{background:var(--tm-card);border:1px solid #a88c49;padding:12px;border-radius:12px;margin-bottom:12px;overflow-wrap:anywhere}
-#tilo-martell .tm-summary{display:grid;gap:12px;margin:12px 0}
-#tilo-martell .tm-domino{border-inline-start:4px solid #a68a48}
-#tilo-martell .tm-energy{height:10px;display:flex;direction:rtl;overflow:hidden;background:var(--tm-border);border-radius:99px;margin:12px 0 8px}
-#tilo-martell .tm-energy span{display:block;height:100%}
-#tilo-martell .tm-dot{width:8px;height:8px;display:inline-block;border-radius:50%;background:var(--bc);margin-inline-end:4px}
-#tilo-martell .tm-legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px}
-#tilo-martell .tm-calendar{padding:0;overflow:hidden}
-#tilo-martell .tm-calendar-head{padding:12px 15px;border-bottom:1px solid var(--tm-border)}
-#tilo-martell .tm-time-scroll{max-height:62vh;min-height:280px;overflow:auto;direction:rtl;overscroll-behavior:contain;position:relative}
-#tilo-martell .tm-timeline{height:1728px;position:relative;margin:0 8px}
-#tilo-martell .tm-hour{position:absolute;width:100%;border-top:1px solid var(--tm-border);height:72px;font-size:11px;color:var(--tm-muted)}
-#tilo-martell .tm-hour>span{display:block;width:49px;text-align:center;padding-top:4px;direction:ltr;font-variant-numeric:tabular-nums}
-#tilo-martell .tm-block{position:absolute;inset-inline:58px 5px;overflow:hidden;border:1px solid var(--tm-border);border-inline-start:4px solid var(--bc);border-radius:8px;background:var(--tm-card)}
-#tilo-martell .tm-block .tm-block-main{display:block;width:100%;height:100%;min-height:0;padding:3px 8px;padding-inline-end:49px;border:0;text-align:start;border-radius:0;background:transparent;overflow:hidden}
-#tilo-martell .tm-block strong{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#tilo-martell .tm-block small{font-size:10px}
-#tilo-martell .tm-block .tm-block-toggle{position:absolute;inset-inline-end:2px;top:2px;width:44px;padding:5px;border:0;background:transparent}
-#tilo-martell .tm-done{opacity:.57}
-#tilo-martell .tm-done .tm-title{text-decoration:line-through}
-#tilo-martell .tm-week-scroll{overflow-x:auto;padding:2px 2px 10px}
-#tilo-martell .tm-week{display:grid;grid-template-columns:repeat(7,minmax(140px,1fr));gap:8px;align-items:start;min-width:1030px}
-#tilo-martell .tm-week-col{border:1px solid var(--tm-border);border-radius:13px;background:var(--tm-card);min-height:200px;padding:8px}
-#tilo-martell .tm-week-col>button{width:100%;margin-bottom:8px}
-#tilo-martell .tm-mini{border:1px solid var(--tm-border);border-inline-start:4px solid var(--bc);border-radius:10px;margin-bottom:8px;padding:6px;overflow-wrap:anywhere}
-#tilo-martell .tm-mini .tm-edit{width:100%;border:0;text-align:start;padding:3px}
-#tilo-martell .tm-mini strong{display:block;font-size:12px}
-#tilo-martell .tm-tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 6px;border:1px solid var(--tm-border);border-radius:7px}
-#tilo-martell .tm-item{display:flex;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--tm-border)}
-#tilo-martell .tm-item:last-child{border-bottom:0}
-#tilo-martell .tm-item .tm-edit{flex:1;text-align:start;border:0;padding:3px 6px;min-width:0}
-#tilo-martell .tm-item .tm-title{display:block;overflow-wrap:anywhere}
-#tilo-martell .tm-check{width:44px;flex:0 0 44px;padding:5px}
-#tilo-martell .tm-item-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-#tilo-martell .tm-clock{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;white-space:nowrap}
-#tilo-martell progress{width:100%;height:10px;margin-top:8px;accent-color:#548068}
-#tilo-martell .tm-empty{padding:26px 16px;text-align:center}
-#tilo-martell .tm-empty p{margin-bottom:12px}
-#tilo-martell .tm-review{margin-top:12px}
-#tilo-martell .tm-review-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--tm-border)}
-#tilo-martell .tm-review-item>div{min-width:0;overflow-wrap:anywhere}
-#tilo-martell dialog{direction:rtl;width:min(540px,calc(100% - 20px));max-height:90dvh;overflow:auto;margin:auto;padding:0;border:1px solid var(--tm-border);border-radius:20px;background:var(--tm-card);color:var(--tm-text);box-shadow:0 20px 70px #0005}
-#tilo-martell dialog::backdrop{background:#08170f88}
-#tilo-martell .tm-form{display:grid;gap:13px;padding:19px}
-#tilo-martell .tm-field{display:grid;gap:5px;font-size:12px}
-#tilo-martell input:not([type="checkbox"]),#tilo-martell select,#tilo-martell textarea{width:100%;min-height:44px;border:1px solid var(--tm-border);border-radius:10px;padding:10px;background:var(--tm-bg)}
-#tilo-martell textarea{min-height:75px;resize:vertical}
-#tilo-martell input[type="checkbox"]{width:20px;height:20px;accent-color:#35634e}
-#tilo-martell .tm-checklabel{display:flex;align-items:center;gap:9px;min-height:44px}
-#tilo-martell .tm-fields-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-#tilo-martell .tm-form-error{color:#b94738;overflow-wrap:anywhere;font-size:13px}
-body.tilo-theme-night #tilo-martell .tm-form-error{color:#ffb0a3}
-#tilo-martell .tm-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:5px}
-#tilo-martell .tm-actions>.tm-primary{flex:1}
-#tilo-martell .tm-footer{text-align:center;padding:20px 0 8px;font-size:11px;color:var(--tm-muted)}
-
-#tilo-martell .tm-swatches{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-#tilo-martell .tm-swatch{width:36px;height:36px;border-radius:50%;border:2px solid transparent;padding:0;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
-#tilo-martell .tm-swatch.on{box-shadow:0 0 0 3px var(--tm-card),0 0 0 5px #548068;border-color:#fff}
-#tilo-martell .tm-time-pick{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:end}
-#tilo-martell .tm-time-pick select{direction:ltr;text-align:center;font-variant-numeric:tabular-nums;font-size:16px}
-#tilo-martell .tm-time-colon{font-size:20px;font-weight:700;padding-bottom:10px;text-align:center}
-#tilo-martell .tm-date-fa{font-size:13px;color:var(--tm-muted);margin-top:4px}
-#tilo-martell input[type="date"]{direction:ltr}
-
-#tilo-martell .tm-fx{animation:tmPop .7s ease}
-#tilo-martell .tm-fx-calm{outline:2px solid var(--tm-accent);outline-offset:2px}
-@keyframes tmPop{0%{transform:scale(.96);box-shadow:0 0 0 0 rgba(53,99,78,.45)}40%{transform:scale(1.03)}100%{transform:scale(1);box-shadow:0 0 0 12px rgba(53,99,78,0)}}
-#tilo-martell .tm-now{position:absolute;left:0;right:0;height:0;border-top:2px dashed #e5c58c;z-index:4;pointer-events:none}
-#tilo-martell .tm-now span{position:absolute;inset-inline-start:0;top:-.85rem;font-size:10px;background:var(--tm-card);color:#e5c58c;padding:0 6px;border-radius:6px}
-#tilo-martell .tm-select-bar{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-#tilo-martell .tm-block.tm-picked{box-shadow:inset 0 0 0 2px #548068}
-#tilo-martell .tm-send{font-size:11px;min-height:36px;padding:4px 8px}
-#tilo-martell .tm-summary-collapsed{display:grid;gap:8px}
-#tilo-martell .tm-chip-mini{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border:1px solid var(--tm-border);border-radius:10px;font-size:12px}
-
-#tilo-martell .tm-block{background:color-mix(in srgb,var(--bc) 22%,var(--tm-card))!important;border-color:color-mix(in srgb,var(--bc) 45%,var(--tm-border))!important}
-#tilo-martell .tm-block.tm-done{background:color-mix(in srgb,var(--bc) 10%,var(--tm-card))!important}
-#tilo-martell .tm-mini{background:color-mix(in srgb,var(--bc) 18%,var(--tm-card))!important}
-#tilo-martell .tm-item{border-radius:12px;padding:10px 8px;margin-bottom:6px;background:color-mix(in srgb,var(--bc,var(--tm-border)) 12%,var(--tm-card));border:1px solid color-mix(in srgb,var(--bc,var(--tm-border)) 30%,var(--tm-border));border-inline-start-width:4px;border-inline-start-color:var(--bc,#64748b)}
-#tilo-martell .tm-item.tm-done{opacity:.62}
-#tilo-martell .tm-time-wheel{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;background:var(--tm-inset,#15201b);border:1px solid var(--tm-border);border-radius:16px;padding:12px}
-#tilo-martell .tm-time-wheel select{appearance:none;-webkit-appearance:none;text-align:center;font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;direction:ltr;min-height:52px;border-radius:12px;background:var(--tm-card);border:1px solid var(--tm-border);padding:8px 4px}
-#tilo-martell .tm-time-colon{font-size:26px;font-weight:800;opacity:.8}
-
-#tilo-martell .tm-toolbar{padding:12px!important}
-#tilo-martell .tm-tool-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-#tilo-martell .tm-tool-grid .tm-primary{grid-column:1/-1}
-#tilo-martell .tm-days{display:flex!important;grid-template-columns:none!important;gap:8px;overflow-x:auto;padding-bottom:8px}
-#tilo-martell .tm-days button{flex:0 0 auto;min-width:4.6rem;padding:10px 12px;border-radius:14px}
-#tilo-martell .tm-energy{height:14px;border-radius:999px;margin:10px 0}
-#tilo-martell .tm-energy-meta{display:grid;gap:6px;font-size:12px}
-#tilo-martell .tm-energy-meta div{display:flex;justify-content:space-between;gap:8px;align-items:center}
-#tilo-martell .tm-coach-list{margin:10px 0 0;padding-inline-start:1.1rem;display:grid;gap:8px;font-size:12.5px;line-height:1.75;color:var(--tm-text)}
-#tilo-martell .tm-fab-add{position:fixed;z-index:10020;right:16px;left:auto;bottom:calc(1.2rem + env(safe-area-inset-bottom,0px));width:56px;height:56px;border-radius:18px;border:0;background:#35634e;color:#fff;font-size:28px;line-height:1;box-shadow:0 12px 30px rgba(53,99,78,.45);display:flex;align-items:center;justify-content:center}
-#tilo-martell .tm-fab-add:hover{filter:brightness(1.08);transform:translateY(-2px)}
-#tilo-martell .tm-select-on{box-shadow:inset 0 0 0 2px #548068;background:color-mix(in srgb,#548068 18%,var(--tm-card))!important}
-#tilo-martell .tm-item.tm-picked,#tilo-martell .tm-block.tm-picked{outline:2px solid #7fac91;outline-offset:1px}
-#tilo-martell dialog .tm-time-wheel select{font-size:24px;min-height:56px}
-#tilo-martell .tm-sub-empty{opacity:.75}
-
-#tilo-martell .tm-gauge{width:min(100%,220px);margin:8px auto 4px;display:block}
-#tilo-martell .tm-item{position:relative;padding-inline-end:40px}
-#tilo-martell .tm-x{position:absolute;inset-inline-end:4px;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:10px;border:1px solid var(--tm-border);background:transparent;color:var(--tm-muted);font-size:16px;padding:0;min-height:36px}
-#tilo-martell .tm-x:hover{color:#e5a39a;border-color:#e5a39a}
-#tilo-martell .tm-drag{cursor:grab;opacity:.7;font-size:14px;padding:4px 6px;min-height:32px;border:0;background:transparent}
-#tilo-martell .tm-item.tm-dragging{opacity:.55}
-#tilo-martell .tm-trash-box{opacity:.9}
-#tilo-martell .tm-chip-row{display:flex;flex-wrap:wrap;gap:6px}
-#tilo-martell .tm-chip-row button{min-height:36px;padding:6px 10px;font-size:12px}
-#tilo-martell .tm-chip-row button.on{background:#35634e;color:#fff;border-color:#35634e}
-#tilo-martell .tm-subgrid{display:grid;gap:8px;margin-top:8px;padding:10px;border:1px solid var(--tm-border);border-radius:12px;background:var(--tm-bg)}
-#tilo-martell .tm-delay-banner{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-
-#tilo-martell .tm-fold-btn{min-height:36px;padding:6px 10px;font-size:12px}
-#tilo-martell .tm-move{display:flex;flex-direction:column;gap:2px}
-#tilo-martell .tm-move button{min-height:28px;padding:0 8px;font-size:12px;line-height:1}
-#tilo-martell .tm-subj-drop{max-height:240px;overflow:auto;border:1px solid var(--tm-border);border-radius:12px;padding:10px;background:var(--tm-bg)}
-#tilo-martell .tm-subj-group{margin-bottom:10px}
-#tilo-martell .tm-subj-group h4{margin:0 0 6px;font-size:12px;color:var(--tm-muted)}
-#tilo-martell .tm-subj-group label{display:flex;align-items:center;gap:8px;min-height:36px;font-size:13px}
-@media(min-width:760px){#tilo-martell .tm-wrap{padding:20px}#tilo-martell .tm-summary{grid-template-columns:1fr 1fr}}
-`;
-
-  function tag(b) {
-    return `<span class="tm-tag"><i class="tm-dot" style="--bc:${blockColor(b)}"></i>${esc(CATS[b.category].name)}</span>`;
-  }
-
-  function blockTime(b) {
-    return timed(b)
-      ? `<span class="tm-clock">${timeText(b.start)} – ${timeText(b.end)}</span>`
-      : "بدون ساعت";
-  }
-
-  function toggleButton(b, className) {
-    className = className || "tm-check";
-    return `<button type="button" class="${className}" data-action="toggle" data-id="${esc(b.id)}"
-      aria-pressed="${b.done}" aria-label="${esc((b.done ? "لغو انجام: " : "انجام شد: ") + b.title)}">${b.done ? "✓" : "○"}</button>`;
-  }
-
-  function summaryHTML(list) {
-    const domino = list.find(b => b.domino);
-    const totalMinutes = list.reduce((sum, b) => sum + duration(b), 0) || 1;
-    const keys = ["deep", "health", "recovery", "growth", "general"];
-    const amounts = keys.map(key => ({
-      key,
-      minutes: list.filter(b => b.category === key).reduce((s, b) => s + duration(b), 0)
-    }));
-    const doneCount = list.filter(b => b.done).length;
-    const progress = list.length ? Math.round((doneCount / list.length) * 100) : 0;
-
-    // semicircle gauge paths
-    let acc = 0;
-    const arcs = amounts.filter(a => a.minutes > 0).map(a => {
-      const frac = a.minutes / totalMinutes;
-      const start = acc;
-      acc += frac;
-      return { ...a, start, frac };
-    });
-    function polar(f, r) {
-      const ang = Math.PI * (1 - f);
-      return [100 + r * Math.cos(ang), 100 - r * Math.sin(ang)];
-    }
-    const arcsSvg = arcs.map(a => {
-      const r = 78;
-      const [x1, y1] = polar(a.start, r);
-      const [x2, y2] = polar(a.start + a.frac, r);
-      const large = a.frac > 0.5 ? 1 : 0;
-      const d = `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
-      return `<path d="${d}" fill="none" stroke="${CATS[a.key].color}" stroke-width="16" stroke-linecap="round"/>`;
-    }).join("");
-
-    return `<div class="tm-summary">
-      <section class="tm-card tm-domino">
-        <div class="tm-row tm-between">
-          <strong>★ سنگ بزرگ امروز</strong>
-          <button type="button" data-action="add-domino">تعیین</button>
-        </div>
-        ${domino ? `
-          <p style="margin-top:10px"><strong class="tm-title">${esc(domino.title)}</strong></p>
-          <p class="tm-muted">${blockTime(domino)} · ${esc(CATS[domino.category].name)}</p>
-          ${toggleButton(domino)}
-        ` : `<p class="tm-muted" style="margin-top:10px">یک کار را به‌عنوان مهم‌ترین قدم روز علامت بزن.</p>`}
-      </section>
-      <section class="tm-card">
-        <strong>تعادل انرژی</strong>
-        <svg class="tm-gauge" viewBox="0 0 200 110" aria-label="نمودار تعادل انرژی">
-          <path d="M 22 100 A 78 78 0 0 1 178 100" fill="none" stroke="var(--tm-border)" stroke-width="16" stroke-linecap="round"/>
-          ${arcsSvg}
-          <text x="100" y="88" text-anchor="middle" fill="currentColor" font-size="15" font-weight="700">${nf.format(progress)}٪</text>
-          <text x="100" y="104" text-anchor="middle" fill="var(--tm-muted)" font-size="9">انجام‌شده</text>
-        </svg>
-        <div class="tm-energy-meta">
-          ${amounts.filter(a => a.minutes > 0).map(a =>
-            `<div><span><i class="tm-dot" style="--bc:${CATS[a.key].color}"></i>${esc(CATS[a.key].name)}</span><strong>${nf.format(a.minutes)}د</strong></div>`
-          ).join("") || '<span class="tm-muted">هنوز بلاک ساعت‌دار نیست</span>'}
-        </div>
-        <p class="tm-muted" style="margin-top:8px">پیشرفت: ${nf.format(doneCount)} از ${nf.format(list.length)}</p>
-      </section>
-    </div>`;
-  }
-
-
-  function reducedMotion() {
-    try {
-      return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-    } catch (_) { return false; }
-  }
-
-  function vibrateSoft() {
-    try {
-      if (navigator.vibrate) navigator.vibrate([25, 50, 25]);
-    } catch (_) {}
-  }
-
-  function playDoneFx(ids) {
-    if (!ids || !ids.length || !screen) return;
-    const calm = reducedMotion();
-    ids.forEach(id => {
-      screen.querySelectorAll('[data-bid="' + String(id).replace(/\\/g, '').replace(/"/g, '') + '"]').forEach(el => {
-        el.classList.remove("tm-fx", "tm-fx-calm");
-        void el.offsetWidth;
-        el.classList.add(calm ? "tm-fx-calm" : "tm-fx");
-        setTimeout(() => el.classList.remove("tm-fx", "tm-fx-calm"), 850);
-      });
-    });
-    vibrateSoft();
-  }
-
-  function nowMinutes() {
-    const p = partsNow();
-    return Number(p.hour) * 60 + Number(p.minute || 0);
-  }
-
-
-  const SUBJECT_HINTS = [
-    { cat: "deep", keys: ["حسابان", "دیفرانسیل", "فیزیک", "شیمی", "هندسه", "گسسته", "آمار", "ریاضی", "زیست", "مکانیک", "الکتریسیته", "آلی", "معدنی"] },
-    { cat: "general", keys: ["فارسی", "ادبیات", "عربی", "دین", "دینی", "زبان", "english", "قرآن", "بهداشت"] },
-    { cat: "health", keys: ["ورزش", "تمرین", "بدنسازی", "دویدن", "شنا", "پیاده‌روی", "پیاده روی", "یوگا"] },
-    { cat: "growth", keys: ["کتاب", "مطالعه کتاب", "مدیتیشن", "عادت", "زبان انگلیسی آزاد", "پادکست", "ویدیو آموزشی"] },
-    { cat: "recovery", keys: ["استراحت", "ناهار", "شام", "صبحانه", "خواب", "چرت", "تفریح", "موبایل", "ریکاوری", "بازیابی"] }
-  ];
-
-  function autoCategory(title, note) {
-    const text = (String(title || "") + " " + String(note || "")).toLowerCase();
-    for (const row of SUBJECT_HINTS) {
-      for (const k of row.keys) {
-        if (text.includes(k.toLowerCase())) return row.cat;
-      }
-    }
-    return "deep";
-  }
-
-  function guessSubject(title) {
-    const t0 = String(title || "").trim();
-    for (const row of SUBJECT_HINTS) {
-      for (const k of row.keys) {
-        if (t0.includes(k)) return k;
-      }
-    }
-    return "";
-  }
-
-  function lastBlockEnd(date) {
-    const timedBlocks = blocksOn(date).filter(timed);
-    if (!timedBlocks.length) return 8 * 60;
-    return Math.max(...timedBlocks.map(b => b.end));
-  }
-
-  function offlineCoachHTML(list) {
-    const total = list.reduce((s, b) => s + duration(b), 0) || 1;
-    const deep = list.filter(b => b.category === "deep").reduce((s, b) => s + duration(b), 0);
-    const rec = list.filter(b => b.category === "recovery").reduce((s, b) => s + duration(b), 0);
-    const health = list.filter(b => b.category === "health").reduce((s, b) => s + duration(b), 0);
-    const tips = [];
-    const deepPct = Math.round((deep / total) * 100);
-    const recPct = Math.round((rec / total) * 100);
-    if (deepPct >= 70) tips.push("کار عمیق زیاد است؛ یک بلاک ریکاوری ۱۵–۲۰ دقیقه‌ای بین دروس تخصصی بگذار.");
-    if (recPct < 10 && total >= 180) tips.push("ریکاوری کم است؛ بدون استراحت کوتاه، بازدهی بعدازظهر افت می‌کند.");
-    if (health < 20) tips.push("برای انرژی پایدار، حداقل یک بلاک کوتاه ورزش/تحرک در خانه اضافه کن.");
-    const domino = list.find(b => b.domino);
-    if (!domino) tips.push("سنگ بزرگ امروز مشخص نیست؛ یک کار مهم را با ★ علامت بزن.");
-    const gaps = [];
-    const sortedTimed = list.filter(timed);
-    for (let i = 1; i < sortedTimed.length; i++) {
-      if (sortedTimed[i].start - sortedTimed[i - 1].end >= 40) {
-        gaps.push(timeText(sortedTimed[i - 1].end) + "–" + timeText(sortedTimed[i].start));
-      }
-    }
-    if (gaps.length) tips.push("بازه خالی: " + gaps.slice(0, 2).join("، ") + " — می‌توانی مرور یا استراحت کوتاه بگذاری.");
-    if (!tips.length) tips.push("تعادل نسبتاً خوب است؛ سنگ بزرگ را اول صبح یا در اوج انرژی انجام بده.");
-    return `<section class="tm-card tm-coach">
-      ${sectionHead("دستیار برنامه (آفلاین)", "coach")}
-      ${ui.collapsed.coach ? "" : `<ul class="tm-coach-list">${tips.map(x => `<li>${esc(x)}</li>`).join("")}</ul>`}
-    </section>`;
-  }
-
-
-  function getSubjectGroups() {
-    try {
-      const raw = localStorage.getItem("sp_pro_subjects");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length) return parsed;
-      }
-    } catch (_) {}
-    return [
-      { category: "تخصصی", items: ["حسابان ۱", "حسابان ۲", "فیزیک ۱", "فیزیک ۲", "فیزیک ۳", "شیمی ۱", "شیمی ۲", "شیمی ۳", "هندسه ۱", "هندسه ۲", "هندسه ۳", "گسسته", "آمار و احتمال", "زیست‌شناسی ۱", "زیست‌شناسی ۲", "زیست‌شناسی ۳"] },
-      { category: "عمومی", items: ["فارسی", "نگارش", "عربی عمومی", "دین و زندگی", "زبان انگلیسی"] },
-      { category: "زندگی", items: ["صبحانه", "ناهار", "شام", "ورزش", "کتاب", "استراحت"] }
-    ];
-  }
-
-  function sectionHead(title, key) {
-    const open = !ui.collapsed[key];
-    return `<div class="tm-row tm-between">
-      <strong>${title}</strong>
-      <button type="button" class="tm-fold-btn" data-action="toggle-section" data-section="${key}">${open ? "▴ بستن" : "▾ باز کردن"}</button>
-    </div>`;
-  }
-
-  function canSend(b) {
-    return b && !b.done && SENDABLE.has(b.category);
-  }
-
-  function queueToTimer(blocks) {
-    const list = (Array.isArray(blocks) ? blocks : [blocks]).filter(Boolean);
-    if (!list.length) throw new Error("بلاکی برای ارسال نیست.");
-    let n = 0;
-    list.forEach(b => {
-      if (!canSend(b) && b.category === "recovery") return;
-      if (b.done) return;
-      const minutes = timed(b) ? Math.max(1, duration(b)) : 60;
-      const detail = {
-        id: b.id,
-        title: b.title,
-        topic: b.title,
-        note: b.note || "",
-        minutes,
-        plannedTime: minutes,
-        category: b.category,
-        isNonStudy: b.category === "health" || b.category === "recovery" || b.category === "growth",
-        isLife: b.category === "health" || b.category === "recovery",
-        date: b.date,
-        source: "tilo-martell"
-      };
-      let sent = false;
-      try {
-        if (typeof window.tiloMartellToTimer === "function") {
-          window.tiloMartellToTimer(detail);
-          sent = true;
-        }
-      } catch (_) {}
-      if (!sent) {
+    function createAutoBackup() {
         try {
-          window.dispatchEvent(new CustomEvent("tilo:queue-part", { detail }));
+            const current = localStorage.getItem(STORAGE_KEY);
+            if (current) {
+                localStorage.setItem(BACKUP_KEY, current);
+            }
         } catch (_) {}
-      }
-      n++;
-    });
-    if (!n) throw new Error("این موارد برای تایمر مطالعه مناسب نیستند یا انجام شده‌اند.");
-    return n;
-  }
-
-  function dailyHTML(list) {
-    if (!ui.timelineOpen) {
-      const next = list.filter(b => !b.done).slice(0, 3);
-      const mins = list.reduce((s, b) => s + duration(b), 0);
-      return `<section class="tm-card">
-        <div class="tm-row tm-between">
-          <strong>${esc(dayLabel(ui.selected))}</strong>
-          <button type="button" data-action="toggle-timeline">نمایش جزئیات ساعت‌ها</button>
-        </div>
-        <p class="tm-muted">${nf.format(list.length)} کار · ${nf.format(mins)} دقیقه برنامه‌ریزی‌شده</p>
-        <div class="tm-summary-collapsed">
-          ${next.map(b => `<div class="tm-chip-mini" style="border-inline-start:3px solid ${blockColor(b)}">
-            <strong>${b.domino ? "★ " : ""}${esc(b.title)}</strong>
-            <span class="tm-muted">${blockTime(b)}</span>
-          </div>`).join("") || '<span class="tm-muted">بلاک باقی‌مانده‌ای نیست</span>'}
-        </div>
-      </section>`;
     }
 
-    const hourLines = Array.from({ length: 24 }, (_, h) =>
-      `<div class="tm-hour" style="top:${h * 72}px"><span>${timeText(h * 60)}</span></div>`
-    ).join("");
-
-    const isToday = ui.selected === today();
-    const nowM = nowMinutes();
-    const nowLine = isToday
-      ? `<div class="tm-now" style="top:${nowM * PX}px"><span>الان</span></div>`
-      : "";
-
-    const blocks = list.filter(timed).map(b => {
-      const top = b.start * PX;
-      const height = Math.max(duration(b) * PX, 28);
-      const picked = ui.selectedIds.has(b.id);
-      const pick = ui.selectMode
-        ? `<button type="button" class="tm-check" data-action="pick" data-id="${esc(b.id)}" aria-pressed="${picked}">${picked ? "✓" : "○"}</button>`
-        : "";
-      return `<div class="tm-block ${b.done ? "tm-done" : ""} ${picked ? "tm-picked" : ""}" data-bid="${esc(b.id)}" style="top:${top}px;height:${height}px;--bc:${blockColor(b)}">
-        <button type="button" class="tm-block-main" data-action="edit" data-id="${esc(b.id)}" title="${esc(b.title)}">
-          <strong class="tm-title">${b.domino ? "★ " : ""}${esc(b.title)}</strong>
-          <small>${blockTime(b)}</small>
-        </button>
-        <div class="tm-row" style="position:absolute;inset-inline-end:2px;top:2px;gap:2px">
-          ${pick}
-          ${duration(b) >= 35 ? toggleButton(b, "tm-block-toggle") : ""}
-        </div>
-      </div>`;
-    }).join("");
-
-    return `<section class="tm-card tm-calendar" aria-label="تقویم ساعتی">
-      <div class="tm-calendar-head tm-row tm-between">
-        <strong>${esc(dayLabel(ui.selected))}</strong>
-        <div class="tm-row">
-          ${isToday ? '<button type="button" data-action="scroll-now">رفتن به الان</button>' : ""}
-          <button type="button" data-action="toggle-timeline">جمع کردن جزئیات</button>
-        </div>
-      </div>
-      <div class="tm-time-scroll" data-tm-scroll tabindex="0">
-        <div class="tm-timeline">${hourLines}${nowLine}${blocks}</div>
-      </div>
-    </section>`;
-  }
-
-  function weekHTML() {
-    const cols = Array.from({ length: 7 }, (_, i) => {
-      const date = addDays(ui.week, i);
-      const list = blocksOn(date);
-      const items = list.map(b => `
-        <div class="tm-mini ${b.done ? "tm-done" : ""}" style="--bc:${blockColor(b)}">
-          <button type="button" class="tm-edit" data-action="edit" data-id="${esc(b.id)}">
-            <strong class="tm-title">${b.domino ? "★ " : ""}${esc(b.title)}</strong>
-            <small class="tm-muted">${blockTime(b)}</small>
-          </button>
-          <div class="tm-row tm-between">${tag(b)}${toggleButton(b)}</div>
-        </div>`).join("");
-
-      return `<section class="tm-week-col ${date === ui.selected ? "tm-selected" : ""}">
-        <button type="button" data-action="day" data-date="${date}" class="${date === today() ? "tm-today" : ""}">
-          <strong>${DAYS[i]}</strong><br><small>${esc(dateLabel(date))}</small>
-        </button>
-        ${items || '<p class="tm-muted">خالی</p>'}
-        <button type="button" data-action="add-date" data-date="${date}">+ بلاک</button>
-      </section>`;
-    }).join("");
-
-    return `<section class="tm-week-scroll" tabindex="0"><div class="tm-week">${cols}</div></section>`;
-  }
-
-  function checklistHTML(list) {
-    if (!list.length) {
-      return `<section class="tm-card tm-empty">
-        ${sectionHead("چک‌لیست اجرایی", "checklist")}
-        ${ui.collapsed.checklist ? "" : `<p>برای این روز هنوز کاری نیست.</p>
-        <button type="button" class="tm-primary" data-action="add">اولین کار</button>`}
-      </section>`;
-    }
-    if (ui.collapsed.checklist) {
-      return `<section class="tm-card">${sectionHead("چک‌لیست اجرایی (" + nf.format(list.length) + ")", "checklist")}</section>`;
-    }
-    const items = list.map((b, index) => {
-      const send = canSend(b)
-        ? `<button type="button" class="tm-send" data-action="send-timer" data-id="${esc(b.id)}">تایمر</button>`
-        : "";
-      const pick = ui.selectMode
-        ? `<button type="button" class="tm-check" data-action="pick" data-id="${esc(b.id)}" aria-pressed="${ui.selectedIds.has(b.id)}">${ui.selectedIds.has(b.id) ? "✓" : "○"}</button>`
-        : toggleButton(b);
-      return `
-      <div class="tm-item ${b.done ? "tm-done" : ""} ${ui.selectedIds.has(b.id) ? "tm-picked" : ""}" data-bid="${esc(b.id)}" data-id="${esc(b.id)}" style="--bc:${blockColor(b)}">
-        <div class="tm-move">
-          <button type="button" data-action="move-up" data-id="${esc(b.id)}" ${index === 0 ? "disabled" : ""} aria-label="بالا">↑</button>
-          <button type="button" data-action="move-down" data-id="${esc(b.id)}" ${index === list.length - 1 ? "disabled" : ""} aria-label="پایین">↓</button>
-        </div>
-        ${pick}
-        <button type="button" class="tm-edit" data-action="edit" data-id="${esc(b.id)}">
-          <strong class="tm-title">${b.domino ? "★ " : ""}${esc(b.title)}</strong>
-          <span class="tm-item-meta">${tag(b)}<span class="tm-muted">${blockTime(b)}</span></span>
-        </button>
-        ${!ui.selectMode ? send : ""}
-        <button type="button" class="tm-x" data-action="soft-delete" data-id="${esc(b.id)}" aria-label="حذف">×</button>
-      </div>`;
-    }).join("");
-
-    return `<section class="tm-card" data-checklist>
-      ${sectionHead("چک‌لیست اجرایی", "checklist")}
-      <div class="tm-row" style="margin-bottom:8px">
-        <button type="button" data-action="delay-day">تأخیر…</button>
-        <button type="button" data-action="advance-day">جلو انداختن…</button>
-        <button type="button" data-action="quick">+ خرده‌کار</button>
-      </div>
-      <p class="tm-muted">با ↑ ↓ ترتیب و ساعت‌ها عوض می‌شود.</p>
-      ${items}
-    </section>`;
-  }
-
-
-  function reviewHTML() {
-    const date = today();
-    const pending = blocksOn(date).filter(b => !b.done);
-    const tomorrow = addDays(date, 1);
-    const finalized = !!data.finalized[tomorrow];
-
-    return `<section class="tm-card tm-review" id="tm-review-section">
-      <div class="tm-row tm-between">
-        <h3>بازبینی شب (۸ PM)</h3>
-        <button type="button" data-action="review">${ui.review ? "بستن" : "باز کردن"}</button>
-      </div>
-      ${!ui.review ? `<p class="tm-muted">کارهای مانده را به فردا بفرست و برنامه فردا را نهایی کن.</p>` : `
-        <p class="tm-muted">امروز: ${esc(dayLabel(date))}</p>
-        ${pending.length ? pending.map(b => `
-          <div class="tm-review-item">
-            <div><strong>${esc(b.title)}</strong><div class="tm-muted">${blockTime(b)}</div></div>
-            <button type="button" data-action="rollover" data-id="${esc(b.id)}">→ فردا</button>
-          </div>`).join("") : '<p class="tm-muted">همه کارهای امروز انجام شده یا لیست خالی است.</p>'}
-        <div class="tm-row" style="margin-top:12px">
-          <button type="button" data-action="tomorrow">رفتن به فردا</button>
-          <button type="button" class="tm-primary" data-action="finalize" ${finalized ? "disabled" : ""}>
-            ${finalized ? "فردا تأیید شده" : "نهایی کردن برنامه فردا"}
-          </button>
-        </div>
-      `}
-    </section>`;
-  }
-
-  function trashHTML() {
-    const trash = Array.isArray(data.trash) ? data.trash : [];
-    if (!trash.length) return "";
-    const items = trash.slice(0, 30).map(b => `
-      <div class="tm-item" style="--bc:${blockColor(b)}">
-        <div class="tm-edit" style="flex:1">
-          <strong class="tm-title">${esc(b.title)}</strong>
-          <span class="tm-muted">${esc(b.date || "")} · ${blockTime(b)}</span>
-        </div>
-        <button type="button" data-action="restore" data-id="${esc(b.id)}">برگرداندن</button>
-        <button type="button" class="tm-x" data-action="hard-delete" data-id="${esc(b.id)}">×</button>
-      </div>`).join("");
-    if (ui.collapsed.trash) {
-      return `<section class="tm-card tm-trash-box">${sectionHead("حذف‌شده‌ها (" + nf.format(trash.length) + ")", "trash")}</section>`;
-    }
-    return `<section class="tm-card tm-trash-box">
-      ${sectionHead("حذف‌شده‌ها", "trash")}
-      <button type="button" data-action="empty-trash">خالی کردن</button>
-      ${items}
-    </section>`;
-  }
-
-  function render() {
-
-    if (!screen) return;
-    const list = blocksOn(ui.selected);
-    const hour = Number(partsNow().hour);
-    const reviewHint = hour >= 20 ? '<span class="tm-muted"> · زمان بازبینی شب</span>' : "";
-
-    screen.innerHTML = `
-      <header class="tm-top">
-        <div>
-          <h2 id="tm-main-title">تایم‌بلاک زندگی</h2>
-          <p class="tm-muted">سبک دن مارتل${reviewHint}</p>
-        </div>
-        <div class="tm-row">
-          <button type="button" data-action="backup">پشتیبان</button>
-          <button type="button" data-action="import-backup">ورود فایل</button>
-          <button type="button" data-action="close" aria-label="بستن">×</button>
-        </div>
-      </header>
-      <div class="tm-wrap tm-stack">
-        ${storageProblem ? `<div class="tm-notice" role="alert">${esc(storageProblem)}
-          <button type="button" data-action="reload">تلاش دوباره</button></div>` : ""}
-        ${ui.message ? `<div class="tm-notice">${esc(ui.message)}
-          <button type="button" data-action="dismiss">باشه</button></div>` : ""}
-
-        <div class="tm-card tm-toolbar tm-stack">
-          <div class="tm-row tm-between">
-            <div class="tm-row">
-              <button type="button" data-action="prev">هفته قبل</button>
-              <button type="button" data-action="today">امروز</button>
-              <button type="button" data-action="next">هفته بعد</button>
-            </div>
-            <div class="tm-row tm-tabs">
-              <button type="button" data-action="view" data-view="day" aria-pressed="${ui.view === "day"}">نمای روز</button>
-              <button type="button" data-action="view" data-view="week" aria-pressed="${ui.view === "week"}">کل هفته</button>
-            </div>
-          </div>
-          <div class="tm-days">
-            ${Array.from({ length: 7 }, (_, i) => {
-              const date = addDays(ui.week, i);
-              return `<button type="button" data-action="day" data-date="${date}"
-                class="${date === ui.selected ? "tm-selected" : ""} ${date === today() ? "tm-today" : ""}">
-                <strong>${DAYS[i]}</strong><small>${esc(dateLabel(date))}</small>
-              </button>`;
-            }).join("")}
-          </div>
-          <div class="tm-tool-grid">
-            <button type="button" class="tm-primary" data-action="add">+ کار جدید</button>
-            <button type="button" data-action="copy">کپی روتین</button>
-            <button type="button" data-action="review">بازبینی شب</button>
-            <button type="button" class="${ui.selectMode ? "tm-select-on" : ""}" data-action="toggle-select" aria-pressed="${ui.selectMode}">
-              ${ui.selectMode ? "✓ حالت انتخاب" : "انتخاب برای تایمر"}
-            </button>
-          </div>
-          ${ui.selectMode ? `<div class="tm-select-bar">
-            <p class="tm-muted" style="flex:1 1 100%;margin:0">روی دایره‌های کنار کارها بزن تا انتخاب شوند.</p>
-            <button type="button" class="tm-primary" data-action="send-selected">ارسال به تایمر (${nf.format(ui.selectedIds.size)})</button>
-            <button type="button" data-action="done-selected">انجام‌شده</button>
-            <button type="button" data-action="toggle-select">انصراف</button>
-          </div>` : ""}
-        </div>
-
-        ${summaryHTML(list)}
-        ${offlineCoachHTML(list)}
-        ${ui.view === "week" ? weekHTML() : dailyHTML(list)}
-        ${checklistHTML(list)}
-        ${trashHTML()}
-        <button type="button" class="tm-fab-add" data-action="add" aria-label="افزودن کار">+</button>
-        ${reviewHTML()}
-        <p class="tm-footer">ذخیره محلی · کلید ${esc(KEY)}</p>
-      </div>`;
-
-    if (renderFocus) {
-      restoreActionFocus(renderFocus);
-      renderFocus = null;
-    }
-    if (ui.timelineOpen && ui.selected === today() && ui.view === "day") {
-      requestAnimationFrame(() => {
-        const sc = screen.querySelector("[data-tm-scroll]");
-        if (sc && sc.scrollTop < 8) sc.scrollTop = Math.max(0, nowMinutes() * PX - 100);
-      });
-    }
-  }
-
-
-  const SWATCHES = [
-    "#6366f1", "#10b981", "#f59e0b", "#06b6d4", "#64748b",
-    "#35634e", "#8b5cf6", "#ef4444", "#ec4899", "#14b8a6",
-    "#a3e635", "#f97316"
-  ];
-
-  function colorSwatchesHTML(existing) {
-    const current = (existing && existing.color) || (existing && CATS[existing.category] && CATS[existing.category].color) || CATS.deep.color;
-    const set = new Set(SWATCHES);
-    if (current && !set.has(current.toLowerCase()) && !set.has(current)) set.add(current);
-    return [...set].map(c => {
-      const on = current && c.toLowerCase() === String(current).toLowerCase();
-      return `<button type="button" class="tm-swatch${on ? " on" : ""}" data-swatch="${c}" style="background:${c}" aria-label="رنگ ${c}" aria-pressed="${on}"></button>`;
-    }).join("");
-  }
-
-  function timeSelectsHTML(prefix, minutes) {
-    minutes = Number.isInteger(minutes) ? minutes : 0;
-    if (minutes >= 1440) minutes = 1439;
-    const hh = Math.floor(minutes / 60);
-    const mm = minutes % 60;
-    const hours = Array.from({ length: 24 }, (_, h) =>
-      `<option value="${String(h).padStart(2, "0")}" ${h === hh ? "selected" : ""}>${String(h).padStart(2, "0")}</option>`
-    ).join("");
-    const minuteValues = [];
-    for (let m = 0; m < 60; m += 5) minuteValues.push(m);
-    if (!minuteValues.includes(mm)) minuteValues.push(mm);
-    minuteValues.sort((a, b) => a - b);
-    const mins = minuteValues.map(m =>
-      `<option value="${String(m).padStart(2, "0")}" ${m === mm ? "selected" : ""}>${String(m).padStart(2, "0")}</option>`
-    ).join("");
-    return `<div class="tm-time-wheel" role="group" aria-label="انتخاب ساعت">
-      <select name="${prefix}-h" aria-label="ساعت">${hours}</select>
-      <span class="tm-time-colon" aria-hidden="true">:</span>
-      <select name="${prefix}-m" aria-label="دقیقه">${mins}</select>
-    </div>`;
-  }
-
-  function openEditor(opts) {
-    opts = opts || {};
-    if (storageProblem) {
-      tell("ذخیره‌سازی در دسترس نیست.");
-      return;
-    }
-    editingId = opts.id || null;
-    const existing = editingId ? data.blocks.find(b => b.id === editingId) : null;
-    const date = opts.date || existing?.date || ui.selected;
-    const quick = !!(opts.quick || (existing && existing.start === null));
-    const wantDomino = !!(opts.domino || existing?.domino);
-
-    editorSnapshot = rawSnapshot;
-    editorTrigger = focusKey(document.activeElement);
-
-    const catOpts = Object.keys(CATS).map(k =>
-      `<option value="${k}" ${(existing?.category || "deep") === k ? "selected" : ""}>${esc(CATS[k].name)}</option>`
-    ).join("");
-
-    editor.innerHTML = `
-      <form class="tm-form">
-        <div class="tm-row tm-between">
-          <h3 id="tm-editor-title">${existing ? "ویرایش کار" : "کار جدید"}</h3>
-          <button type="button" data-dialog-close aria-label="بستن">×</button>
-        </div>
-        <div class="tm-field">
-          <div class="tm-row tm-between">
-            <span>انتخاب درس یا فعالیت</span>
-            <label class="tm-checklabel" style="min-height:auto;gap:6px;font-size:12px">
-              <input type="checkbox" name="studyMode" ${existing && existing.category !== "recovery" && existing.category !== "health" ? "checked" : ""}>
-              درسی (مثل پارت‌ها)
-            </label>
-          </div>
-          <input type="hidden" name="subject" value="${esc(existing?.title || "")}">
-          <button type="button" class="input-calm" data-action-open-subjects style="width:100%;text-align:right;min-height:44px">
-            <span data-subj-label>${existing?.title ? esc(existing.title) : "روی فلش بزنید و درس‌ها را انتخاب کنید..."}</span>
-          </button>
-          <div class="tm-subj-drop" data-subj-panel hidden>
-            <div class="tm-row tm-between" style="margin-bottom:8px">
-              <span class="tm-muted" data-subj-count>۰ انتخاب</span>
-              <button type="button" data-subj-close class="tm-primary" style="min-height:36px">تأیید و بستن</button>
-            </div>
-            ${getSubjectGroups().map(g => `
-              <div class="tm-subj-group">
-                <h4>${esc(g.category)}</h4>
-                ${(g.items || []).map(sub => `
-                  <label>
-                    <input type="checkbox" data-subj-item value="${esc(sub)}" ${existing && String(existing.title || "").includes(sub) ? "checked" : ""}>
-                    ${esc(sub)}
-                  </label>
-                `).join("")}
-              </div>
-            `).join("")}
-          </div>
-        </div>
-        <label class="tm-field">مبحث دقیق / عنوان
-          <input name="title" maxlength="120" value="${esc(existing?.title || "")}" placeholder="مثلاً: حرکت بر خط راست / مشتق">
-        </label>
-        <label class="tm-field">توضیح کوتاه
-          <textarea name="note" maxlength="600" placeholder="اختیاری">${esc(existing?.note || "")}</textarea>
-        </label>
-        <label class="tm-field">روز
-          <input type="date" name="date" required value="${esc(date)}">
-          <span class="tm-date-fa" data-fa-date>${esc(dayLabel(date))}</span>
-        </label>
-        <label class="tm-field">دسته انرژی
-          <select name="category">${Object.keys(CATS).map(k => {
-      const suggested = existing?.category || autoCategory(existing?.title || "", "");
-      return `<option value="${k}" ${suggested === k ? "selected" : ""}>${esc(CATS[k].name)}</option>`;
-    }).join("")}</select>
-          <span class="tm-muted">اگر درس را درست بنویسی، دسته تا حدی خودکار حدس زده می‌شود.</span>
-        </label>
-        <div class="tm-field">رنگ بلاک
-          <div class="tm-swatches" role="listbox" aria-label="رنگ">
-            ${colorSwatchesHTML(existing)}
-          </div>
-          <input type="hidden" name="color" value="${esc((existing && existing.color) || "")}">
-        </div>
-        <label class="tm-checklabel">
-          <input type="checkbox" name="quick" ${quick ? "checked" : ""}>
-          خرده‌کار بدون ساعت مشخص
-        </label>
-        <div class="tm-stack" data-time-fields ${quick ? "hidden" : ""}>
-          <div class="tm-field">ساعت شروع
-            ${timeSelectsHTML("start", existing && timed(existing) ? existing.start : lastBlockEnd(date))}
-          </div>
-          <div class="tm-field">ساعت پایان
-            ${timeSelectsHTML("end", existing && timed(existing) ? existing.end : Math.min(1440, lastBlockEnd(date) + 90))}
-          </div>
-        </div>
-        <label class="tm-checklabel">
-          <input type="checkbox" name="domino" ${wantDomino ? "checked" : ""}>
-          ★ سنگ بزرگ / Leading Domino این روز
-        </label>
-        ${existing ? `<label class="tm-checklabel">
-          <input type="checkbox" name="done" ${existing.done ? "checked" : ""}>
-          انجام شده
-        </label>` : ""}
-        <p class="tm-form-error" role="alert" hidden></p>
-        <div class="tm-actions">
-          <button type="submit" class="tm-primary">ذخیره</button>
-          <button type="button" data-dialog-close>انصراف</button>
-          ${existing ? '<button type="button" class="tm-danger" data-delete>حذف</button>' : ""}
-        </div>
-      </form>`;
-    editor.showModal();
-  }
-
-  function normalizeDigits(value) {
-    return String(value)
-      .replace(/[۰-۹]/g, c => String("۰۱۲۳۴۵۶۷۸۹".indexOf(c)))
-      .replace(/[٠-٩]/g, c => String("٠١٢٣٤٥٦٧٨٩".indexOf(c)))
-      .trim();
-  }
-
-  function saveEditor(event) {
-    event.preventDefault();
-    const form = event.target;
-    try {
-      ensureFresh(editorSnapshot);
-      const values = new FormData(form);
-      const date = String(values.get("date") || "");
-      const quick = values.has("quick");
-      const subject = String(values.get("subject") || "").trim();
-      let title = String(values.get("title") || "").trim();
-      if (!title && subject) title = subject;
-      if (subject && title && !title.includes(subject)) {
-        /* keep title as user wrote */
-      }
-      const note = String(values.get("note") || "").trim();
-      let category = String(values.get("category") || "");
-      if (!category || !Object.prototype.hasOwnProperty.call(CATS, category)) {
-        category = autoCategory(title || subject, note);
-      }
-      let color = String(values.get("color") || "").trim();
-      if (!color) {
-        const cat = String(values.get("category") || "deep");
-        color = (CATS[cat] && CATS[cat].color) || "";
-      }
-      const start = quick ? null : parseTime(
-        normalizeDigits(values.get("start-h")) + ":" + normalizeDigits(values.get("start-m"))
-      );
-      const end = quick ? null : parseTime(
-        normalizeDigits(values.get("end-h")) + ":" + normalizeDigits(values.get("end-m"))
-      );
-
-      if (!title && !subject) throw new Error("درس یا عنوان را مشخص کن.");
-      if (!title) title = subject;
-      if (!validDate(date)) throw new Error("تاریخ معتبر نیست.");
-      if (!Object.prototype.hasOwnProperty.call(CATS, category)) throw new Error("دسته نامعتبر.");
-      if (color && !/^#[0-9a-fA-F]{6}$/.test(color)) throw new Error("رنگ مثل #35634e باشد.");
-      if (!quick && (start === null || end === null || start >= end || start >= 1440)) {
-        throw new Error("ساعت‌ها را درست وارد کن (پایان بعد از شروع).");
-      }
-
-      const old = editingId ? data.blocks.find(b => b.id === editingId) : null;
-      if (editingId && !old) throw new Error("این کار دیگر وجود ندارد.");
-
-      const block = {
-        id: old?.id || uid(),
-        date, title, note, category, color,
-        start, end,
-        done: old ? values.has("done") : false,
-        domino: values.has("domino")
-      };
-
-      transaction(next => {
-        if (block.domino) {
-          next.blocks.forEach(b => { if (b.date === date) b.domino = false; });
-        }
-        if (old) {
-          const index = next.blocks.findIndex(b => b.id === old.id);
-          next.blocks[index] = block;
-        } else next.blocks.push(block);
-      }, [...new Set([date, ...(old ? [old.date] : [])])]);
-
-      ui.selected = date;
-      ui.week = weekStart(date);
-      ui.message = "ذخیره شد.";
-      editor.close();
-      render();
-    } catch (error) {
-      dialogError(editor, error.message || "ذخیره نشد.");
-    }
-  }
-
-  function deleteEdited() {
-    const b = data.blocks.find(item => item.id === editingId);
-    if (!b) return;
-    if (!window.confirm(`«${b.title}» حذف شود؟`)) return;
-    try {
-      ensureFresh(editorSnapshot);
-      transaction(next => {
-        next.blocks = next.blocks.filter(item => item.id !== b.id);
-      }, [b.date]);
-      editor.close();
-      ui.message = "حذف شد.";
-      render();
-    } catch (error) {
-      dialogError(editor, error.message);
-    }
-  }
-
-  function openCopy() {
-    const list = blocksOn(ui.selected);
-    if (!list.length) { tell("اول برای این روز کار بساز."); return; }
-    if (storageProblem) { tell("ذخیره در دسترس نیست."); return; }
-    copySnapshot = rawSnapshot;
-    copyTrigger = focusKey(document.activeElement);
-    const sourceDate = ui.selected;
-    copyDialog.innerHTML = `
-      <form class="tm-form" data-source="${sourceDate}">
-        <div class="tm-row tm-between">
-          <h3 id="tm-copy-title">کپی روتین روز</h3>
-          <button type="button" data-dialog-close>×</button>
-        </div>
-        <p>${nf.format(list.length)} کار از <strong>${esc(dayLabel(sourceDate))}</strong></p>
-        <p class="tm-muted">روزهای مقصد را انتخاب کن. برنامه موجود پاک نمی‌شود.</p>
-        <p class="tm-muted">این هفته</p>
-        <div class="tm-stack" style="gap:0">
-          ${Array.from({ length: 7 }, (_, i) => {
-            const date = addDays(ui.week, i);
-            if (date === sourceDate) return "";
-            return `<label class="tm-checklabel">
-              <input type="checkbox" name="targets" value="${date}">
-              ${esc(dayLabel(date))}
-            </label>`;
-          }).join("")}
-        </div>
-        <p class="tm-muted">هفته بعد</p>
-        <div class="tm-stack" style="gap:0">
-          ${Array.from({ length: 7 }, (_, i) => {
-            const date = addDays(ui.week, 7 + i);
-            return `<label class="tm-checklabel">
-              <input type="checkbox" name="targets" value="${date}">
-              ${esc(dayLabel(date))}
-            </label>`;
-          }).join("")}
-        </div>
-        <p class="tm-form-error" role="alert" hidden></p>
-        <div class="tm-actions">
-          <button type="submit" class="tm-primary">کپی</button>
-          <button type="button" data-dialog-close>انصراف</button>
-        </div>
-      </form>`;
-    copyDialog.showModal();
-  }
-
-  function saveCopy(event) {
-    event.preventDefault();
-    const form = event.target;
-    try {
-      ensureFresh(copySnapshot);
-      const sourceDate = form.dataset.source;
-      const source = blocksOn(sourceDate);
-      const targets = [...new Set(new FormData(form).getAll("targets"))];
-      if (!targets.length) throw new Error("حداقل یک روز انتخاب کن.");
-      let added = 0;
-      transaction(next => {
-        for (const date of targets) {
-          let hasDomino = next.blocks.some(b => b.date === date && b.domino);
-          for (const b of source) {
-            const duplicate = next.blocks.some(item =>
-              item.date === date && item.title === b.title &&
-              item.note === b.note && item.start === b.start &&
-              item.end === b.end && item.category === b.category &&
-              item.color === b.color
-            );
-            if (duplicate) continue;
-            const domino = b.domino && !hasDomino;
-            if (domino) hasDomino = true;
-            next.blocks.push({ ...b, id: uid(), date, done: false, domino });
-            added++;
-          }
-        }
-      }, targets);
-      copyDialog.close();
-      tell(added ? `${nf.format(added)} کار کپی شد.` : "مورد جدیدی اضافه نشد.");
-    } catch (error) {
-      dialogError(copyDialog, error.message || "کپی نشد.");
-    }
-  }
-
-  function selectDate(date) {
-    if (!validDate(date)) return;
-    ui.selected = date;
-    ui.week = weekStart(date);
-    ui.message = "";
-    render();
-  }
-
-  function rollover(id) {
-    const b = data.blocks.find(item => item.id === id);
-    const date = today();
-    const tomorrow = addDays(date, 1);
-    if (!b || b.date !== date || b.done) throw new Error("این کار در لیست مانده امروز نیست.");
-    let lostStar = false;
-    transaction(next => {
-      const item = next.blocks.find(block => block.id === id);
-      const existingDomino = next.blocks.some(block => block.date === tomorrow && block.domino);
-      if (item.domino && existingDomino) { item.domino = false; lostStar = true; }
-      item.date = tomorrow;
-      item.done = false;
-    }, [date, tomorrow]);
-    tell("به فردا منتقل شد." + (lostStar ? " سنگ بزرگ فردا حفظ شد." : ""));
-  }
-
-  function downloadBackup() {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw === null) { tell("داده‌ای نیست."); return; }
-      const blob = new Blob([raw], { type: "application/json;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `tilo-martell-${today()}.json`;
-      a.hidden = true;
-      root.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1500);
-    } catch {
-      tell("پشتیبان گرفته نشد.");
-    }
-  }
-
-  function importBackupFromText(text) {
-    const parsed = JSON.parse(text);
-    // پشتیبانی از چند شکل فایل
-    let payload = parsed;
-    if (parsed && Array.isArray(parsed.blocks)) payload = parsed;
-    else if (parsed && parsed.data && Array.isArray(parsed.data.blocks)) payload = parsed.data;
-    else if (Array.isArray(parsed)) payload = { version: VERSION, updatedAt: null, blocks: parsed, trash: [], finalized: {} };
-    else throw new Error("این فایل شبیه پشتیبان تایم‌بلاک نیست.");
-
-    checkData(payload, { repair: true });
-    if (!Array.isArray(payload.trash)) payload.trash = [];
-    if (!payload.finalized || typeof payload.finalized !== "object") payload.finalized = {};
-    payload.version = VERSION;
-    payload.updatedAt = new Date().toISOString();
-
-    // پشتیبان از وضعیت فعلی قبل از جایگزینی
-    try {
-      const cur = localStorage.getItem(KEY);
-      if (cur) localStorage.setItem(KEY + "_before_import", cur);
-    } catch (_) {}
-
-    localStorage.setItem(KEY, JSON.stringify(payload));
-    storageProblem = "";
-    load();
-    if (storageProblem) throw new Error(storageProblem);
-    render();
-    tell("فایل وارد شد: " + nf.format(data.blocks.length) + " کار.");
-  }
-
-  function importBackupFile() {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "application/json,.json,text/plain";
-    input.hidden = true;
-    input.addEventListener("change", () => {
-      const file = input.files && input.files[0];
-      input.remove();
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
+    function saveStore(store, options = { backup: false }) {
         try {
-          importBackupFromText(String(reader.result || ""));
-        } catch (error) {
-          tell(error.message || "ورود فایل نشد.");
-        }
-      };
-      reader.onerror = () => tell("خواندن فایل نشد.");
-      reader.readAsText(file, "utf-8");
-    });
-    root.appendChild(input);
-    input.click();
-  }
+            if (options.backup) createAutoBackup();
+            const normalized = normalizeStore(store);
+            normalized.updatedAt = Date.now();
+            const serialized = JSON.stringify(normalized);
+            localStorage.setItem(STORAGE_KEY, serialized);
 
-  function clearStorageLock() {
-    storageProblem = "";
-    try {
-      load();
-      render();
-      tell(storageProblem ? storageProblem : "قفل ذخیره برداشته شد.");
-    } catch (e) {
-      tell(e.message || "درست نشد.");
+            try {
+                window.dispatchEvent(new CustomEvent('tilo:planner-updated', { detail: normalized }));
+                window.dispatchEvent(new StorageEvent('storage', {
+                    key: STORAGE_KEY,
+                    newValue: serialized
+                }));
+            } catch (_) {}
+
+            return normalized;
+        } catch (err) {
+            console.warn('tilo-martell: saveStore failed', err);
+            return store;
+        }
     }
-  }
 
+    /* ==================== وضعیت برنامه (State) ==================== */
 
-  function shiftDayTimes(mins) {
-    if (!Number.isFinite(mins) || mins === 0) return;
-    const day = ui.selected;
-    const pivot = day === today() ? nowMinutes() : 0;
-    transaction(next => {
-      next.blocks.forEach(b => {
-        if (b.date !== day || !timed(b)) return;
-        if (day === today() && b.start < pivot) return;
-        let s = b.start + mins;
-        let e = b.end + mins;
-        if (s < 0) { e -= s; s = 0; }
-        if (e > 1440) { s -= (e - 1440); e = 1440; }
-        if (s < 0) s = 0;
-        if (s >= e) e = Math.min(1440, s + 5);
-        b.start = s;
-        b.end = e;
-      });
-    }, [day]);
-    tell(mins > 0
-      ? `تأخیر ${nf.format(mins)} دقیقه‌ای اعمال شد.`
-      : `جلو انداختن ${nf.format(Math.abs(mins))} دقیقه‌ای اعمال شد.`);
-  }
+    const uiState = {
+        isOpen: false,
+        store: loadStore(),
+        selectedDate: getTehranTodayISO(),
+        weekStartISO: getSaturdayOfWeekISO(getTehranTodayISO()),
+        viewMode: 'day', // 'day' | 'week'
+        daySubView: 'list', // 'list' | 'timeline'
+        expandedNotes: {},
+        openAccordions: {
+            paste: false,
+            routine: false,
+            review: false,
+            energy: false,
+            backup: false
+        },
+        // Add/Edit Sheet
+        sheetOpen: false,
+        editingBlockId: null,
+        form: {
+            title: '',
+            note: '',
+            category: 'deep',
+            color: '#10b981',
+            hasTime: true,
+            startStr: '16:00',
+            endStr: '17:15',
+            domino: false
+        },
+        // Delay Popover
+        delayOpen: false,
+        delayMinutes: 15,
+        // Text Parser State
+        pasteRaw: '',
+        pasteTargetMode: 'auto', // 'auto' | 'today' | 'tomorrow' | 'selected'
+        pasteApplyMode: 'replace', // 'replace' | 'append'
+        pastePreview: null,
+        // Routine Copy State
+        routineTarget: 'tomorrow', // 'tomorrow' | 'sat'..'fri' | 'all_week'
+        routineMode: 'append', // 'append' | 'replace'
+        // Timer Selection State
+        selectedForTimer: {},
+        // Toast
+        toastMsg: '',
+        toastTimer: null
+    };
 
-  function reorderBlocks(fromId, toId) {
-
-    const day = ui.selected;
-    const list = blocksOn(day);
-    const from = list.find(b => b.id === fromId);
-    const to = list.find(b => b.id === toId);
-    if (!from || !to) throw new Error("آیتم پیدا نشد.");
-    const ids = list.map(b => b.id);
-    const fi = ids.indexOf(fromId);
-    const ti = ids.indexOf(toId);
-    ids.splice(fi, 1);
-    ids.splice(ti, 0, fromId);
-    // rebuild times for timed blocks in new order keeping durations
-    const ordered = ids.map(id => list.find(b => b.id === id));
-    const timedOnes = ordered.filter(timed);
-    if (timedOnes.length) {
-      let cursor = timedOnes[0].start;
-      const updates = {};
-      timedOnes.forEach(b => {
-        const dur = duration(b);
-        updates[b.id] = { start: cursor, end: Math.min(1440, cursor + dur) };
-        cursor = updates[b.id].end;
-      });
-      transaction(next => {
-        next.blocks.forEach(b => {
-          if (updates[b.id]) {
-            b.start = updates[b.id].start;
-            b.end = updates[b.id].end;
-          }
-        });
-      }, [day]);
-    } else {
-      // only quick tasks: store order via start null - no time change
-      tell("ترتیب کارهای بدون ساعت فقط نمایشی است.");
-      return;
+    function showToast(msg) {
+        uiState.toastMsg = msg;
+        clearTimeout(uiState.toastTimer);
+        renderToast();
+        uiState.toastTimer = setTimeout(() => {
+            uiState.toastMsg = '';
+            renderToast();
+        }, 2800);
     }
-    tell("جابه‌جا شد و ساعت‌ها تنظیم شدند.");
-  }
 
-  function handleAction(event) {
-    const button = event.target.closest("[data-action]");
-    if (!button || !screen.contains(button)) return;
-    let action = button.dataset.action;
-    const id = button.dataset.id;
-    // در حالت انتخاب، لمس کارت هم انتخاب کند
-    if (ui.selectMode && (action === "edit") && id) action = "pick";
-    renderFocus = focusKey(button);
-    try {
-      switch (action) {
-        case "close": close(); break;
-        case "prev": selectDate(addDays(ui.selected, -7)); break;
-        case "next": selectDate(addDays(ui.selected, 7)); break;
-        case "today": selectDate(today()); break;
-        case "day": selectDate(button.dataset.date); break;
-        case "view":
-          ui.view = button.dataset.view === "week" ? "week" : "day";
-          render();
-          break;
-        case "add": openEditor(); break;
-        case "add-date": openEditor({ date: button.dataset.date }); break;
-        case "add-domino": openEditor({ domino: true }); break;
-        case "quick": openEditor({ quick: true }); break;
-        case "edit": openEditor({ id }); break;
-        case "toggle": {
-          if (!data.blocks.some(b => b.id === id)) throw new Error("کار پیدا نشد.");
-          let becameDone = false;
-          transaction(next => {
-            const b = next.blocks.find(item => item.id === id);
-            b.done = !b.done;
-            becameDone = b.done;
-          });
-          render();
-          if (becameDone) playDoneFx([id]);
-          break;
+    /* ==================== پارسر هوشمند آفلاین برنامه متنی ==================== */
+
+    function inferCategoryFromText(text) {
+        const t = String(text || '').toLowerCase();
+        if (/استراحت|ریکاوری|ناهار|شام|صبحانه|خواب|چرت|میان.?وعده|نفس|استراحت کوتاه/.test(t)) return 'recovery';
+        if (/ورزش|سلامت|باشگاه|دویدن|پیاده.?روی|تمرین بدنی|یوگا|کشش/.test(t)) return 'health';
+        if (/رشد فردی|کتاب|پادکست|زبان|مهارت|طراحی|برنامه.?نویسی|مدیتیشن|ژورنال|بازبینی/.test(t)) return 'growth';
+        if (/عمومی|نیمه.?عمیق|فارسی|ادبیات|عربی|دینی|دین و زندگی|زبان انگلیسی|هویت|سلامت و بهداشت|مرور|خلاصه/.test(t)) return 'general';
+        return 'deep';
+    }
+
+    function parseCategoryLabel(rawCat, fallbackText) {
+        const c = String(rawCat || '').trim();
+        if (!c) return inferCategoryFromText(fallbackText);
+        if (/عمیق|تخصصی|deep/i.test(c)) return 'deep';
+        if (/نیمه|عمومی|general/i.test(c)) return 'general';
+        if (/ریکاوری|استراحت|recovery/i.test(c)) return 'recovery';
+        if (/رشد|growth/i.test(c)) return 'growth';
+        if (/ورزش|سلامت|health/i.test(c)) return 'health';
+        return inferCategoryFromText(`${c} ${fallbackText}`);
+    }
+
+    function parseScheduleText(rawText) {
+        const normalized = toEnDigits(rawText || '').trim();
+        if (!normalized) return null;
+
+        const lines = normalized.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        if (!lines.length) return null;
+
+        let detectedTarget = null;
+        let detectedApplyMode = null;
+        let startIdx = 0;
+
+        const firstLine = lines[0];
+        const hasTimeOnFirstLine = /\d{1,2}:\d{2}/.test(firstLine);
+
+        if (!hasTimeOnFirstLine) {
+            if (/فردا/.test(firstLine)) detectedTarget = 'tomorrow';
+            else if (/امروز/.test(firstLine)) detectedTarget = 'today';
+            else {
+                const dayNames = [
+                    { key: 'sat', re: /شنبه/ },
+                    { key: 'sun', re: /یکشنبه|یک\s*شنبه/ },
+                    { key: 'mon', re: /دوشنبه|دو\s*شنبه/ },
+                    { key: 'tue', re: /سه‌شنبه|سه\s*شنبه/ },
+                    { key: 'wed', re: /چهارشنبه|چهار\s*شنبه/ },
+                    { key: 'thu', re: /پنج‌شنبه|پنج\s*شنبه/ },
+                    { key: 'fri', re: /جمعه/ }
+                ];
+                for (const d of dayNames) {
+                    if (d.re.test(firstLine) && !/یکشنبه/.test(firstLine) || (d.key === 'sun' && /یکشنبه|یک\s*شنبه/.test(firstLine))) {
+                        detectedTarget = d.key;
+                        break;
+                    }
+                }
+            }
+
+            if (/جایگزین|پاک|ریست|بجای|به جای/.test(firstLine)) detectedApplyMode = 'replace';
+            else if (/اضافه|افزودن|الحاق/.test(firstLine)) detectedApplyMode = 'append';
+
+            if (detectedTarget || detectedApplyMode || firstLine.length < 45) {
+                startIdx = 1;
+            }
         }
-        case "pick": {
-          if (!ui.selectMode) break;
-          if (ui.selectedIds.has(id)) ui.selectedIds.delete(id);
-          else ui.selectedIds.add(id);
-          render();
-          break;
-        }
-        case "toggle-select": {
-          ui.selectMode = !ui.selectMode;
-          if (!ui.selectMode) ui.selectedIds.clear();
-          render();
-          break;
-        }
-        case "send-timer": {
-          const b = data.blocks.find(item => item.id === id);
-          const n = queueToTimer(b);
-          if (n) {
-            tell("پارت به تایمر اضافه شد…");
-            setTimeout(() => { try { close(); } catch (_) {} }, 280);
-          } else tell("ارسال نشد.");
-          break;
-        }
-        case "send-selected": {
-          const blocks = data.blocks.filter(b => ui.selectedIds.has(b.id));
-          const n = queueToTimer(blocks);
-          ui.selectMode = false;
-          ui.selectedIds.clear();
-          if (n) {
-            tell(`${nf.format(n)} مورد به تایمر اضافه شد…`);
-            setTimeout(() => { try { close(); } catch (_) {} }, 280);
-          } else tell("ارسال نشد.");
-          break;
-        }
-        case "done-selected": {
-          const ids = [...ui.selectedIds];
-          if (!ids.length) throw new Error("چیزی انتخاب نشده.");
-          transaction(next => {
-            next.blocks.forEach(b => {
-              if (ui.selectedIds.has(b.id)) b.done = true;
+
+        const catCounters = { deep: 0, general: 0, recovery: 0, growth: 0, health: 0 };
+        const parsedBlocks = [];
+
+        for (let i = startIdx; i < lines.length; i++) {
+            let line = lines[i].replace(/^[-•*▪▫\d.)]+\s*/, '').trim();
+            if (!line) continue;
+
+            let start = null;
+            let end = null;
+
+            const timeRangeMatch = line.match(/(\d{1,2}:\d{2})\s*(?:تا|الی|-|–|—|to)\s*(\d{1,2}:\d{2})/i);
+            if (timeRangeMatch) {
+                start = hhmmToMinutes(timeRangeMatch[1]);
+                end = hhmmToMinutes(timeRangeMatch[2]);
+                if (start !== null && end !== null && end <= start) {
+                    end = Math.min(1440, start + 30);
+                }
+                line = line.replace(timeRangeMatch[0], '').replace(/^\s*\|\s*/, '').trim();
+            }
+
+            const segments = line.split('|').map(s => s.trim()).filter(Boolean);
+            let title = '';
+            let rawCat = '';
+            let note = '';
+            let isDomino = false;
+
+            segments.forEach(seg => {
+                if (/سنگ بزرگ|domino|⭐/i.test(seg)) {
+                    isDomino = true;
+                }
+                if (/^(?:عنوان|کار|مبحث|title)\s*:/i.test(seg)) {
+                    title = seg.replace(/^(?:عنوان|کار|مبحث|title)\s*:/i, '').trim();
+                } else if (/^(?:دسته|دسته‌بندی|نوع|category)\s*:/i.test(seg)) {
+                    rawCat = seg.replace(/^(?:دسته|دسته‌بندی|نوع|category)\s*:/i, '').trim();
+                } else if (/^(?:توضیح|توضیحات|یادداشت|نکته|note)\s*:/i.test(seg)) {
+                    note = seg.replace(/^(?:توضیح|توضیحات|یادداشت|نکته|note)\s*:/i, '').trim();
+                } else if (!title) {
+                    title = seg;
+                } else if (!note) {
+                    note = seg;
+                }
             });
-          });
-          ui.selectMode = false;
-          ui.selectedIds.clear();
-          render();
-          playDoneFx(ids);
-          break;
+
+            title = title.replace(/⭐/g, '').trim();
+            if (!title) continue;
+
+            const category = parseCategoryLabel(rawCat, `${title} ${note}`);
+            const catObj = CATEGORIES[category];
+            const color = category === 'recovery'
+                ? catObj.defaultColor
+                : catObj.palette[catCounters[category] % catObj.palette.length];
+            catCounters[category]++;
+
+            parsedBlocks.push({
+                id: generateId('blk'),
+                title,
+                note,
+                category,
+                color,
+                start,
+                end,
+                done: false,
+                domino: isDomino
+            });
         }
-        case "toggle-timeline": {
-          ui.timelineOpen = !ui.timelineOpen;
-          try { localStorage.setItem(TL_KEY, ui.timelineOpen ? "1" : "0"); } catch (_) {}
-          render();
-          break;
-        }
-        case "scroll-now": {
-          const sc = screen.querySelector("[data-tm-scroll]");
-          if (sc) sc.scrollTop = Math.max(0, nowMinutes() * PX - 80);
-          break;
-        }
-        case "noop":
-          break;
-        case "soft-delete": {
-          const b = data.blocks.find(item => item.id === id);
-          if (!b) throw new Error("پیدا نشد.");
-          transaction(next => {
-            if (!Array.isArray(next.trash)) next.trash = [];
-            next.trash.unshift({ ...b, deletedAt: new Date().toISOString() });
-            next.blocks = next.blocks.filter(item => item.id !== id);
-          }, [b.date]);
-          ui.message = "به حذف‌شده‌ها منتقل شد.";
-          render();
-          break;
-        }
-        case "restore": {
-          const b = (data.trash || []).find(item => item.id === id);
-          if (!b) throw new Error("در حذف‌شده‌ها نیست.");
-          transaction(next => {
-            next.trash = (next.trash || []).filter(item => item.id !== id);
-            const { deletedAt, ...rest } = b;
-            next.blocks.push(rest);
-          }, [b.date]);
-          tell("برگردانده شد.");
-          break;
-        }
-        case "hard-delete": {
-          transaction(next => {
-            next.trash = (next.trash || []).filter(item => item.id !== id);
-          });
-          render();
-          break;
-        }
-        case "empty-trash": {
-          if (!confirm("همهٔ حذف‌شده‌ها برای همیشه پاک شوند؟")) break;
-          transaction(next => { next.trash = []; });
-          render();
-          break;
-        }
-        case "delay-day": {
-          shiftDayTimes(Number(prompt("تأخیر: چند دقیقه کارها جلوتر بروند؟", "30")));
-          break;
-        }
-        case "advance-day": {
-          const mins = Number(prompt("جلو انداختن: چند دقیقه زودتر؟ (برعکس تأخیر)", "30"));
-          if (!Number.isFinite(mins) || mins === 0) break;
-          shiftDayTimes(-Math.abs(mins));
-          break;
-        }
-        case "toggle-section": {
-          const key = button.dataset.section;
-          if (key && key in ui.collapsed) {
-            ui.collapsed[key] = !ui.collapsed[key];
-            render();
-          }
-          break;
-        }
-        case "move-up":
-        case "move-down": {
-          const list = blocksOn(ui.selected);
-          const idx = list.findIndex(b => b.id === id);
-          if (idx < 0) break;
-          const swap = action === "move-up" ? idx - 1 : idx + 1;
-          if (swap < 0 || swap >= list.length) break;
-          reorderBlocks(list[idx].id, list[swap].id);
-          break;
-        }
-        case "copy": openCopy(); break;
-        case "review":
-          ui.review = !ui.review;
-          render();
-          if (ui.review) screen.querySelector("#tm-review-section")?.scrollIntoView({ block: "start" });
-          break;
-        case "rollover": rollover(id); break;
-        case "tomorrow":
-          selectDate(addDays(today(), 1));
-          root.scrollTo({ top: 0 });
-          break;
-        case "finalize": {
-          const tomorrow = addDays(today(), 1);
-          if (!blocksOn(tomorrow).length) throw new Error("اول برای فردا حداقل یک کار بساز.");
-          transaction(next => { next.finalized[tomorrow] = true; });
-          tell("برنامه فردا تأیید شد.");
-          break;
-        }
-        case "dismiss": ui.message = ""; render(); break;
-        case "reload": load(); render(); break;
-        case "backup": downloadBackup(); break;
-        case "import-backup": importBackupFile(); break;
-        case "clear-lock": clearStorageLock(); break;
-      }
-    } catch (error) {
-      tell(error.message || "انجام نشد.");
+
+        return {
+            detectedTarget,
+            detectedApplyMode,
+            blocks: parsedBlocks
+        };
     }
-  }
 
-  function focusableElements(container) {
-    return [...container.querySelectorAll(
-      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
-    )].filter(el => !el.closest("[hidden]") && el.getClientRects().length > 0);
-  }
-
-  function open() {
-    if (!root) {
-      init();
-      if (!root) return;
-    }
-    if (opened) {
-      root.focus({ preventScroll: true });
-      return;
-    }
-    returnFocus = document.activeElement;
-    load();
-    render();
-    oldOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    inertSnapshot = [];
-    for (const element of document.body.children) {
-      if (element === root || !(element instanceof HTMLElement)) continue;
-      if (["SCRIPT", "STYLE", "LINK"].includes(element.tagName)) continue;
-      inertSnapshot.push([element, element.inert]);
-      element.inert = true;
-    }
-    root.hidden = false;
-    opened = true;
-    requestAnimationFrame(() => root.focus({ preventScroll: true }));
-  }
-
-  function close() {
-    if (!opened) return;
-    if (editor.open) editor.close();
-    if (copyDialog.open) copyDialog.close();
-    root.hidden = true;
-    opened = false;
-    document.body.style.overflow = oldOverflow;
-    for (const [element, previous] of inertSnapshot) {
-      if (element.isConnected) element.inert = previous;
-    }
-    inertSnapshot = [];
-    const target = returnFocus?.isConnected ? returnFocus : launcher;
-    target?.focus({ preventScroll: true });
-    returnFocus = null;
-  }
-
-  function init() {
-    if (root || !document.body) return;
-
-    const style = document.createElement("style");
-    style.id = "tilo-martell-styles";
-    style.textContent = CSS;
-    document.head.appendChild(style);
-
-    launcher = document.createElement("button");
-    launcher.id = "tilo-martell-launcher";
-    launcher.type = "button";
-    launcher.innerHTML = '<i class="fas fa-calendar-week" aria-hidden="true"></i><span>تایم‌بلاک زندگی</span>';
-    launcher.title = "تایم‌بلاک زندگی";
-    launcher.setAttribute("aria-label", "تایم‌بلاک زندگی");
-    launcher.setAttribute("aria-haspopup", "dialog");
-    launcher.setAttribute("aria-controls", "tilo-martell");
-    launcher.addEventListener("click", open);
-
-    root = document.createElement("section");
-    root.id = "tilo-martell";
-    root.hidden = true;
-    root.tabIndex = -1;
-    root.setAttribute("role", "dialog");
-    root.setAttribute("aria-modal", "true");
-    root.setAttribute("aria-labelledby", "tm-main-title");
-    root.setAttribute("lang", "fa");
-    root.setAttribute("dir", "rtl");
-
-    screen = document.createElement("div");
-    screen.className = "tm-screen";
-    editor = document.createElement("dialog");
-    editor.id = "tm-editor";
-    editor.setAttribute("aria-labelledby", "tm-editor-title");
-    copyDialog = document.createElement("dialog");
-    copyDialog.id = "tm-copy";
-    copyDialog.setAttribute("aria-labelledby", "tm-copy-title");
-
-    root.append(screen, editor, copyDialog);
-    document.body.append(launcher, root);
-
-    screen.addEventListener("click", handleAction);
-
-    // درگ جابه‌جایی چک‌لیست
-    let dragId = null;
-    screen.addEventListener("dragstart", event => {
-      const row = event.target.closest(".tm-item[data-id]");
-      if (!row || !screen.contains(row)) return;
-      dragId = row.getAttribute("data-id");
-      row.classList.add("tm-dragging");
-      try { event.dataTransfer.setData("text/plain", dragId); } catch (_) {}
-    });
-    screen.addEventListener("dragend", event => {
-      const row = event.target.closest(".tm-item");
-      if (row) row.classList.remove("tm-dragging");
-      dragId = null;
-    });
-    screen.addEventListener("dragover", event => {
-      if (!event.target.closest("[data-checklist]")) return;
-      event.preventDefault();
-    });
-    screen.addEventListener("drop", event => {
-      const zone = event.target.closest("[data-checklist]");
-      if (!zone) return;
-      event.preventDefault();
-      const targetRow = event.target.closest(".tm-item[data-id]");
-      const fromId = dragId || (event.dataTransfer && event.dataTransfer.getData("text/plain"));
-      const toId = targetRow && targetRow.getAttribute("data-id");
-      if (!fromId || !toId || fromId === toId) return;
-      try {
-        reorderBlocks(fromId, toId);
-      } catch (err) {
-        tell(err.message || "جابه‌جایی نشد.");
-      }
-    });
-
-    
-    function syncSubjectPicks() {
-      const items = [...editor.querySelectorAll("[data-subj-item]:checked")].map(el => el.value);
-      const hidden = editor.querySelector('input[name="subject"]');
-      const joined = items.join("، ");
-      if (hidden) hidden.value = joined;
-      const label = editor.querySelector("[data-subj-label]");
-      if (label) label.textContent = joined || "روی فلش بزنید و درس‌ها را انتخاب کنید...";
-      const count = editor.querySelector("[data-subj-count]");
-      if (count) count.textContent = nf.format(items.length) + " انتخاب";
-      const title = editor.querySelector('input[name="title"]');
-      if (title && items.length && !String(title.value || "").trim()) title.value = joined;
-    }
-    editor.addEventListener("click", event => {
-      if (event.target.closest("[data-action-open-subjects]")) {
-        event.preventDefault();
-        const panel = editor.querySelector("[data-subj-panel]");
-        if (panel) panel.hidden = !panel.hidden;
-        return;
-      }
-      if (event.target.closest("[data-subj-close]")) {
-        event.preventDefault();
-        const panel = editor.querySelector("[data-subj-panel]");
-        if (panel) panel.hidden = true;
-        syncSubjectPicks();
-        return;
-      }
-    });
-    editor.addEventListener("change", event => {
-      if (event.target.matches && event.target.matches("[data-subj-item]")) {
-        syncSubjectPicks();
-        const form = editor.querySelector("form");
-        const subject = form?.subject?.value || "";
-        const title = form?.title?.value || "";
-        if (form?.category && !form.category.dataset.locked) {
-          form.category.value = autoCategory(title || subject, form.note?.value || "");
-          form.category.dispatchEvent(new Event("change", { bubbles: true }));
+    function resolveTargetDateFromMode(mode) {
+        const today = getTehranTodayISO();
+        if (mode === 'today') return today;
+        if (mode === 'tomorrow') return addDaysISO(today, 1);
+        if (mode === 'selected') return uiState.selectedDate;
+        const map = { sat: 0, sun: 1, mon: 2, tue: 3, wed: 4, thu: 5, fri: 6 };
+        if (mode in map) {
+            return addDaysISO(uiState.weekStartISO, map[mode]);
         }
-      }
-      if (event.target.name === "studyMode") {
-        const panel = editor.querySelector("[data-subj-panel]");
-        if (panel && event.target.checked) panel.hidden = false;
-      }
-    });
+        return uiState.selectedDate;
+    }
 
-    editor.addEventListener("submit", saveEditor);
-    editor.addEventListener("change", event => {
-      if (event.target.name === "quick") {
-        const fields = editor.querySelector("[data-time-fields]");
-        if (fields) fields.hidden = event.target.checked;
-      }
-      if (event.target.name === "date") {
-        const fa = editor.querySelector("[data-fa-date]");
-        if (fa && validDate(event.target.value)) fa.textContent = dayLabel(event.target.value);
-      }
-      if (event.target.name === "category") {
-        const hidden = editor.querySelector('input[name="color"]');
-        const cat = event.target.value;
-        if (hidden && CATS[cat] && !(hidden.dataset.userColor === "1")) {
-          hidden.value = CATS[cat].color;
-          editor.querySelectorAll("[data-swatch]").forEach(btn => {
-            const on = btn.getAttribute("data-swatch").toLowerCase() === CATS[cat].color.toLowerCase();
-            btn.classList.toggle("on", on);
-            btn.setAttribute("aria-pressed", on ? "true" : "false");
-          });
-        }
-      }
-      if (event.target.name === "title" || event.target.name === "subject") {
-        const form = editor.querySelector("form");
-        if (!form) return;
-        const title = form.title?.value || "";
-        const subject = form.subject?.value || "";
-        const note = form.note?.value || "";
-        const cat = autoCategory(title || subject, note);
-        if (form.category && !form.category.dataset.locked) {
-          form.category.value = cat;
-          form.category.dispatchEvent(new Event("change", { bubbles: true }));
-        }
-        if (event.target.name === "subject" && subject && form.title && !String(form.title.value || "").trim()) {
-          form.title.value = subject;
-        }
-      }
-    });
-    editor.addEventListener("click", event => {
-      const sw = event.target.closest("[data-swatch]");
-      if (sw && editor.contains(sw)) {
-        event.preventDefault();
-        const color = sw.getAttribute("data-swatch");
-        const hidden = editor.querySelector('input[name="color"]');
-        if (hidden) {
-          hidden.value = color;
-          hidden.dataset.userColor = "1";
-        }
-        editor.querySelectorAll("[data-swatch]").forEach(btn => {
-          const on = btn === sw;
-          btn.classList.toggle("on", on);
-          btn.setAttribute("aria-pressed", on ? "true" : "false");
+    /* ==================== عملیات روی داده‌ها ==================== */
+
+    function getBlocksForDate(dateISO) {
+        return uiState.store.blocks
+            .filter(b => b.date === dateISO)
+            .sort((a, b) => {
+                if (a.start === null && b.start === null) return 0;
+                if (a.start === null) return 1;
+                if (b.start === null) return -1;
+                return a.start - b.start;
+            });
+    }
+
+    function findOverlap(dateISO, start, end, excludeId = null) {
+        if (start === null || end === null) return null;
+        return getBlocksForDate(dateISO).find(b => {
+            if (b.id === excludeId || b.start === null || b.end === null) return false;
+            return start < b.end && end > b.start;
+        }) || null;
+    }
+
+    function upsertBlock(blockData) {
+        const isEdit = Boolean(blockData.id && uiState.store.blocks.some(b => b.id === blockData.id));
+        const normalized = normalizeBlock({
+            ...blockData,
+            id: isEdit ? blockData.id : generateId('blk')
         });
-      }
-    });
-    editor.addEventListener("click", event => {
-      if (event.target.closest("[data-dialog-close]")) editor.close();
-      if (event.target.closest("[data-delete]")) deleteEdited();
-    });
-    editor.addEventListener("close", () => {
-      if (!opened) return;
-      restoreActionFocus(editorTrigger);
-      if (!root.contains(document.activeElement)) root.focus({ preventScroll: true });
-    });
 
-    copyDialog.addEventListener("submit", saveCopy);
-    copyDialog.addEventListener("click", event => {
-      if (event.target.closest("[data-dialog-close]")) copyDialog.close();
-    });
-    copyDialog.addEventListener("close", () => {
-      if (!opened) return;
-      restoreActionFocus(copyTrigger);
-      if (!root.contains(document.activeElement)) root.focus({ preventScroll: true });
-    });
-
-    root.addEventListener("keydown", event => {
-      if (!opened || editor.open || copyDialog.open) return;
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        close();
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const elements = focusableElements(screen);
-      if (!elements.length) {
-        event.preventDefault();
-        root.focus({ preventScroll: true });
-        return;
-      }
-      const first = elements[0];
-      const last = elements[elements.length - 1];
-      const active = document.activeElement;
-      const outsideList = !elements.includes(active);
-      if (event.shiftKey && (active === first || outsideList)) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && (active === last || outsideList)) {
-        event.preventDefault();
-        first.focus();
-      }
-    });
-
-    document.addEventListener("click", event => {
-      const target = event.target instanceof Element
-        ? event.target.closest("[data-tilo-martell-open]")
-        : null;
-      if (!target) return;
-      event.preventDefault();
-      open();
-    });
-
-    window.addEventListener("storage", event => {
-      if (event.key !== KEY && event.key !== null) return;
-      load();
-      if (opened) {
-        ui.message = storageProblem ? "داده تب دیگر خوانده نشد." : "با تب دیگر همگام شد.";
-        render();
-      }
-    });
-
-    let lastToday = today();
-    setInterval(() => {
-      if (!opened || document.hidden) return;
-      const currentToday = today();
-      if (currentToday === lastToday) return;
-      lastToday = currentToday;
-      if (editor.open || copyDialog.open) return;
-      render();
-    }, 60000);
-
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden || !opened) return;
-      try {
-        if (localStorage.getItem(KEY) !== rawSnapshot) {
-          load();
-          ui.message = "اطلاعات به‌روز شد.";
+        let nextBlocks = [...uiState.store.blocks];
+        if (isEdit) {
+            nextBlocks = nextBlocks.map(b => (b.id === normalized.id ? normalized : b));
+        } else {
+            nextBlocks.push(normalized);
         }
-      } catch { load(); }
-      lastToday = today();
-      render();
+
+        if (normalized.domino) {
+            nextBlocks = enforceSingleDominoPerDay(nextBlocks, normalized.id);
+        }
+
+        uiState.store.blocks = nextBlocks;
+        uiState.store = saveStore(uiState.store, { backup: false });
+        showToast(isEdit ? 'تغییرات ذخیره شد' : 'تایم‌بلاک اضافه شد');
+    }
+
+    function toggleBlockDone(blockId) {
+        const blk = uiState.store.blocks.find(b => b.id === blockId);
+        if (!blk) return;
+        blk.done = !blk.done;
+        uiState.store = saveStore(uiState.store);
+        if (blk.done) {
+            try { if (navigator.vibrate) navigator.vibrate(18); } catch (_) {}
+            showToast('آفرین! کار انجام شد ✓');
+        }
+    }
+
+    function deleteBlockToTrash(blockId) {
+        const idx = uiState.store.blocks.findIndex(b => b.id === blockId);
+        if (idx === -1) return;
+        const [removed] = uiState.store.blocks.splice(idx, 1);
+        uiState.store.trash.unshift(removed);
+        uiState.store.trash = uiState.store.trash.slice(0, 40);
+        uiState.store = saveStore(uiState.store, { backup: true });
+        showToast('به سطل بازیابی منتقل شد');
+    }
+
+    function restoreFromTrash(blockId) {
+        const idx = uiState.store.trash.findIndex(b => b.id === blockId);
+        if (idx === -1) return;
+        const [restored] = uiState.store.trash.splice(idx, 1);
+        restored.domino = false;
+        uiState.store.blocks.push(restored);
+        uiState.store = saveStore(uiState.store);
+        showToast('کار بازیابی شد');
+    }
+
+    function nudgeBlockTime(blockId, deltaMinutes) {
+        const blk = uiState.store.blocks.find(b => b.id === blockId);
+        if (!blk || blk.start === null || blk.end === null) return;
+        const duration = blk.end - blk.start;
+        let nextStart = Math.max(0, Math.min(1440 - duration, blk.start + deltaMinutes));
+        blk.start = nextStart;
+        blk.end = nextStart + duration;
+        uiState.store = saveStore(uiState.store);
+    }
+
+    function applyBatchDelay(dateISO, delayMins) {
+        const delta = Number(delayMins) || 0;
+        if (delta <= 0) return;
+        const nowMins = dateISO === getTehranTodayISO() ? getTehranNowMinutes() : -1;
+        let shiftedCount = 0;
+
+        uiState.store.blocks.forEach(b => {
+            if (b.date !== dateISO || b.done || b.start === null || b.end === null) return;
+            if (nowMins >= 0 && b.end <= nowMins) return;
+            const dur = b.end - b.start;
+            const nextStart = Math.min(1440 - dur, b.start + delta);
+            if (nextStart !== b.start) {
+                b.start = nextStart;
+                b.end = nextStart + dur;
+                shiftedCount++;
+            }
+        });
+
+        if (shiftedCount > 0) {
+            uiState.store = saveStore(uiState.store, { backup: true });
+            showToast(`${toFaDigits(shiftedCount)} کار به اندازه ${toFaDigits(delta)} دقیقه عقب افتاد`);
+        } else {
+            showToast('کار انجام‌نشده و زمان‌داری برای تأخیر یافت نشد');
+        }
+    }
+
+    function sendBlocksToStudyTimer(blockIds) {
+        const selected = uiState.store.blocks.filter(b => blockIds.includes(b.id));
+        if (!selected.length) {
+            showToast('حداقل یک پارت مطالعاتی انتخاب کنید');
+            return;
+        }
+
+        const todayISO = getTehranTodayISO();
+        const todayFa = getPersianDateInfo(todayISO).fullDate;
+
+        // ۱. ارسال رویداد عمومی برای سایر بخش‌های tilo
+        try {
+            window.dispatchEvent(new CustomEvent('tilo:send-to-timer', {
+                detail: { blocks: JSON.parse(JSON.stringify(selected)) }
+            }));
+        } catch (_) {}
+
+        // ۲. اتصال مستقیم به صف پارت‌های اصلی tilo (sp_pro_parts) در صورت وجود
+        try {
+            const existingRaw = localStorage.getItem(TILO_PARTS_KEY);
+            const existingParts = existingRaw ? JSON.parse(existingRaw) : [];
+            if (Array.isArray(existingParts)) {
+                const mapped = selected.map((b, i) => {
+                    const dur = (b.start !== null && b.end !== null) ? Math.max(15, b.end - b.start) : 60;
+                    return {
+                        id: Date.now() + i,
+                        dateISO: todayISO,
+                        dateStr: todayFa,
+                        isNonStudy: !CATEGORIES[b.category]?.studyRelevant,
+                        isLife: !CATEGORIES[b.category]?.studyRelevant,
+                        subjects: [CATEGORIES[b.category]?.short || 'مطالعه'],
+                        topic: b.title,
+                        description: b.note || 'ارسال‌شده از تایم‌بلاک زندگی',
+                        type: b.category === 'deep' ? 'تست و مطالعه تخصصی' : 'مطالعه و مرور',
+                        category: 'خودخوان',
+                        plannedTime: dur,
+                        realTime: 0,
+                        status: 'pending',
+                        tests: { correct: 0, wrong: 0, unanswered: 0, total: 0 }
+                    };
+                });
+                localStorage.setItem(TILO_PARTS_KEY, JSON.stringify([...mapped, ...existingParts]));
+            }
+        } catch (_) {}
+
+        uiState.selectedForTimer = {};
+        showToast(`${toFaDigits(selected.length)} پارت به صف تایمر مطالعه ارسال شد 🚀`);
+    }
+
+    /* ==================== استایل‌های CSS اختصاصی (سبز تیره مینیمال + سازگار با تم روز) ==================== */
+
+    function injectStyles() {
+        if (document.getElementById('tltb-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'tltb-styles';
+        style.textContent = `
+            #tltb-launcher-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                background: linear-gradient(135deg, #162922 0%, #0e1613 100%);
+                color: #6ee7b7;
+                border: 1px solid #2d5a47;
+                border-radius: 14px;
+                padding: 9px 15px;
+                font-family: 'Vazirmatn', system-ui, sans-serif;
+                font-size: 12.5px;
+                font-weight: 800;
+                cursor: pointer;
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+                transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+                direction: rtl;
+            }
+            #tltb-launcher-btn:hover {
+                transform: translateY(-1px);
+                border-color: #6ee7b7;
+                box-shadow: 0 8px 24px rgba(110, 231, 183, 0.16);
+            }
+            #tltb-floating-launcher {
+                position: fixed;
+                right: 16px;
+                bottom: 84px;
+                z-index: 99980;
+            }
+            @media (min-width: 768px) {
+                #tltb-floating-launcher {
+                    bottom: 24px;
+                    right: 24px;
+                }
+            }
+
+            /* پنجره اصلی تمام‌صفحه */
+            #tltb-overlay {
+                --tltb-bg: #0e1613;
+                --tltb-surface: #14201b;
+                --tltb-elevated: #1a2a23;
+                --tltb-border: #2d5a47;
+                --tltb-border-soft: rgba(45, 90, 71, 0.45);
+                --tltb-accent: #6ee7b7;
+                --tltb-accent-bg: rgba(110, 231, 183, 0.12);
+                --tltb-text: #ecfdf5;
+                --tltb-muted: #93b8a8;
+                --tltb-danger: #f87171;
+                --tltb-warn: #fbbf24;
+
+                position: fixed;
+                inset: 0;
+                z-index: 2147483000;
+                background: var(--tltb-bg);
+                color: var(--tltb-text);
+                font-family: 'Vazirmatn', system-ui, -apple-system, sans-serif;
+                direction: rtl;
+                display: none;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            #tltb-overlay.open {
+                display: flex;
+            }
+
+            /* تطبیق با تم روز سایت در صورت فعال بودن */
+            body.tilo-theme-day #tltb-overlay {
+                --tltb-bg: #f3f5f2;
+                --tltb-surface: #ffffff;
+                --tltb-elevated: #eaf0ec;
+                --tltb-border: #86efac;
+                --tltb-border-soft: #d1ded7;
+                --tltb-accent: #059669;
+                --tltb-accent-bg: rgba(5, 150, 105, 0.1);
+                --tltb-text: #0f1f18;
+                --tltb-muted: #4b685a;
+            }
+
+            #tltb-overlay * {
+                box-sizing: border-box;
+                -webkit-tap-highlight-color: transparent;
+            }
+
+            /* هدر چسبان بالا */
+            .tltb-topbar {
+                background: var(--tltb-surface);
+                border-bottom: 1px solid var(--tltb-border-soft);
+                padding: 12px 16px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                flex-shrink: 0;
+            }
+            .tltb-title-group h2 {
+                margin: 0;
+                font-size: 16px;
+                font-weight: 900;
+                color: var(--tltb-text);
+                display: flex;
+                align-items: center;
+                gap: 7px;
+            }
+            .tltb-title-group p {
+                margin: 2px 0 0 0;
+                font-size: 11px;
+                color: var(--tltb-muted);
+            }
+            .tltb-top-actions {
+                display: flex;
+                align-items: center;
+                gap: 7px;
+            }
+            .tltb-pill-btn {
+                background: var(--tltb-elevated);
+                color: var(--tltb-text);
+                border: 1px solid var(--tltb-border-soft);
+                border-radius: 11px;
+                padding: 7px 11px;
+                font-family: inherit;
+                font-size: 11.5px;
+                font-weight: 800;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                transition: all 0.16s ease;
+            }
+            .tltb-pill-btn:hover {
+                border-color: var(--tltb-accent);
+                color: var(--tltb-accent);
+            }
+            .tltb-pill-btn.accent {
+                background: var(--tltb-accent);
+                color: #06140e;
+                border-color: var(--tltb-accent);
+            }
+            .tltb-close-btn {
+                width: 34px;
+                height: 34px;
+                border-radius: 11px;
+                border: 1px solid var(--tltb-border-soft);
+                background: var(--tltb-elevated);
+                color: var(--tltb-text);
+                font-size: 18px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            /* اسکرول محتوای اصلی */
+            .tltb-scroll-area {
+                flex: 1;
+                overflow-y: auto;
+                padding: 14px 14px 96px 14px;
+            }
+            .tltb-container {
+                max-width: 820px;
+                margin: 0 auto;
+                display: flex;
+                flex-direction: column;
+                gap: 14px;
+            }
+
+            /* کارت‌های نرم */
+            .tltb-card {
+                background: var(--tltb-surface);
+                border: 1px solid var(--tltb-border-soft);
+                border-radius: 18px;
+                padding: 14px;
+            }
+
+            /* نوار ناوبری هفته و روزها */
+            .tltb-week-nav {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 10px;
+                gap: 8px;
+            }
+            .tltb-week-label {
+                font-size: 12.5px;
+                font-weight: 800;
+                color: var(--tltb-text);
+            }
+            .tltb-days-grid {
+                display: grid;
+                grid-template-columns: repeat(7, 1fr);
+                gap: 5px;
+            }
+            .tltb-day-pill {
+                background: var(--tltb-bg);
+                border: 1px solid var(--tltb-border-soft);
+                border-radius: 13px;
+                padding: 8px 3px;
+                text-align: center;
+                cursor: pointer;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 3px;
+                transition: all 0.16s ease;
+                position: relative;
+            }
+            .tltb-day-pill .d-name {
+                font-size: 10px;
+                font-weight: 700;
+                color: var(--tltb-muted);
+            }
+            .tltb-day-pill .d-num {
+                font-size: 12.5px;
+                font-weight: 900;
+                color: var(--tltb-text);
+            }
+            .tltb-day-pill .d-dot {
+                width: 5px;
+                height: 5px;
+                border-radius: 50%;
+                background: transparent;
+            }
+            .tltb-day-pill.has-blocks .d-dot {
+                background: var(--tltb-accent);
+            }
+            .tltb-day-pill.is-today {
+                border-style: dashed;
+                border-color: var(--tltb-accent);
+            }
+            .tltb-day-pill.selected {
+                background: var(--tltb-accent-bg);
+                border: 1.5px solid var(--tltb-accent);
+                transform: translateY(-1px);
+            }
+            .tltb-day-pill.selected .d-name,
+            .tltb-day-pill.selected .d-num {
+                color: var(--tltb-accent);
+            }
+
+            /* کارت سنگ بزرگ روز (Domino) */
+            .tltb-domino-card {
+                background: linear-gradient(135deg, rgba(110, 231, 183, 0.12) 0%, var(--tltb-surface) 100%);
+                border: 1.5px solid var(--tltb-border);
+                border-radius: 18px;
+                padding: 14px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+            }
+            .tltb-domino-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                font-size: 10.5px;
+                font-weight: 900;
+                color: var(--tltb-accent);
+                background: var(--tltb-accent-bg);
+                padding: 3px 9px;
+                border-radius: 999px;
+                margin-bottom: 5px;
+            }
+
+            /* هدر بخش روز و کنترل‌های ساب‌ویو */
+            .tltb-section-head {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                margin-bottom: 10px;
+            }
+            .tltb-segmented {
+                display: inline-flex;
+                background: var(--tltb-bg);
+                border: 1px solid var(--tltb-border-soft);
+                border-radius: 11px;
+                padding: 3px;
+            }
+            .tltb-seg-btn {
+                border: none;
+                background: transparent;
+                color: var(--tltb-muted);
+                font-family: inherit;
+                font-size: 11px;
+                font-weight: 800;
+                padding: 5px 11px;
+                border-radius: 8px;
+                cursor: pointer;
+            }
+            .tltb-seg-btn.active {
+                background: var(--tltb-elevated);
+                color: var(--tltb-accent);
+            }
+
+            /* کارت بلاک در لیست */
+            .tltb-block-list {
+                display: flex;
+                flex-direction: column;
+                gap: 9px;
+            }
+            .tltb-block-item {
+                background: var(--tltb-bg);
+                border: 1px solid var(--tltb-border-soft);
+                border-right-width: 4px;
+                border-radius: 15px;
+                padding: 11px 12px;
+                display: flex;
+                align-items: flex-start;
+                gap: 10px;
+                transition: opacity 0.2s ease, transform 0.15s ease;
+            }
+            .tltb-block-item.is-done {
+                opacity: 0.62;
+            }
+            .tltb-block-item.is-done .tltb-blk-title {
+                text-decoration: line-through;
+            }
+            .tltb-check-btn {
+                width: 24px;
+                height: 24px;
+                border-radius: 8px;
+                border: 1.5px solid var(--tltb-border);
+                background: transparent;
+                color: transparent;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                flex-shrink: 0;
+                margin-top: 2px;
+                font-size: 13px;
+                font-weight: 900;
+                transition: all 0.15s ease;
+            }
+            .tltb-check-btn.checked {
+                background: var(--tltb-accent);
+                border-color: var(--tltb-accent);
+                color: #06140e;
+            }
+            .tltb-blk-main {
+                flex: 1;
+                min-width: 0;
+            }
+            .tltb-blk-meta {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 6px;
+                margin-bottom: 4px;
+            }
+            .tltb-time-badge {
+                font-size: 11px;
+                font-weight: 800;
+                color: var(--tltb-text);
+                background: var(--tltb-surface);
+                padding: 2px 8px;
+                border-radius: 7px;
+                border: 1px solid var(--tltb-border-soft);
+            }
+            .tltb-cat-badge {
+                font-size: 10px;
+                font-weight: 800;
+                padding: 2px 8px;
+                border-radius: 7px;
+            }
+            .tltb-blk-title {
+                font-size: 13.5px;
+                font-weight: 800;
+                color: var(--tltb-text);
+                margin: 0;
+                word-break: break-word;
+            }
+            .tltb-blk-note {
+                font-size: 11.5px;
+                color: var(--tltb-muted);
+                margin: 5px 0 0 0;
+                line-height: 1.6;
+                background: var(--tltb-surface);
+                padding: 6px 9px;
+                border-radius: 9px;
+            }
+            .tltb-blk-actions {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                flex-shrink: 0;
+            }
+            .tltb-icon-btn {
+                width: 28px;
+                height: 28px;
+                border-radius: 8px;
+                border: 1px solid transparent;
+                background: transparent;
+                color: var(--tltb-muted);
+                font-size: 12px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .tltb-icon-btn:hover {
+                background: var(--tltb-surface);
+                color: var(--tltb-text);
+                border-color: var(--tltb-border-soft);
+            }
+
+            /* محور ساعتی (Timeline) */
+            .tltb-timeline {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            .tltb-tl-row {
+                display: grid;
+                grid-template-columns: 48px 1fr;
+                gap: 8px;
+                align-items: stretch;
+            }
+            .tltb-tl-hour {
+                font-size: 11px;
+                font-weight: 800;
+                color: var(--tltb-muted);
+                text-align: left;
+                padding-top: 4px;
+            }
+            .tltb-tl-slot {
+                border-top: 1px dashed var(--tltb-border-soft);
+                padding: 6px 0;
+                min-height: 36px;
+            }
+            .tltb-free-gap {
+                font-size: 10.5px;
+                color: var(--tltb-muted);
+                text-align: center;
+                padding: 4px 8px;
+                border-radius: 9px;
+                background: rgba(110, 231, 183, 0.04);
+                border: 1px dashed var(--tltb-border-soft);
+            }
+            .tltb-now-line {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                color: #fb7185;
+                font-size: 10.5px;
+                font-weight: 900;
+                margin: 2px 0;
+            }
+            .tltb-now-line::after {
+                content: '';
+                flex: 1;
+                height: 1.5px;
+                background: #fb7185;
+            }
+
+            /* نوار ثابت پایین برای افزودن سریع (بدون پوشاندن محتوا) */
+            .tltb-bottom-bar {
+                background: var(--tltb-surface);
+                border-top: 1px solid var(--tltb-border-soft);
+                padding: 10px 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                flex-shrink: 0;
+            }
+            .tltb-add-primary-btn {
+                width: 100%;
+                max-width: 480px;
+                background: var(--tltb-accent);
+                color: #06140e;
+                border: none;
+                border-radius: 14px;
+                padding: 12px 18px;
+                font-family: inherit;
+                font-size: 13.5px;
+                font-weight: 900;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                box-shadow: 0 6px 20px rgba(110, 231, 183, 0.22);
+            }
+
+            /* آکاردئون‌های بخش‌های فرعی */
+            .tltb-accordion {
+                background: var(--tltb-surface);
+                border: 1px solid var(--tltb-border-soft);
+                border-radius: 16px;
+                overflow: hidden;
+            }
+            .tltb-acc-header {
+                width: 100%;
+                background: transparent;
+                border: none;
+                color: var(--tltb-text);
+                padding: 13px 15px;
+                font-family: inherit;
+                font-size: 12.5px;
+                font-weight: 800;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                cursor: pointer;
+                text-align: right;
+            }
+            .tltb-acc-body {
+                padding: 0 15px 15px 15px;
+                border-top: 1px solid var(--tltb-border-soft);
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                padding-top: 12px;
+            }
+
+            /* فرم‌ها و ورودی‌ها */
+            .tltb-input, .tltb-select, .tltb-textarea {
+                width: 100%;
+                background: var(--tltb-bg);
+                color: var(--tltb-text);
+                border: 1px solid var(--tltb-border-soft);
+                border-radius: 12px;
+                padding: 9px 12px;
+                font-family: inherit;
+                font-size: 12.5px;
+                outline: none;
+            }
+            .tltb-input:focus, .tltb-select:focus, .tltb-textarea:focus {
+                border-color: var(--tltb-accent);
+            }
+
+            /* باتم‌شیت / مودال افزودن و ویرایش */
+            .tltb-sheet-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(5, 10, 8, 0.72);
+                backdrop-filter: blur(4px);
+                z-index: 2147483100;
+                display: flex;
+                align-items: flex-end;
+                justify-content: center;
+            }
+            @media (min-width: 640px) {
+                .tltb-sheet-backdrop {
+                    align-items: center;
+                    padding: 16px;
+                }
+            }
+            .tltb-sheet {
+                background: var(--tltb-surface);
+                border: 1px solid var(--tltb-border);
+                border-radius: 24px 24px 0 0;
+                width: 100%;
+                max-width: 500px;
+                max-height: 90dvh;
+                overflow-y: auto;
+                padding: 18px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+            @media (min-width: 640px) {
+                .tltb-sheet {
+                    border-radius: 22px;
+                }
+            }
+            .tltb-cat-pills {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+            .tltb-cat-pill {
+                border: 1px solid var(--tltb-border-soft);
+                background: var(--tltb-bg);
+                color: var(--tltb-muted);
+                border-radius: 11px;
+                padding: 6px 10px;
+                font-family: inherit;
+                font-size: 11px;
+                font-weight: 800;
+                cursor: pointer;
+            }
+            .tltb-cat-pill.active {
+                color: #06140e;
+                border-color: transparent;
+            }
+
+            /* Toast */
+            #tltb-toast {
+                position: fixed;
+                top: 18px;
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: 2147483600;
+                background: #14261f;
+                color: #6ee7b7;
+                border: 1px solid #2d5a47;
+                padding: 9px 18px;
+                border-radius: 999px;
+                font-family: 'Vazirmatn', sans-serif;
+                font-size: 12px;
+                font-weight: 800;
+                box-shadow: 0 10px 28px rgba(0,0,0,0.5);
+                pointer-events: none;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    /* ==================== رندر رابط کاربری ==================== */
+
+    function escapeHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function renderToast() {
+        let el = document.getElementById('tltb-toast');
+        if (!uiState.toastMsg) {
+            if (el) el.remove();
+            return;
+        }
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'tltb-toast';
+            document.body.appendChild(el);
+        }
+        el.textContent = uiState.toastMsg;
+    }
+
+    function renderWeekHeaderAndDays() {
+        const todayISO = getTehranTodayISO();
+        const startInfo = getPersianDateInfo(uiState.weekStartISO);
+        const endInfo = getPersianDateInfo(addDaysISO(uiState.weekStartISO, 6));
+
+        const daysHtml = WEEKDAYS_FA.map((dayName, idx) => {
+            const dateISO = addDaysISO(uiState.weekStartISO, idx);
+            const info = getPersianDateInfo(dateISO);
+            const hasBlocks = uiState.store.blocks.some(b => b.date === dateISO);
+            const isSelected = uiState.selectedDate === dateISO;
+            const isToday = todayISO === dateISO;
+
+            return `
+                <button type="button" class="tltb-day-pill ${hasBlocks ? 'has-blocks' : ''} ${isSelected ? 'selected' : ''} ${isToday ? 'is-today' : ''}" data-select-date="${dateISO}">
+                    <span class="d-name">${dayName}</span>
+                    <span class="d-num">${info.dayNum}</span>
+                    <span class="d-dot"></span>
+                </button>
+            `;
+        }).join('');
+
+        return `
+            <div class="tltb-card">
+                <div class="tltb-week-nav">
+                    <button type="button" class="tltb-pill-btn" data-nav-week="-7">‹ هفته قبل</button>
+                    <span class="tltb-week-label">${startInfo.shortDate} تا ${endInfo.shortDate}</span>
+                    <button type="button" class="tltb-pill-btn" data-nav-week="7">هفته بعد ›</button>
+                </div>
+                <div class="tltb-days-grid">${daysHtml}</div>
+            </div>
+        `;
+    }
+
+    function renderDominoSection(dayBlocks) {
+        const domino = dayBlocks.find(b => b.domino);
+        if (!domino) {
+            if (!dayBlocks.length) return '';
+            return `
+                <div class="tltb-card" style="display:flex; align-items:center; justify-content:space-between; gap:10px; border-style:dashed;">
+                    <div style="font-size:12px; color:var(--tltb-muted);">
+                        ⭐ هنوز <strong>سنگ بزرگ امروز</strong> انتخاب نشده است.
+                    </div>
+                    <button type="button" class="tltb-pill-btn" data-set-first-domino="1">انتخاب اولین کار</button>
+                </div>
+            `;
+        }
+
+        const timeLabel = (domino.start !== null && domino.end !== null)
+            ? `${minutesToHHMM(domino.start)} تا ${minutesToHHMM(domino.end)}`
+            : 'بدون ساعت مشخص';
+
+        return `
+            <div class="tltb-domino-card">
+                <div style="display:flex; align-items:flex-start; gap:10px; flex:1; min-width:0;">
+                    <button type="button" class="tltb-check-btn ${domino.done ? 'checked' : ''}" data-toggle-done="${domino.id}">✓</button>
+                    <div style="min-width:0;">
+                        <div class="tltb-domino-badge">⭐ سنگ بزرگ روز · ${timeLabel}</div>
+                        <div class="tltb-blk-title" style="${domino.done ? 'text-decoration:line-through; opacity:0.65;' : ''}">${escapeHtml(domino.title)}</div>
+                        ${domino.note ? `<div style="font-size:11px; color:var(--tltb-muted); margin-top:4px;">${escapeHtml(domino.note)}</div>` : ''}
+                    </div>
+                </div>
+                <button type="button" class="tltb-icon-btn" data-edit-block="${domino.id}" title="ویرایش">✎</button>
+            </div>
+        `;
+    }
+
+    function renderBlockCard(b) {
+        const cat = CATEGORIES[b.category] || CATEGORIES.deep;
+        const hasTime = b.start !== null && b.end !== null;
+        const timeStr = hasTime ? `${minutesToHHMM(b.start)} – ${minutesToHHMM(b.end)}` : 'بدون ساعت';
+        const durStr = hasTime ? formatDurationFa(b.end - b.start) : '';
+        const noteOpen = Boolean(uiState.expandedNotes[b.id]);
+
+        return `
+            <div class="tltb-block-item ${b.done ? 'is-done' : ''}" style="border-right-color:${escapeHtml(b.color)};">
+                <button type="button" class="tltb-check-btn ${b.done ? 'checked' : ''}" data-toggle-done="${b.id}" aria-label="انجام شد">✓</button>
+                <div class="tltb-blk-main">
+                    <div class="tltb-blk-meta">
+                        <span class="tltb-time-badge">${timeStr}${durStr ? ` · ${durStr}` : ''}</span>
+                        <span class="tltb-cat-badge" style="background:${b.color}22; color:${b.color};">${cat.icon} ${cat.short}</span>
+                        ${b.domino ? `<span class="tltb-cat-badge" style="background:rgba(110,231,183,0.16); color:var(--tltb-accent);">⭐ سنگ بزرگ</span>` : ''}
+                    </div>
+                    <p class="tltb-blk-title">${escapeHtml(b.title)}</p>
+                    ${b.note && noteOpen ? `<div class="tltb-blk-note">${escapeHtml(b.note)}</div>` : ''}
+                </div>
+                <div class="tltb-blk-actions">
+                    ${b.note ? `<button type="button" class="tltb-icon-btn" data-toggle-note="${b.id}" title="توضیحات">${noteOpen ? '▴' : '📝'}</button>` : ''}
+                    ${cat.studyRelevant ? `<button type="button" class="tltb-icon-btn" data-send-single-timer="${b.id}" title="ارسال به تایمر مطالعه">⏱️</button>` : ''}
+                    ${hasTime ? `<button type="button" class="tltb-icon-btn" data-nudge-block="${b.id}:15" title="۱۵ دقیقه عقب‌تر">+۱۵</button>` : ''}
+                    <button type="button" class="tltb-icon-btn" data-edit-block="${b.id}" title="ویرایش">✎</button>
+                    <button type="button" class="tltb-icon-btn" data-del-block="${b.id}" title="حذف">🗑️</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderHourlyTimeline(dayBlocks) {
+        const timed = dayBlocks.filter(b => b.start !== null && b.end !== null);
+        const untimed = dayBlocks.filter(b => b.start === null || b.end === null);
+        const isToday = uiState.selectedDate === getTehranTodayISO();
+        const nowMins = getTehranNowMinutes();
+
+        if (!timed.length && !untimed.length) {
+            return renderEmptyDayState();
+        }
+
+        let html = '<div class="tltb-timeline">';
+        let prevEnd = null;
+        let nowRendered = false;
+
+        timed.forEach(b => {
+            if (prevEnd !== null && b.start - prevEnd >= 20) {
+                html += `
+                    <div class="tltb-tl-row">
+                        <div class="tltb-tl-hour">${minutesToHHMM(prevEnd)}</div>
+                        <div class="tltb-tl-slot">
+                            <div class="tltb-free-gap">✨ ${formatDurationFa(b.start - prevEnd)} وقت آزاد</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (isToday && !nowRendered && nowMins <= b.start) {
+                nowRendered = true;
+                html += `<div class="tltb-now-line">الان (${minutesToHHMM(nowMins)})</div>`;
+            }
+
+            html += `
+                <div class="tltb-tl-row">
+                    <div class="tltb-tl-hour">${minutesToHHMM(b.start)}</div>
+                    <div class="tltb-tl-slot">${renderBlockCard(b)}</div>
+                </div>
+            `;
+            prevEnd = b.end;
+        });
+
+        if (isToday && !nowRendered) {
+            html += `<div class="tltb-now-line">الان (${minutesToHHMM(nowMins)})</div>`;
+        }
+
+        html += '</div>';
+
+        if (untimed.length) {
+            html += `
+                <div style="margin-top:12px;">
+                    <div style="font-size:11px; font-weight:800; color:var(--tltb-muted); margin-bottom:6px;">کارهای بدون ساعت مشخص:</div>
+                    <div class="tltb-block-list">${untimed.map(renderBlockCard).join('')}</div>
+                </div>
+            `;
+        }
+
+        return html;
+    }
+
+    function renderEmptyDayState() {
+        const info = getPersianDateInfo(uiState.selectedDate);
+        return `
+            <div style="text-align:center; padding:28px 14px; border:1px dashed var(--tltb-border-soft); border-radius:16px;">
+                <div style="font-size:26px; margin-bottom:6px;">🌿</div>
+                <div style="font-size:13.5px; font-weight:900; color:var(--tltb-text);">برنامه ${info.weekday} (${info.shortDate}) هنوز خالی است</div>
+                <p style="font-size:11.5px; color:var(--tltb-muted); margin:6px auto 14px auto; max-width:340px; line-height:1.7;">
+                    روزت را با تعیین یک «سنگ بزرگ» و چند تایم‌بلاک شفاف بچین، یا برنامه متنی را یک‌جا پیست کن.
+                </p>
+                <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:8px;">
+                    <button type="button" class="tltb-pill-btn accent" data-open-add="1">+ ساخت اولین تایم‌بلاک</button>
+                    <button type="button" class="tltb-pill-btn" data-open-acc="paste">📋 چسباندن برنامه از متن</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderDayView() {
+        const dayBlocks = getBlocksForDate(uiState.selectedDate);
+        const info = getPersianDateInfo(uiState.selectedDate);
+        const doneCount = dayBlocks.filter(b => b.done).length;
+
+        const delayHtml = uiState.delayOpen ? `
+            <div style="background:var(--tltb-bg); border:1px solid var(--tltb-border); border-radius:13px; padding:10px; margin-bottom:10px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px;">
+                <span style="font-size:11.5px; font-weight:800;">عقب انداختن کارهای مانده امروز:</span>
+                <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                    ${[15, 30, 45, 60].map(m => `<button type="button" class="tltb-pill-btn" data-exec-delay="${m}">+${toFaDigits(m)} دقیقه</button>`).join('')}
+                    <button type="button" class="tltb-pill-btn" data-toggle-delay="0">بستن</button>
+                </div>
+            </div>
+        ` : '';
+
+        const mainBody = !dayBlocks.length
+            ? renderEmptyDayState()
+            : (uiState.daySubView === 'timeline'
+                ? renderHourlyTimeline(dayBlocks)
+                : `<div class="tltb-block-list">${dayBlocks.map(renderBlockCard).join('')}</div>`);
+
+        return `
+            ${renderDominoSection(dayBlocks)}
+
+            <div class="tltb-card">
+                <div class="tltb-section-head">
+                    <div>
+                        <span style="font-size:14px; font-weight:900; color:var(--tltb-text);">${info.weekday} · ${info.fullDate}</span>
+                        <span style="font-size:11px; color:var(--tltb-muted); margin-right:8px;">(${toFaDigits(doneCount)} از ${toFaDigits(dayBlocks.length)} انجام‌شده)</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        ${dayBlocks.some(b => !b.done && b.start !== null) ? `<button type="button" class="tltb-pill-btn" data-toggle-delay="1" title="تأخیر دسته‌ای">⏳ تأخیر</button>` : ''}
+                        <div class="tltb-segmented">
+                            <button type="button" class="tltb-seg-btn ${uiState.daySubView === 'list' ? 'active' : ''}" data-subview="list">لیست</button>
+                            <button type="button" class="tltb-seg-btn ${uiState.daySubView === 'timeline' ? 'active' : ''}" data-subview="timeline">محور ساعتی</button>
+                        </div>
+                    </div>
+                </div>
+                ${delayHtml}
+                ${mainBody}
+            </div>
+        `;
+    }
+
+    function renderWeekOverview() {
+        const cards = WEEKDAYS_FA.map((dayName, idx) => {
+            const dateISO = addDaysISO(uiState.weekStartISO, idx);
+            const info = getPersianDateInfo(dateISO);
+            const blocks = getBlocksForDate(dateISO);
+            const domino = blocks.find(b => b.domino);
+            const studyMins = blocks.reduce((acc, b) => {
+                if (!CATEGORIES[b.category]?.studyRelevant || b.start === null || b.end === null) return acc;
+                return acc + (b.end - b.start);
+            }, 0);
+
+            return `
+                <div class="tltb-card" style="cursor:pointer;" data-jump-day="${dateISO}">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <strong style="font-size:13.5px; color:var(--tltb-accent);">${dayName} · ${info.shortDate}</strong>
+                        <span style="font-size:11px; color:var(--tltb-muted);">${toFaDigits(blocks.length)} بلاک · ${formatDurationFa(studyMins)} مطالعه</span>
+                    </div>
+                    ${domino
+                        ? `<div style="font-size:12px; font-weight:700;">⭐ سنگ بزرگ: ${escapeHtml(domino.title)}</div>`
+                        : `<div style="font-size:11.5px; color:var(--tltb-muted);">${blocks.length ? `${blocks.slice(0, 2).map(b => escapeHtml(b.title)).join('، ')}` : 'بدون برنامه'}</div>`
+                    }
+                </div>
+            `;
+        }).join('');
+
+        return `<div style="display:flex; flex-direction:column; gap:10px;">${cards}</div>`;
+    }
+
+    /* ==================== بخش‌های جمع‌شونده پایین صفحه ==================== */
+
+    function renderAccordions() {
+        const dayBlocks = getBlocksForDate(uiState.selectedDate);
+        const selectedInfo = getPersianDateInfo(uiState.selectedDate);
+        const reviewData = uiState.store.finalized[uiState.selectedDate] || { note: '', completedAt: null };
+
+        // ۱. آکاردئون چسباندن برنامه از متن
+        const previewHtml = uiState.pastePreview ? `
+            <div style="background:var(--tltb-bg); border:1px solid var(--tltb-border); border-radius:13px; padding:10px; display:flex; flex-direction:column; gap:6px;">
+                <div style="font-size:11.5px; font-weight:900; color:var(--tltb-accent);">
+                    پیش‌نمایش (${toFaDigits(uiState.pastePreview.blocks.length)} پارت برای ${getPersianDateInfo(resolveTargetDateFromMode(uiState.pasteTargetMode)).weekday} ${getPersianDateInfo(resolveTargetDateFromMode(uiState.pasteTargetMode)).shortDate}):
+                </div>
+                ${uiState.pastePreview.blocks.map(b => `
+                    <div style="font-size:11px; padding:5px 8px; border-right:3px solid ${b.color}; background:var(--tltb-surface); border-radius:7px;">
+                        <strong>${b.start !== null ? `${minutesToHHMM(b.start)} تا ${minutesToHHMM(b.end)}` : 'بدون ساعت'}</strong> | ${escapeHtml(b.title)} <span style="color:${b.color};">(${CATEGORIES[b.category].short})</span>
+                    </div>
+                `).join('')}
+                <button type="button" class="tltb-pill-btn accent" style="justify-content:center; margin-top:4px;" data-apply-paste="1">
+                    ✓ تایید و اعمال روی همین روز (همراه با بکاپ خودکار)
+                </button>
+            </div>
+        ` : '';
+
+        // ۲. محاسبه تعادل انرژی
+        const totalMinsByCat = { deep: 0, general: 0, recovery: 0, growth: 0, health: 0 };
+        let totalTimedMins = 0;
+        dayBlocks.forEach(b => {
+            if (b.start !== null && b.end !== null) {
+                const d = b.end - b.start;
+                totalMinsByCat[b.category] = (totalMinsByCat[b.category] || 0) + d;
+                totalTimedMins += d;
+            }
+        });
+
+        const studyBlocks = dayBlocks.filter(b => CATEGORIES[b.category]?.studyRelevant);
+
+        return `
+            <!-- ۱. چسباندن برنامه از متن -->
+            <div class="tltb-accordion">
+                <button type="button" class="tltb-acc-header" data-toggle-acc="paste">
+                    <span>📋 چسباندن برنامه از متن (پشتیبانی آفلاین از خروجی متنی)</span>
+                    <span>${uiState.openAccordions.paste ? '▴' : '▾'}</span>
+                </button>
+                ${uiState.openAccordions.paste ? `
+                    <div class="tltb-acc-body">
+                        <textarea id="tltb-paste-textarea" class="tltb-textarea" rows="5" placeholder="مثال:&#10;فقط امروز را جایگزین کن&#10;15:30 تا 16:55 | عنوان: هندسه ۳ | دسته: کار عمیق / تخصصی | توضیح: حل نمونه&#10;17:00 تا 17:20 | عنوان: استراحت کوتاه | دسته: ریکاوری و استراحت">${escapeHtml(uiState.pasteRaw)}</textarea>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                            <div>
+                                <label style="font-size:10.5px; color:var(--tltb-muted); display:block; margin-bottom:4px;">روز هدف:</label>
+                                <select id="tltb-paste-target" class="tltb-select">
+                                    <option value="selected" ${uiState.pasteTargetMode === 'selected' ? 'selected' : ''}>روز انتخاب‌شده (${selectedInfo.weekday})</option>
+                                    <option value="today" ${uiState.pasteTargetMode === 'today' ? 'selected' : ''}>امروز</option>
+                                    <option value="tomorrow" ${uiState.pasteTargetMode === 'tomorrow' ? 'selected' : ''}>فردا</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size:10.5px; color:var(--tltb-muted); display:block; margin-bottom:4px;">حالت اعمال (فقط همان روز):</label>
+                                <select id="tltb-paste-mode" class="tltb-select">
+                                    <option value="replace" ${uiState.pasteApplyMode === 'replace' ? 'selected' : ''}>جایگزینی کامل فقط همان روز</option>
+                                    <option value="append" ${uiState.pasteApplyMode === 'append' ? 'selected' : ''}>افزودن به برنامه همان روز</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="button" class="tltb-pill-btn" style="justify-content:center;" data-preview-paste="1">🔍 پیش‌نمایش هوشمند متن</button>
+                        ${previewHtml}
+                    </div>
+                ` : ''}
+            </div>
+
+            <!-- ۲. کپی روتین -->
+            <div class="tltb-accordion">
+                <button type="button" class="tltb-acc-header" data-toggle-acc="routine">
+                    <span>🔁 کپی روتین (${selectedInfo.weekday} به روزهای دیگر)</span>
+                    <span>${uiState.openAccordions.routine ? '▴' : '▾'}</span>
+                </button>
+                ${uiState.openAccordions.routine ? `
+                    <div class="tltb-acc-body">
+                        <p style="font-size:11px; color:var(--tltb-muted); margin:0;">
+                            مبدأ: <strong>${selectedInfo.weekday} (${selectedInfo.shortDate})</strong> — شامل ${toFaDigits(dayBlocks.length)} تایم‌بلاک
+                        </p>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                            <select id="tltb-routine-target" class="tltb-select">
+                                <option value="tomorrow" ${uiState.routineTarget === 'tomorrow' ? 'selected' : ''}>مقصد: فردا</option>
+                                <option value="sat" ${uiState.routineTarget === 'sat' ? 'selected' : ''}>مقصد: شنبه این هفته</option>
+                                <option value="sun" ${uiState.routineTarget === 'sun' ? 'selected' : ''}>مقصد: یکشنبه این هفته</option>
+                                <option value="mon" ${uiState.routineTarget === 'mon' ? 'selected' : ''}>مقصد: دوشنبه این هفته</option>
+                                <option value="tue" ${uiState.routineTarget === 'tue' ? 'selected' : ''}>مقصد: سه‌شنبه این هفته</option>
+                                <option value="wed" ${uiState.routineTarget === 'wed' ? 'selected' : ''}>مقصد: چهارشنبه این هفته</option>
+                                <option value="thu" ${uiState.routineTarget === 'thu' ? 'selected' : ''}>مقصد: پنجشنبه این هفته</option>
+                                <option value="fri" ${uiState.routineTarget === 'fri' ? 'selected' : ''}>مقصد: جمعه این هفته</option>
+                            </select>
+                            <select id="tltb-routine-mode" class="tltb-select">
+                                <option value="append" ${uiState.routineMode === 'append' ? 'selected' : ''}>افزودن به مقصد (امن)</option>
+                                <option value="replace" ${uiState.routineMode === 'replace' ? 'selected' : ''}>جایگزینی فقط روز مقصد</option>
+                            </select>
+                        </div>
+                        <button type="button" class="tltb-pill-btn accent" style="justify-content:center;" data-exec-routine="1">کپی برنامه به روز مقصد</button>
+                    </div>
+                ` : ''}
+            </div>
+
+            <!-- ۳. بازبینی شب -->
+            <div class="tltb-accordion">
+                <button type="button" class="tltb-acc-header" data-toggle-acc="review">
+                    <span>🌙 بازبینی شب و جمع‌بندی پایان روز</span>
+                    <span>${uiState.openAccordions.review ? '▴' : '▾'}</span>
+                </button>
+                ${uiState.openAccordions.review ? `
+                    <div class="tltb-acc-body">
+                        <div style="display:flex; justify-content:space-between; font-size:11.5px;">
+                            <span>انجام‌شده: <strong style="color:var(--tltb-accent);">${toFaDigits(dayBlocks.filter(b => b.done).length)}</strong></span>
+                            <span>باقی‌مانده: <strong style="color:var(--tltb-warn);">${toFaDigits(dayBlocks.filter(b => !b.done).length)}</strong></span>
+                        </div>
+                        <textarea id="tltb-review-note" class="tltb-textarea" rows="3" placeholder="امروز چطور گذشت؟ چه چیزی انرژی‌ات را گرفت یا به تو سرعت داد؟">${escapeHtml(reviewData.note || '')}</textarea>
+                        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                            <button type="button" class="tltb-pill-btn accent" style="flex:1; justify-content:center;" data-save-review="1">ثبت بازبینی شب</button>
+                            ${dayBlocks.some(b => !b.done) ? `<button type="button" class="tltb-pill-btn" data-carry-tomorrow="1">انتقال کارهای مانده به فردا ➔</button>` : ''}
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+
+            <!-- ۴. تعادل انرژی و ارسال گروهی به تایمر -->
+            <div class="tltb-accordion">
+                <button type="button" class="tltb-acc-header" data-toggle-acc="energy">
+                    <span>⚡ تعادل انرژی روز و ارسال به تایمر مطالعه</span>
+                    <span>${uiState.openAccordions.energy ? '▴' : '▾'}</span>
+                </button>
+                ${uiState.openAccordions.energy ? `
+                    <div class="tltb-acc-body">
+                        <div style="display:flex; flex-direction:column; gap:6px;">
+                            ${Object.values(CATEGORIES).map(c => {
+                                const mins = totalMinsByCat[c.id] || 0;
+                                const pct = totalTimedMins > 0 ? Math.round((mins / totalTimedMins) * 100) : 0;
+                                return `
+                                    <div style="font-size:11px;">
+                                        <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+                                            <span>${c.icon} ${c.label}</span>
+                                            <span>${formatDurationFa(mins)} (${toFaDigits(pct)}٪)</span>
+                                        </div>
+                                        <div style="height:6px; background:var(--tltb-bg); border-radius:99px; overflow:hidden;">
+                                            <div style="height:100%; width:${pct}%; background:${c.defaultColor};"></div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        ${studyBlocks.length ? `
+                            <div style="border-top:1px solid var(--tltb-border-soft); padding-top:10px; margin-top:4px;">
+                                <div style="font-size:11.5px; font-weight:800; margin-bottom:6px;">انتخاب پارت‌ها برای ارسال به صف تایمر مطالعه:</div>
+                                <div style="display:flex; flex-direction:column; gap:5px; margin-bottom:8px;">
+                                    ${studyBlocks.map(b => `
+                                        <label style="display:flex; align-items:center; gap:8px; font-size:11.5px; background:var(--tltb-bg); padding:7px 10px; border-radius:10px; cursor:pointer;">
+                                            <input type="checkbox" data-timer-chk="${b.id}" ${uiState.selectedForTimer[b.id] ? 'checked' : ''} />
+                                            <span style="flex:1;">${escapeHtml(b.title)}</span>
+                                            <span style="color:var(--tltb-muted); font-size:10.5px;">${b.start !== null ? formatDurationFa(b.end - b.start) : '۶۰ دقیقه'}</span>
+                                        </label>
+                                    `).join('')}
+                                </div>
+                                <button type="button" class="tltb-pill-btn accent" style="width:100%; justify-content:center;" data-send-selected-timer="1">⏱️ ارسال موارد انتخاب‌شده به تایمر</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                ` : ''}
+            </div>
+
+            <!-- ۵. پشتیبان‌گیری و سطل بازیابی -->
+            <div class="tltb-accordion">
+                <button type="button" class="tltb-acc-header" data-toggle-acc="backup">
+                    <span>💾 پشتیبان‌گیری و سطل بازیابی (${toFaDigits(uiState.store.trash.length)})</span>
+                    <span>${uiState.openAccordions.backup ? '▴' : '▾'}</span>
+                </button>
+                ${uiState.openAccordions.backup ? `
+                    <div class="tltb-acc-body">
+                        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                            <button type="button" class="tltb-pill-btn" data-export-json="1">⬇️ دانلود فایل پشتیبان</button>
+                            <label class="tltb-pill-btn" style="cursor:pointer;">
+                                ⬆️ بازیابی از فایل
+                                <input type="file" id="tltb-import-file" accept=".json" style="display:none;" />
+                            </label>
+                            ${localStorage.getItem(BACKUP_KEY) ? `<button type="button" class="tltb-pill-btn" data-restore-autobackup="1">↩️ بازگردانی آخرین بکاپ خودکار</button>` : ''}
+                        </div>
+                        ${uiState.store.trash.length ? `
+                            <div style="margin-top:8px;">
+                                <div style="font-size:11px; font-weight:800; color:var(--tltb-muted); margin-bottom:6px;">کارهای حذف‌شده اخیر:</div>
+                                <div style="display:flex; flex-direction:column; gap:5px;">
+                                    ${uiState.store.trash.slice(0, 10).map(t => `
+                                        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--tltb-bg); padding:7px 10px; border-radius:10px; font-size:11.5px;">
+                                            <span>${escapeHtml(t.title)} <span style="color:var(--tltb-muted); font-size:10px;">(${getPersianDateInfo(t.date).shortDate})</span></span>
+                                            <button type="button" class="tltb-pill-btn" data-restore-trash="${t.id}">بازیابی</button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    /* ==================== باتم‌شیت افزودن و ویرایش کار ==================== */
+
+    function openAddOrEditSheet(block = null) {
+        if (block) {
+            uiState.editingBlockId = block.id;
+            uiState.form = {
+                title: block.title,
+                note: block.note || '',
+                category: block.category,
+                color: block.color,
+                hasTime: block.start !== null && block.end !== null,
+                startStr: block.start !== null ? minutesToHHMM(block.start, false) : '16:00',
+                endStr: block.end !== null ? minutesToHHMM(block.end, false) : '17:15',
+                domino: Boolean(block.domino)
+            };
+        } else {
+            const existing = getBlocksForDate(uiState.selectedDate).filter(b => b.end !== null);
+            const lastEnd = existing.length ? existing[existing.length - 1].end : 960; // 16:00
+            const defStart = Math.min(1380, lastEnd);
+            const defEnd = Math.min(1440, defStart + 60);
+            uiState.editingBlockId = null;
+            uiState.form = {
+                title: '',
+                note: '',
+                category: 'deep',
+                color: CATEGORIES.deep.defaultColor,
+                hasTime: true,
+                startStr: minutesToHHMM(defStart, false),
+                endStr: minutesToHHMM(defEnd, false),
+                domino: !getBlocksForDate(uiState.selectedDate).some(b => b.domino)
+            };
+        }
+        uiState.sheetOpen = true;
+        renderOverlay();
+        setTimeout(() => {
+            const inp = document.getElementById('tltb-form-title');
+            if (inp) inp.focus();
+        }, 40);
+    }
+
+    function renderAddEditSheet() {
+        if (!uiState.sheetOpen) return '';
+        const f = uiState.form;
+        const startMins = f.hasTime ? hhmmToMinutes(f.startStr) : null;
+        const endMins = f.hasTime ? hhmmToMinutes(f.endStr) : null;
+        const overlap = f.hasTime ? findOverlap(uiState.selectedDate, startMins, endMins, uiState.editingBlockId) : null;
+
+        return `
+            <div class="tltb-sheet-backdrop" id="tltb-sheet-backdrop">
+                <div class="tltb-sheet">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="margin:0; font-size:15px; font-weight:900;">${uiState.editingBlockId ? 'ویرایش تایم‌بلاک' : 'افزودن تایم‌بلاک جدید'}</h3>
+                        <button type="button" class="tltb-close-btn" data-close-sheet="1">×</button>
+                    </div>
+
+                    <input type="text" id="tltb-form-title" class="tltb-input" placeholder="عنوان کار (مثلاً: تست‌زنی حسابان ۲)" value="${escapeHtml(f.title)}" />
+
+                    <div>
+                        <div style="font-size:11px; color:var(--tltb-muted); margin-bottom:6px;">دسته‌بندی انرژی:</div>
+                        <div class="tltb-cat-pills">
+                            ${Object.values(CATEGORIES).map(c => {
+                                const active = f.category === c.id;
+                                return `<button type="button" class="tltb-cat-pill ${active ? 'active' : ''}" style="${active ? `background:${c.defaultColor};` : ''}" data-pick-cat="${c.id}">${c.icon} ${c.short}</button>`;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    <div style="display:flex; align-items:center; justify-content:space-between; background:var(--tltb-bg); padding:9px 12px; border-radius:12px;">
+                        <label style="display:flex; align-items:center; gap:7px; font-size:12px; font-weight:700; cursor:pointer;">
+                            <input type="checkbox" id="tltb-form-hastime" ${f.hasTime ? 'checked' : ''} />
+                            <span>دارای بازه ساعت مشخص</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:7px; font-size:12px; font-weight:800; color:var(--tltb-accent); cursor:pointer;">
+                            <input type="checkbox" id="tltb-form-domino" ${f.domino ? 'checked' : ''} />
+                            <span>⭐ سنگ بزرگ روز</span>
+                        </label>
+                    </div>
+
+                    ${f.hasTime ? `
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                            <div>
+                                <label style="font-size:10.5px; color:var(--tltb-muted); display:block; margin-bottom:4px;">ساعت شروع:</label>
+                                <input type="time" id="tltb-form-start" class="tltb-input" dir="ltr" value="${escapeHtml(f.startStr)}" />
+                            </div>
+                            <div>
+                                <label style="font-size:10.5px; color:var(--tltb-muted); display:block; margin-bottom:4px;">ساعت پایان:</label>
+                                <input type="time" id="tltb-form-end" class="tltb-input" dir="ltr" value="${escapeHtml(f.endStr)}" />
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                            ${[30, 45, 60, 75, 90].map(dur => `<button type="button" class="tltb-pill-btn" data-quick-dur="${dur}">${toFaDigits(dur)} دقیقه</button>`).join('')}
+                        </div>
+                    ` : ''}
+
+                    ${overlap ? `
+                        <div style="background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.45); color:#fde68a; border-radius:12px; padding:8px 10px; font-size:11px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                            <span>تداخل زمانی با «${escapeHtml(overlap.title)}»</span>
+                            <button type="button" class="tltb-pill-btn" data-fix-overlap="${overlap.end}">تنظیم بعد از آن</button>
+                        </div>
+                    ` : ''}
+
+                    <textarea id="tltb-form-note" class="tltb-textarea" rows="2" placeholder="یادداشت یا جزئیات کوتاه (اختیاری)...">${escapeHtml(f.note)}</textarea>
+
+                    <button type="button" class="tltb-add-primary-btn" style="max-width:100%;" data-submit-form="1">
+                        ✓ ${uiState.editingBlockId ? 'ذخیره تغییرات' : 'افزودن به برنامه'}
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    /* ==================== رندر کل صفحه و اتصال رویدادها ==================== */
+
+    function renderOverlay() {
+        let overlay = document.getElementById('tltb-overlay');
+        if (!overlay) {
+            overlay = document.createElement('section');
+            overlay.id = 'tltb-overlay';
+            overlay.setAttribute('aria-label', 'تایم‌بلاک زندگی');
+            document.body.appendChild(overlay);
+        }
+
+        overlay.classList.toggle('open', uiState.isOpen);
+        if (!uiState.isOpen) return;
+
+        overlay.innerHTML = `
+            <header class="tltb-topbar">
+                <div class="tltb-title-group">
+                    <h2>🌿 تایم‌بلاک زندگی</h2>
+                    <p>سبک دن مارتل · مناسب بازبینی شب</p>
+                </div>
+                <div class="tltb-top-actions">
+                    <button type="button" class="tltb-pill-btn" data-jump-today="1">امروز</button>
+                    <button type="button" class="tltb-pill-btn" data-toggle-view="1">${uiState.viewMode === 'day' ? 'نمای هفته' : 'نمای روز'}</button>
+                    <button type="button" class="tltb-close-btn" data-close-planner="1" aria-label="بستن">×</button>
+                </div>
+            </header>
+
+            <div class="tltb-scroll-area">
+                <div class="tltb-container">
+                    ${renderWeekHeaderAndDays()}
+                    ${uiState.viewMode === 'day' ? renderDayView() : renderWeekOverview()}
+                    ${renderAccordions()}
+                </div>
+            </div>
+
+            <div class="tltb-bottom-bar">
+                <button type="button" class="tltb-add-primary-btn" data-open-add="1">
+                    <span>+</span>
+                    <span>افزودن تایم‌بلاک برای ${getPersianDateInfo(uiState.selectedDate).weekday}</span>
+                </button>
+            </div>
+
+            ${renderAddEditSheet()}
+        `;
+
+        bindOverlayEvents(overlay);
+    }
+
+    function bindOverlayEvents(overlay) {
+        // بستن و ناوبری بالا
+        overlay.querySelector('[data-close-planner]')?.addEventListener('click', closePlanner);
+        overlay.querySelector('[data-jump-today]')?.addEventListener('click', () => {
+            const today = getTehranTodayISO();
+            uiState.selectedDate = today;
+            uiState.weekStartISO = getSaturdayOfWeekISO(today);
+            uiState.viewMode = 'day';
+            renderOverlay();
+        });
+        overlay.querySelector('[data-toggle-view]')?.addEventListener('click', () => {
+            uiState.viewMode = uiState.viewMode === 'day' ? 'week' : 'day';
+            renderOverlay();
+        });
+
+        // هفته قبل / بعد و انتخاب روز
+        overlay.querySelectorAll('[data-nav-week]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const delta = Number(btn.getAttribute('data-nav-week'));
+                uiState.weekStartISO = addDaysISO(uiState.weekStartISO, delta);
+                uiState.selectedDate = addDaysISO(uiState.selectedDate, delta);
+                renderOverlay();
+            });
+        });
+        overlay.querySelectorAll('[data-select-date]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                uiState.selectedDate = btn.getAttribute('data-select-date');
+                uiState.viewMode = 'day';
+                renderOverlay();
+            });
+        });
+        overlay.querySelectorAll('[data-jump-day]').forEach(card => {
+            card.addEventListener('click', () => {
+                uiState.selectedDate = card.getAttribute('data-jump-day');
+                uiState.viewMode = 'day';
+                renderOverlay();
+            });
+        });
+
+        // ساب‌ویو لیست / محور ساعتی
+        overlay.querySelectorAll('[data-subview]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                uiState.daySubView = btn.getAttribute('data-subview');
+                renderOverlay();
+            });
+        });
+
+        // سنگ بزرگ سریع
+        overlay.querySelector('[data-set-first-domino]')?.addEventListener('click', () => {
+            const dayBlocks = getBlocksForDate(uiState.selectedDate);
+            if (!dayBlocks.length) return;
+            dayBlocks[0].domino = true;
+            uiState.store.blocks = enforceSingleDominoPerDay(uiState.store.blocks, dayBlocks[0].id);
+            uiState.store = saveStore(uiState.store);
+            renderOverlay();
+            showToast('سنگ بزرگ روز تعیین شد ⭐');
+        });
+
+        // عملیات روی بلاک‌ها
+        overlay.querySelectorAll('[data-toggle-done]').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                toggleBlockDone(btn.getAttribute('data-toggle-done'));
+                renderOverlay();
+            });
+        });
+        overlay.querySelectorAll('[data-toggle-note]').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                const id = btn.getAttribute('data-toggle-note');
+                uiState.expandedNotes[id] = !uiState.expandedNotes[id];
+                renderOverlay();
+            });
+        });
+        overlay.querySelectorAll('[data-edit-block]').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                const blk = uiState.store.blocks.find(b => b.id === btn.getAttribute('data-edit-block'));
+                if (blk) openAddOrEditSheet(blk);
+            });
+        });
+        overlay.querySelectorAll('[data-del-block]').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                deleteBlockToTrash(btn.getAttribute('data-del-block'));
+                renderOverlay();
+            });
+        });
+        overlay.querySelectorAll('[data-nudge-block]').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                const [id, delta] = btn.getAttribute('data-nudge-block').split(':');
+                nudgeBlockTime(id, Number(delta));
+                renderOverlay();
+            });
+        });
+        overlay.querySelectorAll('[data-send-single-timer]').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                sendBlocksToStudyTimer([btn.getAttribute('data-send-single-timer')]);
+            });
+        });
+
+        // تأخیر دسته‌ای
+        overlay.querySelectorAll('[data-toggle-delay]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                uiState.delayOpen = btn.getAttribute('data-toggle-delay') === '1';
+                renderOverlay();
+            });
+        });
+        overlay.querySelectorAll('[data-exec-delay]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                applyBatchDelay(uiState.selectedDate, Number(btn.getAttribute('data-exec-delay')));
+                uiState.delayOpen = false;
+                renderOverlay();
+            });
+        });
+
+        // باز کردن باتم‌شیت افزودن
+        overlay.querySelectorAll('[data-open-add]').forEach(btn => {
+            btn.addEventListener('click', () => openAddOrEditSheet(null));
+        });
+
+        // آکاردئون‌ها
+        overlay.querySelectorAll('[data-toggle-acc]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const key = btn.getAttribute('data-toggle-acc');
+                uiState.openAccordions[key] = !uiState.openAccordions[key];
+                renderOverlay();
+            });
+        });
+        overlay.querySelectorAll('[data-open-acc]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const key = btn.getAttribute('data-open-acc');
+                uiState.openAccordions[key] = true;
+                renderOverlay();
+            });
+        });
+
+        // چسباندن برنامه از متن
+        const pasteTa = overlay.querySelector('#tltb-paste-textarea');
+        if (pasteTa) {
+            pasteTa.addEventListener('input', () => { uiState.pasteRaw = pasteTa.value; });
+        }
+        overlay.querySelector('#tltb-paste-target')?.addEventListener('change', e => {
+            uiState.pasteTargetMode = e.target.value;
+            renderOverlay();
+        });
+        overlay.querySelector('#tltb-paste-mode')?.addEventListener('change', e => {
+            uiState.pasteApplyMode = e.target.value;
+        });
+        overlay.querySelector('[data-preview-paste]')?.addEventListener('click', () => {
+            const parsed = parseScheduleText(uiState.pasteRaw);
+            if (!parsed || !parsed.blocks.length) {
+                showToast('هیچ تایم‌بلاک معتبری در متن پیدا نشد');
+                return;
+            }
+            if (parsed.detectedTarget) uiState.pasteTargetMode = parsed.detectedTarget;
+            if (parsed.detectedApplyMode) uiState.pasteApplyMode = parsed.detectedApplyMode;
+            uiState.pastePreview = parsed;
+            renderOverlay();
+        });
+        overlay.querySelector('[data-apply-paste]')?.addEventListener('click', () => {
+            if (!uiState.pastePreview || !uiState.pastePreview.blocks.length) return;
+            const targetDate = resolveTargetDateFromMode(uiState.pasteTargetMode);
+            const newBlocks = uiState.pastePreview.blocks.map(b => ({
+                ...b,
+                id: generateId('blk'),
+                date: targetDate
+            }));
+
+            let nextAll = [...uiState.store.blocks];
+            if (uiState.pasteApplyMode === 'replace') {
+                // فقط همان روز هدف پاک می‌شود؛ سایر روزهای هفته کاملاً حفظ می‌شوند
+                nextAll = nextAll.filter(b => b.date !== targetDate);
+            }
+            nextAll = enforceSingleDominoPerDay([...nextAll, ...newBlocks]);
+
+            uiState.store.blocks = nextAll;
+            uiState.store = saveStore(uiState.store, { backup: true });
+            uiState.selectedDate = targetDate;
+            uiState.weekStartISO = getSaturdayOfWeekISO(targetDate);
+            uiState.pasteRaw = '';
+            uiState.pastePreview = null;
+            renderOverlay();
+            showToast(`برنامه ${getPersianDateInfo(targetDate).weekday} با موفقیت اعمال شد ✓`);
+        });
+
+        // کپی روتین
+        overlay.querySelector('#tltb-routine-target')?.addEventListener('change', e => { uiState.routineTarget = e.target.value; });
+        overlay.querySelector('#tltb-routine-mode')?.addEventListener('change', e => { uiState.routineMode = e.target.value; });
+        overlay.querySelector('[data-exec-routine]')?.addEventListener('click', () => {
+            const sourceBlocks = getBlocksForDate(uiState.selectedDate);
+            if (!sourceBlocks.length) {
+                showToast('روز مبدأ خالی است');
+                return;
+            }
+            const targetDate = resolveTargetDateFromMode(uiState.routineTarget);
+            if (targetDate === uiState.selectedDate) {
+                showToast('روز مبدأ و مقصد یکسان هستند');
+                return;
+            }
+            const cloned = sourceBlocks.map(b => ({
+                ...b,
+                id: generateId('blk'),
+                date: targetDate,
+                done: false
+            }));
+
+            let nextAll = [...uiState.store.blocks];
+            if (uiState.routineMode === 'replace') {
+                nextAll = nextAll.filter(b => b.date !== targetDate);
+            }
+            nextAll = enforceSingleDominoPerDay([...nextAll, ...cloned]);
+            uiState.store.blocks = nextAll;
+            uiState.store = saveStore(uiState.store, { backup: true });
+            showToast(`برنامه به ${getPersianDateInfo(targetDate).weekday} کپی شد`);
+        });
+
+        // بازبینی شب
+        overlay.querySelector('[data-save-review]')?.addEventListener('click', () => {
+            const note = overlay.querySelector('#tltb-review-note')?.value || '';
+            uiState.store.finalized[uiState.selectedDate] = {
+                note: note.trim(),
+                completedAt: Date.now()
+            };
+            uiState.store = saveStore(uiState.store);
+            showToast('بازبینی شب ثبت شد 🌙');
+        });
+        overlay.querySelector('[data-carry-tomorrow]')?.addEventListener('click', () => {
+            const undone = getBlocksForDate(uiState.selectedDate).filter(b => !b.done);
+            if (!undone.length) return;
+            const tomorrow = addDaysISO(uiState.selectedDate, 1);
+            const moved = undone.map(b => ({
+                ...b,
+                id: generateId('blk'),
+                date: tomorrow,
+                domino: false
+            }));
+            uiState.store.blocks.push(...moved);
+            uiState.store = saveStore(uiState.store, { backup: true });
+            showToast(`${toFaDigits(moved.length)} کار ناتمام به فردا منتقل شد`);
+        });
+
+        // انتخاب گروهی تایمر
+        overlay.querySelectorAll('[data-timer-chk]').forEach(chk => {
+            chk.addEventListener('change', () => {
+                const id = chk.getAttribute('data-timer-chk');
+                if (chk.checked) uiState.selectedForTimer[id] = true;
+                else delete uiState.selectedForTimer[id];
+            });
+        });
+        overlay.querySelector('[data-send-selected-timer]')?.addEventListener('click', () => {
+            const ids = Object.keys(uiState.selectedForTimer);
+            sendBlocksToStudyTimer(ids);
+            renderOverlay();
+        });
+
+        // پشتیبان‌گیری و سطل زباله
+        overlay.querySelector('[data-export-json]')?.addEventListener('click', () => {
+            const blob = new Blob([JSON.stringify(uiState.store, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `tilo-timeblock-${getTehranTodayISO()}.json`;
+            a.click();
+        });
+        overlay.querySelector('#tltb-import-file')?.addEventListener('change', e => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                try {
+                    const parsed = JSON.parse(ev.target.result);
+                    uiState.store = saveStore(parsed, { backup: true });
+                    renderOverlay();
+                    showToast('فایل پشتیبان با موفقیت بازیابی شد ✓');
+                } catch (_) {
+                    showToast('فایل پشتیبان معتبر نیست');
+                }
+            };
+            reader.readAsText(file);
+        });
+        overlay.querySelector('[data-restore-autobackup]')?.addEventListener('click', () => {
+            const raw = localStorage.getItem(BACKUP_KEY);
+            if (!raw) return;
+            uiState.store = saveStore(raw, { backup: false });
+            renderOverlay();
+            showToast('آخرین بکاپ خودکار بازگردانی شد');
+        });
+        overlay.querySelectorAll('[data-restore-trash]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                restoreFromTrash(btn.getAttribute('data-restore-trash'));
+                renderOverlay();
+            });
+        });
+
+        // رویدادهای باتم‌شیت افزودن / ویرایش
+        if (uiState.sheetOpen) {
+            overlay.querySelector('#tltb-sheet-backdrop')?.addEventListener('click', e => {
+                if (e.target.id === 'tltb-sheet-backdrop') {
+                    uiState.sheetOpen = false;
+                    renderOverlay();
+                }
+            });
+            overlay.querySelector('[data-close-sheet]')?.addEventListener('click', () => {
+                uiState.sheetOpen = false;
+                renderOverlay();
+            });
+            overlay.querySelector('#tltb-form-title')?.addEventListener('input', e => { uiState.form.title = e.target.value; });
+            overlay.querySelector('#tltb-form-note')?.addEventListener('input', e => { uiState.form.note = e.target.value; });
+            overlay.querySelector('#tltb-form-hastime')?.addEventListener('change', e => {
+                uiState.form.hasTime = e.target.checked;
+                renderOverlay();
+            });
+            overlay.querySelector('#tltb-form-domino')?.addEventListener('change', e => {
+                uiState.form.domino = e.target.checked;
+            });
+            overlay.querySelector('#tltb-form-start')?.addEventListener('change', e => {
+                uiState.form.startStr = e.target.value;
+                renderOverlay();
+            });
+            overlay.querySelector('#tltb-form-end')?.addEventListener('change', e => {
+                uiState.form.endStr = e.target.value;
+                renderOverlay();
+            });
+            overlay.querySelectorAll('[data-pick-cat]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const catId = btn.getAttribute('data-pick-cat');
+                    uiState.form.category = catId;
+                    uiState.form.color = CATEGORIES[catId].defaultColor;
+                    renderOverlay();
+                });
+            });
+            overlay.querySelectorAll('[data-quick-dur]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const dur = Number(btn.getAttribute('data-quick-dur'));
+                    const s = hhmmToMinutes(uiState.form.startStr) ?? 960;
+                    uiState.form.endStr = minutesToHHMM(Math.min(1440, s + dur), false);
+                    renderOverlay();
+                });
+            });
+            overlay.querySelector('[data-fix-overlap]')?.addEventListener('click', btn => {
+                const newStart = Number(btn.currentTarget.getAttribute('data-fix-overlap'));
+                const curS = hhmmToMinutes(uiState.form.startStr) ?? newStart;
+                const curE = hhmmToMinutes(uiState.form.endStr) ?? (curS + 60);
+                const dur = Math.max(15, curE - curS);
+                uiState.form.startStr = minutesToHHMM(Math.min(1440 - dur, newStart), false);
+                uiState.form.endStr = minutesToHHMM(Math.min(1440, newStart + dur), false);
+                renderOverlay();
+            });
+            overlay.querySelector('[data-submit-form]')?.addEventListener('click', () => {
+                const title = uiState.form.title.trim();
+                if (!title) {
+                    showToast('عنوان کار را وارد کنید');
+                    return;
+                }
+                const start = uiState.form.hasTime ? hhmmToMinutes(uiState.form.startStr) : null;
+                const end = uiState.form.hasTime ? hhmmToMinutes(uiState.form.endStr) : null;
+
+                upsertBlock({
+                    id: uiState.editingBlockId,
+                    date: uiState.selectedDate,
+                    title,
+                    note: uiState.form.note,
+                    category: uiState.form.category,
+                    color: uiState.form.color,
+                    start,
+                    end,
+                    domino: uiState.form.domino
+                });
+                uiState.sheetOpen = false;
+                renderOverlay();
+            });
+        }
+    }
+
+    /* ==================== باز و بسته کردن و اتصال به صفحه ==================== */
+
+    function openPlanner(dateISO = null) {
+        uiState.store = loadStore();
+        if (dateISO && /^\d{4}-\d{2}-\d{2}$/.test(dateISO)) {
+            uiState.selectedDate = dateISO;
+            uiState.weekStartISO = getSaturdayOfWeekISO(dateISO);
+        }
+        uiState.isOpen = true;
+        renderOverlay();
+    }
+
+    function closePlanner() {
+        uiState.isOpen = false;
+        uiState.sheetOpen = false;
+        renderOverlay();
+    }
+
+    function togglePlanner() {
+        if (uiState.isOpen) closePlanner();
+        else openPlanner();
+    }
+
+    function mountLauncher() {
+        injectStyles();
+
+        // اگر کانتینر #tilo-martell در صفحه وجود دارد، لانچر را داخل آن قرار بده
+        const martellContainer = document.getElementById('tilo-martell');
+        if (martellContainer) {
+            if (!martellContainer.querySelector('#tltb-launcher-btn')) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.id = 'tltb-launcher-btn';
+                btn.innerHTML = '<span>🌿</span><span>تایم‌بلاک زندگی</span>';
+                btn.addEventListener('click', () => openPlanner());
+                martellContainer.appendChild(btn);
+            }
+            return;
+        }
+
+        // در غیر این صورت، یک دکمه لانچر مینیمال در صفحه بساز تا همیشه قابل دسترس باشد
+        if (!document.getElementById('tltb-floating-launcher')) {
+            const wrap = document.createElement('div');
+            wrap.id = 'tltb-floating-launcher';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.id = 'tltb-launcher-btn';
+            btn.innerHTML = '<span>🌿</span><span>تایم‌بلاک زندگی</span>';
+            btn.addEventListener('click', () => openPlanner());
+            wrap.appendChild(btn);
+            document.body.appendChild(wrap);
+        }
+    }
+
+    // API عمومی برای اتصال به سایر بخش‌های tilo (تایمر، دستیار هوشمند و غیره)
+    window.tiloMartellPlanner = {
+        open: openPlanner,
+        close: closePlanner,
+        toggle: togglePlanner,
+        getStore: () => loadStore(),
+        getTodayBlocks: () => getBlocksForDate(getTehranTodayISO()),
+        refresh: () => {
+            uiState.store = loadStore();
+            if (uiState.isOpen) renderOverlay();
+        }
+    };
+
+    window.addEventListener('tilo:planner-updated', () => {
+        uiState.store = loadStore();
+        if (uiState.isOpen) renderOverlay();
     });
 
-    load();
-  }
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && uiState.isOpen) {
+            if (uiState.sheetOpen) {
+                uiState.sheetOpen = false;
+                renderOverlay();
+            } else {
+                closePlanner();
+            }
+        }
+    });
 
-  window.tiloMartell = Object.freeze({ open, close });
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init, { once: true });
-  } else {
-    init();
-  }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', mountLauncher);
+    } else {
+        mountLauncher();
+    }
 })();
