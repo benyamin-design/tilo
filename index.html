@@ -3215,8 +3215,73 @@
     <script src="./tilo-upgrade.js?v=3"></script>
     <script src="./tilo-extras.js?v=3"></script>
     <script src="./tilo-notes.js?v=2"></script>
-<script src="./tilo-martell.js?v=10" defer></script>
+<script src="./tilo-martell.js?v=11" defer></script>
     <script src="./tilo-martell-paste.js?v=2" defer></script>
 <script src="./tilo-martell-bridge.js?v=2" defer></script>
+    <script>
+(function () {
+  function openMartell() {
+    if (window.tiloMartellPlanner && window.tiloMartellPlanner.open) {
+      window.tiloMartellPlanner.open();
+      return;
+    }
+    if (window.tiloMartell && window.tiloMartell.open) {
+      window.tiloMartell.open();
+    }
+  }
+
+  if (window.tiloMartellPlanner && !window.tiloMartell) {
+    window.tiloMartell = window.tiloMartellPlanner;
+  }
+
+  function ensureBtn() {
+    var neu = document.getElementById('tltb-floating-launcher');
+    if (neu) neu.style.setProperty('display', 'none', 'important');
+
+    if (document.getElementById('tilo-martell-launcher')) return;
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'tilo-martell-launcher';
+    btn.setAttribute('aria-label', 'تایم‌بلاک زندگی');
+    btn.innerHTML = '📅';
+    btn.style.cssText = [
+      'position:fixed',
+      'z-index:99990',
+      'width:52px',
+      'height:52px',
+      'right:14px',
+      'bottom:calc(5.6rem + env(safe-area-inset-bottom,0px))',
+      'border:1px solid rgba(255,255,255,.12)',
+      'border-radius:16px',
+      'background:linear-gradient(145deg,#2f6a50,#35634e)',
+      'color:#fff',
+      'font-size:22px',
+      'cursor:pointer',
+      'box-shadow:0 8px 24px rgba(53,99,78,.4)',
+      'display:inline-flex',
+      'align-items:center',
+      'justify-content:center',
+      'padding:0'
+    ].join(';');
+
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      openMartell();
+    });
+
+    document.body.appendChild(btn);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', ensureBtn);
+  } else {
+    ensureBtn();
+  }
+  window.addEventListener('load', ensureBtn);
+  setTimeout(ensureBtn, 800);
+})();
+    </script>
 </body>
 </html>
