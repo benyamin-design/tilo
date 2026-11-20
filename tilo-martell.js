@@ -1,5 +1,5 @@
 /**
- * tilo | ماژول تایم‌بلاک زندگی (سبک دن مارتل) - نسخه بهینه‌شده
+ * tilo | ماژول تایم‌بلاک زندگی (سبک دن مارتل)
  * کلید ذخیره‌سازی: tilo_martell_planner
  * منطقه زمانی مرجع: Asia/Tehran | شروع هفته: شنبه
  */
@@ -15,6 +15,27 @@
     const SCHEMA_VERSION = 2;
 
     const WEEKDAYS_FA = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
+    const WHEEL_HOURS = Array.from({ length: 24 }, (_, i) => i);
+    const WHEEL_MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+    const WHEEL_ITEM_HEIGHT = 36;
+    const QUICK_START_PRESETS = [
+        { label: '05:00', h: 5, m: 0 },
+        { label: '06:30', h: 6, m: 30 },
+        { label: '14:30', h: 14, m: 30 },
+        { label: '16:00', h: 16, m: 0 },
+        { label: '21:00', h: 21, m: 0 }
+    ];
+
+    const COLOR_PRESETS = [
+        '#10b981',
+        '#14b8a6',
+        '#38bdf8',
+        '#6366f1',
+        '#f59e0b',
+        '#f43f5e',
+        '#a855f7',
+        '#64748b'
+    ];
 
     const CATEGORIES = {
         deep: {
@@ -64,7 +85,7 @@
         }
     };
 
-    /* ==================== ابزارهای رنگ، تاریخ و زمان تهران ==================== */
+    /* ==================== ابزارهای رنگ، تاریخ و زمان (۲۴ ساعته انگلیسی) ==================== */
 
     function hexToRgba(hex, alpha = 0.1) {
         const clean = String(hex || '#10b981').replace('#', '').trim();
@@ -84,14 +105,27 @@
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
 
+    function isValidHex(color) {
+        return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(String(color || '').trim());
+    }
+
+    function normalizeHex6(color) {
+        const c = String(color || '').trim();
+        if (/^#[0-9a-fA-F]{6}$/.test(c)) return c.toLowerCase();
+        if (/^#[0-9a-fA-F]{3}$/.test(c)) {
+            return `#${c[1]}${c[1]}${c[2]}${c[2]}${c[3]}${c[3]}`.toLowerCase();
+        }
+        return '#10b981';
+    }
+
     function toEnDigits(str) {
-        return String(str || '')
+        return String(str ?? '')
             .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
             .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
     }
 
-    function toFaDigits(str) {
-        return String(str ?? '').replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]);
+    function pad2(n) {
+        return String(Math.max(0, Math.floor(Number(n) || 0))).padStart(2, '0');
     }
 
     function getTehranTodayISO() {
@@ -104,7 +138,7 @@
             }).format(new Date()));
         } catch (_) {
             const d = new Date();
-            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
         }
     }
 
@@ -134,14 +168,14 @@
         const dt = parseISOToUTCNoon(iso);
         dt.setUTCDate(dt.getUTCDate() + deltaDays);
         const y = dt.getUTCFullYear();
-        const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
-        const d = String(dt.getUTCDate()).padStart(2, '0');
+        const m = pad2(dt.getUTCMonth() + 1);
+        const d = pad2(dt.getUTCDate());
         return `${y}-${m}-${d}`;
     }
 
     function getSaturdayOfWeekISO(iso) {
         const dt = parseISOToUTCNoon(iso);
-        const jsDay = dt.getUTCDay(); // Sun=0 .. Sat=6
+        const jsDay = dt.getUTCDay();
         const offsetFromSaturday = (jsDay + 1) % 7;
         return addDaysISO(iso, -offsetFromSaturday);
     }
@@ -153,54 +187,77 @@
                 timeZone: 'Asia/Tehran',
                 weekday: 'long'
             }).format(dt);
-            const dayNum = new Intl.DateTimeFormat('fa-IR', {
+            const dayNum = toEnDigits(new Intl.DateTimeFormat('fa-IR', {
                 timeZone: 'Asia/Tehran',
                 day: 'numeric'
-            }).format(dt);
+            }).format(dt));
             const monthName = new Intl.DateTimeFormat('fa-IR', {
                 timeZone: 'Asia/Tehran',
                 month: 'long'
             }).format(dt);
-            const fullDate = new Intl.DateTimeFormat('fa-IR', {
+            const fullDate = toEnDigits(new Intl.DateTimeFormat('fa-IR', {
                 timeZone: 'Asia/Tehran',
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
-            }).format(dt);
+            }).format(dt));
             return { weekday, dayNum, monthName, fullDate, shortDate: `${dayNum} ${monthName}` };
         } catch (_) {
             return { weekday: 'روز', dayNum: '', monthName: '', fullDate: iso, shortDate: iso };
         }
     }
 
-    function minutesToHHMM(mins, fa = true) {
+    function minutesToHHMM(mins) {
         if (mins === null || mins === undefined || Number.isNaN(Number(mins))) return '';
         const clamped = Math.max(0, Math.min(1440, Math.round(Number(mins))));
         const h = Math.floor(clamped / 60);
         const m = clamped % 60;
-        const raw = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-        return fa ? toFaDigits(raw) : raw;
+        return `${pad2(h)}:${pad2(m)}`;
     }
 
-    function hhmmToMinutes(str) {
-        const clean = toEnDigits(str).trim();
-        const match = clean.match(/^(\d{1,2}):(\d{2})$/);
-        if (!match) return null;
-        const h = Number(match[1]);
-        const m = Number(match[2]);
-        if (h < 0 || h > 24 || m < 0 || m > 59) return null;
-        const total = h * 60 + m;
-        return total > 1440 ? 1440 : total;
+    function minutesToWheelParts(mins) {
+        const clamped = Math.max(0, Math.min(1435, Math.round(Number(mins) || 0)));
+        const h = Math.min(23, Math.floor(clamped / 60));
+        const rawM = clamped % 60;
+        const m = Math.min(55, Math.round(rawM / 5) * 5);
+        return { h, m };
     }
 
-    function formatDurationFa(mins) {
+    /**
+     * فقط مخصوص پارس متن برنامه (پیست آفلاین)؛ در فرم افزودن/ویرایش استفاده نمی‌شود.
+     * هیچ تبدیل خودکار صبح به عصر روی اعداد 00..23 انجام نمی‌دهد.
+     */
+    function parseTextTimeToMinutes(input) {
+        const raw = toEnDigits(String(input || '')).trim().replace(/[٫.,،\-]/g, ':');
+        if (!raw) return null;
+
+        let h = null;
+        let m = 0;
+
+        if (/^\d{1,2}:\d{1,2}$/.test(raw)) {
+            const [hStr, mStr] = raw.split(':');
+            h = parseInt(hStr, 10);
+            m = parseInt(mStr, 10);
+        } else if (/^\d{1,2}$/.test(raw)) {
+            h = parseInt(raw, 10);
+            m = 0;
+        } else {
+            return null;
+        }
+
+        if (Number.isNaN(h) || Number.isNaN(m) || h < 0 || h > 24 || m < 0 || m > 59) return null;
+        if (h === 24 && m > 0) return null;
+        return Math.min(1440, h * 60 + m);
+    }
+
+    function formatDurationEn(mins) {
         const m = Math.max(0, Math.round(Number(mins) || 0));
-        if (m === 0) return '۰ دقیقه';
+        if (m === 0) return '0 دقیقه';
         const h = Math.floor(m / 60);
         const rem = m % 60;
-        if (h > 0 && rem > 0) return `${toFaDigits(h)} ساعت و ${toFaDigits(rem)} دقیقه`;
-        if (h > 0) return `${toFaDigits(h)} ساعت`;
-        return `${toFaDigits(rem)} دقیقه`;
+        if (h > 0 && rem > 0) return `${h} ساعت و ${rem} دقیقه`;
+        if (h > 0) return `${h} ساعت`;
+        return `${rem} دقیقه`;
     }
 
     function generateId(prefix = 'blk') {
@@ -225,8 +282,9 @@
             end = null;
         }
 
-        let color = raw?.color || catObj.palette[index % catObj.palette.length];
-        if (catKey === 'recovery') color = CATEGORIES.recovery.defaultColor;
+        const color = isValidHex(raw?.color)
+            ? normalizeHex6(raw.color)
+            : catObj.palette[index % catObj.palette.length];
 
         return {
             id: String(raw?.id || generateId('blk')),
@@ -346,6 +404,7 @@
         viewMode: 'day', // 'day' | 'week'
         daySubView: 'list', // 'list' | 'timeline'
         expandedNotes: {},
+        openActionMenuId: null,
         openAccordions: {
             paste: false,
             routine: false,
@@ -361,8 +420,10 @@
             category: 'deep',
             color: '#10b981',
             hasTime: true,
-            startStr: '16:00',
-            endStr: '17:15',
+            startH: 16,
+            startM: 0,
+            endH: 17,
+            endM: 0,
             domino: false
         },
         delayOpen: false,
@@ -385,7 +446,7 @@
         uiState.toastTimer = setTimeout(() => {
             uiState.toastMsg = '';
             renderToast();
-        }, 2500);
+        }, 2600);
     }
 
     /* ==================== پارسر هوشمند آفلاین برنامه متنی ==================== */
@@ -429,18 +490,16 @@
             else if (/امروز/.test(firstLine)) detectedTarget = 'today';
             else {
                 const dayNames = [
-                    { key: 'sat', re: /شنبه/ },
                     { key: 'sun', re: /یکشنبه|یک\s*شنبه/ },
                     { key: 'mon', re: /دوشنبه|دو\s*شنبه/ },
                     { key: 'tue', re: /سه‌شنبه|سه\s*شنبه/ },
                     { key: 'wed', re: /چهارشنبه|چهار\s*شنبه/ },
                     { key: 'thu', re: /پنج‌شنبه|پنج\s*شنبه/ },
-                    { key: 'fri', re: /جمعه/ }
+                    { key: 'fri', re: /جمعه/ },
+                    { key: 'sat', re: /شنبه/ }
                 ];
                 for (const d of dayNames) {
-                    if ((d.key !== 'sun' && d.re.test(firstLine) && !/یکشنبه|دوشنبه|سه‌شنبه|چهارشنبه|پنج‌شنبه/.test(firstLine)) ||
-                        (d.key === 'sun' && d.re.test(firstLine)) ||
-                        (d.key !== 'sat' && d.key !== 'sun' && d.re.test(firstLine))) {
+                    if (d.re.test(firstLine)) {
                         detectedTarget = d.key;
                         break;
                     }
@@ -465,10 +524,10 @@
             let start = null;
             let end = null;
 
-            const timeRangeMatch = line.match(/(\d{1,2}:\d{2})\s*(?:تا|الی|-|–|—|to)\s*(\d{1,2}:\d{2})/i);
+            const timeRangeMatch = line.match(/(\d{1,2}(?::\d{2})?)\s*(?:تا|الی|-|–|—|to)\s*(\d{1,2}(?::\d{2})?)/i);
             if (timeRangeMatch) {
-                start = hhmmToMinutes(timeRangeMatch[1]);
-                end = hhmmToMinutes(timeRangeMatch[2]);
+                start = parseTextTimeToMinutes(timeRangeMatch[1]);
+                end = parseTextTimeToMinutes(timeRangeMatch[2]);
                 if (start !== null && end !== null && end <= start) {
                     end = Math.min(1440, start + 30);
                 }
@@ -586,7 +645,8 @@
 
     function toggleBlockDomino(blockId) {
         const target = uiState.store.blocks.find(b => b.id === blockId);
-        if (!target) return;
+        if (!target) return false;
+
         const willBeDomino = !target.domino;
         uiState.store.blocks.forEach(b => {
             if (b.date === target.date) {
@@ -595,6 +655,7 @@
         });
         uiState.store = saveStore(uiState.store);
         showToast(willBeDomino ? `«${target.title}» سنگ بزرگ روز شد ⭐` : 'سنگ بزرگ برداشته شد');
+        return willBeDomino;
     }
 
     function toggleBlockDone(blockId) {
@@ -614,6 +675,7 @@
         const [removed] = uiState.store.blocks.splice(idx, 1);
         uiState.store.trash.unshift(removed);
         uiState.store.trash = uiState.store.trash.slice(0, 40);
+        if (uiState.openActionMenuId === blockId) uiState.openActionMenuId = null;
         uiState.store = saveStore(uiState.store, { backup: true });
         showToast('به سطل بازیابی منتقل شد');
     }
@@ -637,7 +699,7 @@
         blk.start = nextStart;
         blk.end = nextStart + duration;
         uiState.store = saveStore(uiState.store);
-        showToast(deltaMinutes > 0 ? `+${toFaDigits(deltaMinutes)} دقیقه عقب افتاد` : `${toFaDigits(Math.abs(deltaMinutes))} دقیقه جلو افتاد`);
+        showToast(deltaMinutes > 0 ? `+${deltaMinutes} دقیقه عقب افتاد` : `${Math.abs(deltaMinutes)} دقیقه جلو افتاد`);
     }
 
     function moveBlockOrder(blockId, direction) {
@@ -649,7 +711,6 @@
         const curr = dayBlocks[idx];
         const adj = dayBlocks[targetIdx];
 
-        // جابه‌جایی زمان اگر هر دو دارای ساعت مشخص باشند
         if (curr.start !== null && curr.end !== null && adj.start !== null && adj.end !== null) {
             const first = direction < 0 ? adj : curr;
             const second = direction < 0 ? curr : adj;
@@ -658,7 +719,6 @@
             const durFirst = first.end - first.start;
             const durSecond = second.end - second.start;
 
-            // بعد از جابه‌جایی، second اول قرار می‌گیرد و first دوم
             second.start = baseStart;
             second.end = Math.min(1440, baseStart + durSecond);
 
@@ -666,7 +726,6 @@
             first.end = Math.min(1440, first.start + durFirst);
         }
 
-        // جابه‌جایی جایگاه در آرایه اصلی برای حفظ ترتیب کارهای بدون ساعت
         const storeIdxA = uiState.store.blocks.findIndex(b => b.id === curr.id);
         const storeIdxB = uiState.store.blocks.findIndex(b => b.id === adj.id);
         if (storeIdxA !== -1 && storeIdxB !== -1) {
@@ -701,63 +760,135 @@
 
         if (shiftedCount > 0) {
             uiState.store = saveStore(uiState.store, { backup: true });
-            const absMin = toFaDigits(Math.abs(delta));
+            const absMin = Math.abs(delta);
             showToast(delta > 0
-                ? `${toFaDigits(shiftedCount)} کار ${absMin} دقیقه عقب افتاد`
-                : `${toFaDigits(shiftedCount)} کار ${absMin} دقیقه جلو افتاد`);
+                ? `${shiftedCount} کار ${absMin} دقیقه عقب افتاد`
+                : `${shiftedCount} کار ${absMin} دقیقه جلو افتاد`);
         } else {
             showToast('کار انجام‌نشده و زمان‌داری برای جابه‌جایی یافت نشد');
         }
     }
 
+    /**
+     * ارسال به صف تایمر مطالعه (سازگار با bridge رویداد tilo:queue-part + sp_pro_parts)
+     */
     function sendBlocksToStudyTimer(blockIds) {
         const selected = uiState.store.blocks.filter(b => blockIds.includes(b.id));
         if (!selected.length) {
-            showToast('حداقل یک پارت مطالعاتی انتخاب کنید');
-            return;
+            showToast('حداقل یک پارت انتخاب کنید');
+            return false;
         }
 
         const todayISO = getTehranTodayISO();
         const todayFa = getPersianDateInfo(todayISO).fullDate;
 
+        const readPartsList = () => {
+            try {
+                const raw = localStorage.getItem(TILO_PARTS_KEY);
+                const parsed = raw ? JSON.parse(raw) : [];
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (_) {
+                return [];
+            }
+        };
+
+        const beforeList = readPartsList();
+        const beforeCount = beforeList.length;
+
+        const payloads = selected.map((b, i) => {
+            const dur = (b.start !== null && b.end !== null && b.end > b.start)
+                ? Math.max(15, Math.round(b.end - b.start))
+                : 60;
+            const isNonStudy = b.category === 'recovery' || b.category === 'health';
+            const catObj = CATEGORIES[b.category] || CATEGORIES.deep;
+
+            return {
+                eventDetail: {
+                    id: b.id,
+                    title: b.title,
+                    topic: b.title,
+                    minutes: dur,
+                    plannedTime: dur,
+                    note: b.note || '',
+                    category: b.category,
+                    isNonStudy,
+                    isLife: isNonStudy
+                },
+                storagePart: {
+                    id: Date.now() + i,
+                    sourceBlockId: b.id,
+                    dateISO: todayISO,
+                    dateStr: todayFa,
+                    isNonStudy,
+                    isLife: isNonStudy,
+                    subjects: isNonStudy ? [] : [catObj.short],
+                    topic: b.title,
+                    description: b.note || 'ارسال‌شده از تایم‌بلاک زندگی',
+                    type: isNonStudy ? 'کار شخصی / غیردرسی' : (b.category === 'deep' ? 'تست و مطالعه تخصصی' : 'مطالعه و مرور'),
+                    category: b.category,
+                    plannedTime: dur,
+                    realTime: 0,
+                    status: 'pending',
+                    tests: { correct: 0, wrong: 0, unanswered: 0, total: 0 }
+                }
+            };
+        });
+
+        payloads.forEach(item => {
+            try {
+                window.dispatchEvent(new CustomEvent('tilo:queue-part', { detail: item.eventDetail }));
+            } catch (_) {}
+        });
         try {
             window.dispatchEvent(new CustomEvent('tilo:send-to-timer', {
-                detail: { blocks: JSON.parse(JSON.stringify(selected)) }
+                detail: { blocks: payloads.map(p => p.eventDetail) }
             }));
         } catch (_) {}
 
-        try {
-            const existingRaw = localStorage.getItem(TILO_PARTS_KEY);
-            const existingParts = existingRaw ? JSON.parse(existingRaw) : [];
-            if (Array.isArray(existingParts)) {
-                const mapped = selected.map((b, i) => {
-                    const dur = (b.start !== null && b.end !== null) ? Math.max(15, b.end - b.start) : 60;
-                    return {
-                        id: Date.now() + i,
-                        dateISO: todayISO,
-                        dateStr: todayFa,
-                        isNonStudy: !CATEGORIES[b.category]?.studyRelevant,
-                        isLife: !CATEGORIES[b.category]?.studyRelevant,
-                        subjects: [CATEGORIES[b.category]?.short || 'مطالعه'],
-                        topic: b.title,
-                        description: b.note || 'ارسال‌شده از تایم‌بلاک زندگی',
-                        type: b.category === 'deep' ? 'تست و مطالعه تخصصی' : 'مطالعه و مرور',
-                        category: 'خودخوان',
-                        plannedTime: dur,
-                        realTime: 0,
-                        status: 'pending',
-                        tests: { correct: 0, wrong: 0, unanswered: 0, total: 0 }
-                    };
-                });
-                localStorage.setItem(TILO_PARTS_KEY, JSON.stringify([...mapped, ...existingParts]));
-            }
-        } catch (_) {}
+        let queueUpdated = false;
+        const afterBridgeList = readPartsList();
 
-        uiState.selectedForTimer = {};
-        showToast(`${toFaDigits(selected.length)} پارت به صف تایمر مطالعه ارسال شد 🚀`);
+        if (afterBridgeList.length > beforeCount) {
+            queueUpdated = true;
+        } else {
+            try {
+                const newParts = payloads.map(p => p.storagePart);
+                const merged = [...newParts, ...afterBridgeList];
+                const serialized = JSON.stringify(merged);
+                localStorage.setItem(TILO_PARTS_KEY, serialized);
+
+                if (window.TiloPlus && window.TiloPlus.vueState && Array.isArray(window.TiloPlus.vueState.parts)) {
+                    window.TiloPlus.vueState.parts.unshift(...newParts);
+                }
+
+                try {
+                    window.dispatchEvent(new StorageEvent('storage', {
+                        key: TILO_PARTS_KEY,
+                        newValue: serialized
+                    }));
+                } catch (_) {}
+
+                const verifyList = readPartsList();
+                if (verifyList.length > beforeCount) {
+                    queueUpdated = true;
+                }
+            } catch (err) {
+                console.warn('tilo-martell: failed writing sp_pro_parts', err);
+                queueUpdated = false;
+            }
+        }
+
+        if (queueUpdated) {
+            uiState.selectedForTimer = {};
+            showToast(`${selected.length} پارت به صف تایمر مطالعه اضافه شد 🚀`);
+            return true;
+        } else {
+            showToast('خطا در به‌روزرسانی صف تایمر؛ دوباره تلاش کنید');
+            return false;
+        }
     }
 
-    /* ==================== استایل‌های CSS بهینه‌شده و فشرده ==================== */
+    /* ==================== استایل‌های CSS ==================== */
 
     function injectStyles() {
         if (document.getElementById('tltb-styles')) return;
@@ -844,11 +975,17 @@
                 -webkit-tap-highlight-color: transparent;
             }
 
+            .tltb-num {
+                font-variant-numeric: tabular-nums;
+                direction: ltr;
+                unicode-bidi: isolate;
+            }
+
             /* هدر چسبان بالا */
             .tltb-topbar {
                 background: var(--tltb-surface);
                 border-bottom: 1px solid var(--tltb-border-soft);
-                padding: 10px 14px;
+                padding: 9px 14px;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
@@ -857,7 +994,7 @@
             }
             .tltb-title-group h2 {
                 margin: 0;
-                font-size: 15px;
+                font-size: 14.5px;
                 font-weight: 900;
                 color: var(--tltb-text);
                 display: flex;
@@ -866,7 +1003,7 @@
             }
             .tltb-title-group p {
                 margin: 1px 0 0 0;
-                font-size: 10.5px;
+                font-size: 10px;
                 color: var(--tltb-muted);
             }
             .tltb-top-actions {
@@ -878,8 +1015,8 @@
                 background: var(--tltb-elevated);
                 color: var(--tltb-text);
                 border: 1px solid var(--tltb-border-soft);
-                border-radius: 10px;
-                padding: 5px 10px;
+                border-radius: 9px;
+                padding: 5px 9px;
                 font-family: inherit;
                 font-size: 11px;
                 font-weight: 800;
@@ -887,7 +1024,7 @@
                 display: inline-flex;
                 align-items: center;
                 gap: 4px;
-                transition: all 0.15s ease;
+                transition: all 0.14s ease;
             }
             .tltb-pill-btn:hover {
                 border-color: var(--tltb-accent);
@@ -899,9 +1036,9 @@
                 border-color: var(--tltb-accent);
             }
             .tltb-close-btn {
-                width: 32px;
-                height: 32px;
-                border-radius: 10px;
+                width: 31px;
+                height: 31px;
+                border-radius: 9px;
                 border: 1px solid var(--tltb-border-soft);
                 background: var(--tltb-elevated);
                 color: var(--tltb-text);
@@ -916,22 +1053,21 @@
             .tltb-scroll-area {
                 flex: 1;
                 overflow-y: auto;
-                padding: 10px 12px 86px 12px;
+                padding: 9px 11px 84px 11px;
             }
             .tltb-container {
                 max-width: 820px;
                 margin: 0 auto;
                 display: flex;
                 flex-direction: column;
-                gap: 10px;
+                gap: 9px;
             }
 
-            /* کارت‌های نرم و فشرده */
             .tltb-card {
                 background: var(--tltb-surface);
                 border: 1px solid var(--tltb-border-soft);
-                border-radius: 15px;
-                padding: 10px 12px;
+                border-radius: 14px;
+                padding: 9px 11px;
             }
 
             /* نوار ناوبری هفته و روزها */
@@ -939,7 +1075,7 @@
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                margin-bottom: 8px;
+                margin-bottom: 7px;
                 gap: 6px;
             }
             .tltb-week-label {
@@ -955,8 +1091,8 @@
             .tltb-day-pill {
                 background: var(--tltb-bg);
                 border: 1px solid var(--tltb-border-soft);
-                border-radius: 11px;
-                padding: 6px 2px;
+                border-radius: 10px;
+                padding: 5px 2px;
                 text-align: center;
                 cursor: pointer;
                 display: flex;
@@ -971,9 +1107,10 @@
                 color: var(--tltb-muted);
             }
             .tltb-day-pill .d-num {
-                font-size: 12px;
+                font-size: 11.5px;
                 font-weight: 900;
                 color: var(--tltb-text);
+                font-variant-numeric: tabular-nums;
             }
             .tltb-day-pill .d-dot {
                 width: 4px;
@@ -1001,8 +1138,8 @@
             .tltb-domino-card {
                 background: linear-gradient(135deg, rgba(110, 231, 183, 0.13) 0%, var(--tltb-surface) 100%);
                 border: 1.5px solid var(--tltb-border);
-                border-radius: 14px;
-                padding: 9px 11px;
+                border-radius: 13px;
+                padding: 8px 10px;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
@@ -1012,14 +1149,14 @@
             .tltb-domino-badge {
                 display: inline-flex;
                 align-items: center;
-                gap: 4px;
+                gap: 5px;
                 font-size: 10px;
                 font-weight: 900;
                 color: var(--tltb-accent);
                 background: var(--tltb-accent-bg);
-                padding: 2px 8px;
+                padding: 1.5px 7px;
                 border-radius: 999px;
-                margin-bottom: 3px;
+                margin-bottom: 2px;
             }
 
             /* هدر بخش روز */
@@ -1029,7 +1166,7 @@
                 align-items: center;
                 justify-content: space-between;
                 gap: 6px;
-                margin-bottom: 8px;
+                margin-bottom: 7px;
             }
             .tltb-segmented {
                 display: inline-flex;
@@ -1045,7 +1182,7 @@
                 font-family: inherit;
                 font-size: 10.5px;
                 font-weight: 800;
-                padding: 4px 9px;
+                padding: 3.5px 9px;
                 border-radius: 7px;
                 cursor: pointer;
             }
@@ -1054,36 +1191,40 @@
                 color: var(--tltb-accent);
             }
 
-            /* کارت بلاک فشرده و قابل کلیک برای ویرایش */
+            /* کارت بلاک فوق‌فشرده */
             .tltb-block-list {
                 display: flex;
                 flex-direction: column;
-                gap: 6px;
+                gap: 5px;
             }
-            .tltb-block-item {
+            .tltb-block-wrap {
                 border: 1px solid var(--tltb-border-soft);
                 border-right-width: 3.5px;
-                border-radius: 12px;
-                padding: 7px 9px;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                cursor: pointer;
-                transition: opacity 0.18s ease, transform 0.12s ease, border-color 0.15s ease;
+                border-radius: 11px;
+                overflow: hidden;
+                transition: opacity 0.16s ease, border-color 0.14s ease, box-shadow 0.14s ease;
             }
-            .tltb-block-item:hover {
-                border-color: var(--tltb-accent);
+            .tltb-block-wrap.is-selected {
+                border-color: var(--tltb-accent) !important;
+                box-shadow: 0 0 0 1px rgba(110, 231, 183, 0.28);
             }
-            .tltb-block-item.is-done {
-                opacity: 0.58;
+            .tltb-block-wrap.is-done {
+                opacity: 0.56;
             }
-            .tltb-block-item.is-done .tltb-blk-title {
+            .tltb-block-wrap.is-done .tltb-blk-title {
                 text-decoration: line-through;
             }
+            .tltb-block-row {
+                padding: 6px 8px;
+                display: flex;
+                align-items: center;
+                gap: 7px;
+                cursor: pointer;
+            }
             .tltb-check-btn {
-                width: 22px;
-                height: 22px;
-                border-radius: 7px;
+                width: 21px;
+                height: 21px;
+                border-radius: 6px;
                 border: 1.5px solid var(--tltb-border);
                 background: rgba(0, 0, 0, 0.15);
                 color: transparent;
@@ -1092,9 +1233,9 @@
                 justify-content: center;
                 cursor: pointer;
                 flex-shrink: 0;
-                font-size: 12px;
+                font-size: 11.5px;
                 font-weight: 900;
-                transition: all 0.14s ease;
+                transition: all 0.13s ease;
             }
             .tltb-check-btn.checked {
                 background: var(--tltb-accent);
@@ -1110,79 +1251,81 @@
                 flex-wrap: wrap;
                 align-items: center;
                 gap: 5px;
-                margin-bottom: 2px;
+                margin-bottom: 1px;
             }
-            /* استایل مجزا برای ساعت شروع-پایان و مدت زمان */
             .tltb-time-range {
                 font-size: 11px;
                 font-weight: 800;
                 color: var(--tltb-text);
-                letter-spacing: 0.1px;
+                font-variant-numeric: tabular-nums;
+                direction: ltr;
+                unicode-bidi: isolate;
             }
             .tltb-duration-tag {
                 font-size: 9.5px;
                 font-weight: 600;
                 color: var(--tltb-muted);
-                background: rgba(255, 255, 255, 0.04);
-                padding: 1px 6px;
+                background: rgba(255, 255, 255, 0.05);
+                padding: 0.5px 5px;
                 border-radius: 5px;
             }
             body.tilo-theme-day .tltb-duration-tag {
                 background: rgba(0, 0, 0, 0.05);
             }
             .tltb-cat-badge {
-                font-size: 9.5px;
+                font-size: 9px;
                 font-weight: 800;
-                padding: 1px 6px;
+                padding: 1px 5px;
                 border-radius: 5px;
             }
             .tltb-blk-title {
                 font-size: 12.5px;
                 font-weight: 800;
-                line-height: 1.4;
+                line-height: 1.35;
                 color: var(--tltb-text);
                 margin: 0;
                 word-break: break-word;
             }
             .tltb-blk-note {
-                font-size: 11px;
+                font-size: 10.5px;
                 color: var(--tltb-muted);
-                margin: 4px 0 0 0;
-                line-height: 1.5;
-                background: rgba(0, 0, 0, 0.18);
-                padding: 4px 8px;
-                border-radius: 7px;
+                margin: 3px 0 0 0;
+                line-height: 1.45;
+                background: rgba(0, 0, 0, 0.16);
+                padding: 4px 7px;
+                border-radius: 6px;
             }
             body.tilo-theme-day .tltb-blk-note {
                 background: rgba(0, 0, 0, 0.04);
             }
 
-            /* دکمه‌های جمع‌وجور روی کارت */
+            /* ردیف اکشن‌های جمع‌وجور و منوی ⋯ */
             .tltb-blk-actions {
                 display: flex;
                 align-items: center;
-                gap: 2px;
+                gap: 3px;
                 flex-shrink: 0;
             }
             .tltb-icon-btn {
-                min-width: 25px;
-                height: 25px;
-                padding: 0 4px;
+                min-width: 26px;
+                height: 26px;
+                padding: 0 5px;
                 border-radius: 7px;
                 border: 1px solid transparent;
                 background: rgba(0, 0, 0, 0.14);
                 color: var(--tltb-muted);
                 font-family: inherit;
-                font-size: 10.5px;
+                font-size: 11px;
                 font-weight: 800;
                 cursor: pointer;
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                transition: all 0.13s ease;
+                gap: 3px;
+                transition: all 0.12s ease;
             }
             body.tilo-theme-day .tltb-icon-btn {
-                background: rgba(0, 0, 0, 0.04);
+                background: rgba(0, 0, 0, 0.05);
             }
             .tltb-icon-btn:hover {
                 border-color: var(--tltb-border);
@@ -1191,66 +1334,76 @@
             .tltb-icon-btn.domino-on {
                 color: #fbbf24;
                 background: rgba(251, 191, 36, 0.14);
-                border-color: rgba(251, 191, 36, 0.4);
+                border-color: rgba(251, 191, 36, 0.42);
+            }
+            .tltb-icon-btn.menu-open {
+                color: var(--tltb-accent);
+                border-color: var(--tltb-accent);
+            }
+            .tltb-icon-btn.edit-accent {
+                color: var(--tltb-accent);
+                border-color: rgba(110, 231, 183, 0.35);
+                background: rgba(110, 231, 183, 0.1);
             }
             .tltb-icon-btn:disabled {
-                opacity: 0.28;
+                opacity: 0.3;
                 cursor: default;
             }
+            .tltb-drawer-actions {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: space-between;
+                gap: 5px;
+                padding: 6px 8px;
+                background: rgba(0, 0, 0, 0.22);
+                border-top: 1px solid rgba(255, 255, 255, 0.06);
+            }
+            body.tilo-theme-day .tltb-drawer-actions {
+                background: rgba(0, 0, 0, 0.035);
+                border-top-color: rgba(0, 0, 0, 0.06);
+            }
+            .tltb-act-group {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                flex-wrap: wrap;
+            }
 
-            /* محور ساعتی (Timeline) بهینه‌شده و جمع‌وجور */
+            /* محور ساعتی (Timeline) + خط دقیق زمان حال */
             .tltb-timeline {
                 display: flex;
                 flex-direction: column;
                 gap: 4px;
-                position: relative;
             }
             .tltb-tl-row {
                 display: grid;
-                grid-template-columns: 44px 1fr;
-                gap: 8px;
+                grid-template-columns: 42px 1fr;
+                gap: 7px;
                 align-items: stretch;
             }
             .tltb-tl-axis {
                 display: flex;
                 flex-direction: column;
                 align-items: flex-end;
-                position: relative;
                 padding-top: 4px;
             }
             .tltb-tl-hour {
                 font-size: 10px;
                 font-weight: 800;
                 color: var(--tltb-muted);
-                line-height: 1;
+                font-variant-numeric: tabular-nums;
+                direction: ltr;
             }
             .tltb-tl-rail {
                 flex: 1;
                 width: 2px;
                 background: var(--tltb-border-soft);
-                margin: 4px 12px 0 0;
+                margin: 3px 11px 0 0;
                 border-radius: 2px;
             }
-            .tltb-tl-card {
-                border: 1px solid var(--tltb-border-soft);
-                border-right-width: 3.5px;
-                border-radius: 11px;
-                padding: 6px 9px;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 8px;
-                cursor: pointer;
-                transition: border-color 0.14s ease, opacity 0.16s ease;
-            }
-            .tltb-tl-card:hover {
-                border-color: var(--tltb-accent);
-            }
-            .tltb-tl-card.is-done {
-                opacity: 0.56;
-            }
-            .tltb-tl-card.is-done .tltb-blk-title {
-                text-decoration: line-through;
+            .tltb-tl-host {
+                position: relative;
             }
             .tltb-free-slot {
                 display: flex;
@@ -1258,11 +1411,12 @@
                 justify-content: space-between;
                 font-size: 10px;
                 color: var(--tltb-muted);
-                padding: 4px 10px;
-                border-radius: 9px;
+                padding: 5px 9px;
+                border-radius: 8px;
                 background: rgba(110, 231, 183, 0.04);
                 border: 1px dashed var(--tltb-border-soft);
                 cursor: pointer;
+                position: relative;
             }
             .tltb-free-slot:hover {
                 border-color: var(--tltb-accent);
@@ -1276,7 +1430,6 @@
                 font-size: 10px;
                 font-weight: 900;
                 margin: 2px 0;
-                padding-right: 4px;
             }
             .tltb-now-line::before {
                 content: '●';
@@ -1285,8 +1438,49 @@
             .tltb-now-line::after {
                 content: '';
                 flex: 1;
-                height: 1.5px;
-                background: linear-gradient(90deg, transparent, #fb7185);
+                height: 2px;
+                background: linear-gradient(90deg, rgba(251,113,133,0.15), #fb7185);
+                border-radius: 2px;
+            }
+            /* خط زمان حال که دقیقاً از روی پارت یا بازه فعال عبور می‌کند */
+            .tltb-now-overlay {
+                position: absolute;
+                left: 0;
+                right: 0;
+                transform: translateY(-50%);
+                z-index: 6;
+                pointer-events: none;
+                display: flex;
+                align-items: center;
+            }
+            .tltb-now-overlay-bar {
+                flex: 1;
+                height: 2px;
+                background: #fb7185;
+                box-shadow: 0 0 8px rgba(251, 113, 133, 0.75);
+                position: relative;
+            }
+            .tltb-now-overlay-bar::before {
+                content: '';
+                position: absolute;
+                right: -3px;
+                top: -3px;
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: #fb7185;
+                box-shadow: 0 0 6px #fb7185;
+            }
+            .tltb-now-overlay-pill {
+                background: #fb7185;
+                color: #ffffff;
+                font-size: 9px;
+                font-weight: 900;
+                padding: 1px 6px;
+                border-radius: 999px;
+                margin-right: 4px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+                white-space: nowrap;
             }
 
             /* نوار ثابت پایین برای افزودن سریع */
@@ -1322,7 +1516,7 @@
             .tltb-accordion {
                 background: var(--tltb-surface);
                 border: 1px solid var(--tltb-border-soft);
-                border-radius: 14px;
+                border-radius: 13px;
                 overflow: hidden;
             }
             .tltb-acc-header {
@@ -1330,7 +1524,7 @@
                 background: transparent;
                 border: none;
                 color: var(--tltb-text);
-                padding: 11px 13px;
+                padding: 10px 13px;
                 font-family: inherit;
                 font-size: 12px;
                 font-weight: 800;
@@ -1345,10 +1539,10 @@
                 border-top: 1px solid var(--tltb-border-soft);
                 display: flex;
                 flex-direction: column;
-                gap: 9px;
+                gap: 8px;
             }
 
-            /* فرم‌ها و ورودی‌ها */
+            /* فرم‌ها و انتخابگر رنگ */
             .tltb-input, .tltb-select, .tltb-textarea {
                 width: 100%;
                 background: var(--tltb-bg);
@@ -1362,6 +1556,182 @@
             }
             .tltb-input:focus, .tltb-select:focus, .tltb-textarea:focus {
                 border-color: var(--tltb-accent);
+            }
+            .tltb-color-row {
+                display: flex;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 7px;
+            }
+            .tltb-color-dot {
+                width: 24px;
+                height: 24px;
+                border-radius: 50%;
+                border: 2px solid transparent;
+                cursor: pointer;
+                transition: transform 0.14s ease;
+            }
+            .tltb-color-dot.active {
+                border-color: #ffffff;
+                transform: scale(1.15);
+                box-shadow: 0 0 0 2px var(--tltb-accent);
+            }
+            .tltb-color-custom-wrap {
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                background: var(--tltb-bg);
+                border: 1px solid var(--tltb-border-soft);
+                border-radius: 9px;
+                padding: 2px 7px 2px 3px;
+            }
+            .tltb-color-native {
+                width: 24px;
+                height: 22px;
+                border: none;
+                border-radius: 6px;
+                background: transparent;
+                cursor: pointer;
+                padding: 0;
+            }
+            .tltb-color-hex {
+                font-size: 10px;
+                font-family: ui-monospace, monospace;
+                color: var(--tltb-muted);
+                direction: ltr;
+            }
+
+            /* ==================== چرخ انتخاب ساعت ۲۴ ساعته (iOS Wheel) ==================== */
+            .tltb-time-panel {
+                background: var(--tltb-bg);
+                border: 1px solid var(--tltb-border-soft);
+                border-radius: 14px;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .tltb-time-summary-bar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                padding: 5px 9px;
+                background: var(--tltb-surface);
+                border: 1px solid var(--tltb-border-soft);
+                border-radius: 10px;
+            }
+            .tltb-time-summary-range {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 14px;
+                font-weight: 900;
+                color: var(--tltb-accent);
+                direction: ltr;
+            }
+            .tltb-time-summary-dur {
+                font-size: 10.5px;
+                font-weight: 700;
+                color: var(--tltb-muted);
+            }
+            .tltb-wheel-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            .tltb-wheel-card {
+                background: var(--tltb-surface);
+                border: 1px solid var(--tltb-border-soft);
+                border-radius: 12px;
+                padding: 6px 6px 8px 6px;
+            }
+            .tltb-wheel-title {
+                font-size: 10.5px;
+                font-weight: 800;
+                color: var(--tltb-muted);
+                text-align: center;
+                margin-bottom: 4px;
+            }
+            .tltb-wheel-pair {
+                position: relative;
+                display: grid;
+                grid-template-columns: 1fr 12px 1fr;
+                align-items: center;
+                height: 108px;
+                direction: ltr;
+                overflow: hidden;
+            }
+            .tltb-wheel-highlight {
+                position: absolute;
+                left: 3px;
+                right: 3px;
+                top: 36px;
+                height: 36px;
+                border-radius: 8px;
+                background: rgba(110, 231, 183, 0.12);
+                border-top: 1px solid var(--tltb-border);
+                border-bottom: 1px solid var(--tltb-border);
+                pointer-events: none;
+                z-index: 1;
+            }
+            .tltb-wheel-colon {
+                text-align: center;
+                font-family: ui-monospace, monospace;
+                font-size: 15px;
+                font-weight: 900;
+                color: var(--tltb-accent);
+                position: relative;
+                z-index: 2;
+                pointer-events: none;
+            }
+            .tltb-wheel-col {
+                height: 108px;
+                overflow-y: auto;
+                scroll-snap-type: y mandatory;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+                padding: 36px 0;
+                position: relative;
+                z-index: 2;
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain;
+                -webkit-mask-image: linear-gradient(to bottom, transparent, black 26%, black 74%, transparent);
+                mask-image: linear-gradient(to bottom, transparent, black 26%, black 74%, transparent);
+            }
+            .tltb-wheel-col::-webkit-scrollbar {
+                display: none;
+            }
+            .tltb-wheel-item {
+                height: 36px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                scroll-snap-align: center;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 13.5px;
+                font-weight: 700;
+                color: var(--tltb-muted);
+                opacity: 0.42;
+                cursor: pointer;
+                user-select: none;
+                transition: opacity 0.12s ease, color 0.12s ease, transform 0.12s ease;
+            }
+            .tltb-wheel-item.active {
+                color: var(--tltb-accent);
+                opacity: 1;
+                font-size: 15.5px;
+                font-weight: 900;
+                transform: scale(1.06);
+            }
+            .tltb-presets-row {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                flex-wrap: wrap;
+            }
+            .tltb-presets-label {
+                font-size: 9.5px;
+                color: var(--tltb-muted);
+                margin-left: 2px;
             }
 
             /* باتم‌شیت افزودن و ویرایش */
@@ -1387,12 +1757,12 @@
                 border-radius: 22px 22px 0 0;
                 width: 100%;
                 max-width: 480px;
-                max-height: 90dvh;
+                max-height: 92dvh;
                 overflow-y: auto;
-                padding: 16px;
+                padding: 15px;
                 display: flex;
                 flex-direction: column;
-                gap: 10px;
+                gap: 9px;
             }
             @media (min-width: 640px) {
                 .tltb-sheet {
@@ -1514,23 +1884,26 @@
         }
 
         const hasTime = domino.start !== null && domino.end !== null;
-        const timeRange = hasTime ? `${minutesToHHMM(domino.start)} – ${minutesToHHMM(domino.end)}` : 'بدون ساعت';
-        const durText = hasTime ? formatDurationFa(domino.end - domino.start) : '';
+        const timeRange = hasTime ? `${minutesToHHMM(domino.start)} - ${minutesToHHMM(domino.end)}` : 'بدون ساعت';
+        const durText = hasTime ? formatDurationEn(domino.end - domino.start) : '';
 
         return `
-            <div class="tltb-domino-card" data-card-edit="${domino.id}">
-                <div style="display:flex; align-items:center; gap:9px; flex:1; min-width:0;">
+            <div class="tltb-domino-card" data-card-select="${domino.id}">
+                <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
                     <button type="button" class="tltb-check-btn ${domino.done ? 'checked' : ''}" data-toggle-done="${domino.id}">✓</button>
                     <div style="min-width:0; flex:1;">
                         <div class="tltb-domino-badge">
-                            <span>⭐ سنگ بزرگ روز · ${timeRange}</span>
-                            ${durText ? `<span style="opacity:0.75; font-weight:600;">(${durText})</span>` : ''}
+                            <span>⭐ سنگ بزرگ روز · <span class="tltb-num">${timeRange}</span></span>
+                            ${durText ? `<span style="opacity:0.78; font-weight:600;">(${durText})</span>` : ''}
                         </div>
                         <div class="tltb-blk-title" style="${domino.done ? 'text-decoration:line-through; opacity:0.65;' : ''}">${escapeHtml(domino.title)}</div>
                         ${domino.note ? `<div style="font-size:10.5px; color:var(--tltb-muted); margin-top:2px;">${escapeHtml(domino.note)}</div>` : ''}
                     </div>
                 </div>
-                <button type="button" class="tltb-icon-btn domino-on" data-toggle-domino="${domino.id}" title="لغو سنگ بزرگ">⭐</button>
+                <div class="tltb-blk-actions">
+                    <button type="button" class="tltb-icon-btn edit-accent" data-edit-block="${domino.id}" title="ویرایش">✎</button>
+                    <button type="button" class="tltb-icon-btn domino-on" data-toggle-domino="${domino.id}" title="لغو سنگ بزرگ">⭐</button>
+                </div>
             </div>
         `;
     }
@@ -1538,37 +1911,59 @@
     function renderBlockCard(b, index, totalCount) {
         const cat = CATEGORIES[b.category] || CATEGORIES.deep;
         const hasTime = b.start !== null && b.end !== null;
-        const timeRangeStr = hasTime ? `${minutesToHHMM(b.start)} – ${minutesToHHMM(b.end)}` : 'بدون ساعت';
-        const durStr = hasTime ? formatDurationFa(b.end - b.start) : '';
+        const timeRangeStr = hasTime ? `${minutesToHHMM(b.start)} - ${minutesToHHMM(b.end)}` : 'بدون ساعت';
+        const durStr = hasTime ? formatDurationEn(b.end - b.start) : '';
         const noteOpen = Boolean(uiState.expandedNotes[b.id]);
+        const menuOpen = uiState.openActionMenuId === b.id;
 
         const cardBgTint = hexToRgba(b.color, 0.09);
         const cardBorderTint = hexToRgba(b.color, 0.28);
 
         return `
-            <div class="tltb-block-item ${b.done ? 'is-done' : ''}"
-                 data-card-edit="${b.id}"
+            <div class="tltb-block-wrap ${b.done ? 'is-done' : ''} ${menuOpen ? 'is-selected' : ''}"
                  style="background-color:${cardBgTint}; border-color:${cardBorderTint}; border-right-color:${escapeHtml(b.color)};">
-                <button type="button" class="tltb-check-btn ${b.done ? 'checked' : ''}" data-toggle-done="${b.id}" aria-label="انجام شد">✓</button>
-                <div class="tltb-blk-main">
-                    <div class="tltb-blk-top">
-                        <span class="tltb-time-range">${timeRangeStr}</span>
-                        ${durStr ? `<span class="tltb-duration-tag">${durStr}</span>` : ''}
-                        <span class="tltb-cat-badge" style="background:${hexToRgba(b.color, 0.18)}; color:${b.color};">${cat.icon} ${cat.short}</span>
+                <div class="tltb-block-row" data-card-select="${b.id}">
+                    <button type="button" class="tltb-check-btn ${b.done ? 'checked' : ''}" data-toggle-done="${b.id}" aria-label="انجام شد">✓</button>
+                    <div class="tltb-blk-main">
+                        <div class="tltb-blk-top">
+                            <span class="tltb-time-range">${timeRangeStr}</span>
+                            ${durStr ? `<span class="tltb-duration-tag">${durStr}</span>` : ''}
+                            <span class="tltb-cat-badge" style="background:${hexToRgba(b.color, 0.18)}; color:${b.color};">${cat.icon} ${cat.short}</span>
+                        </div>
+                        <p class="tltb-blk-title">${escapeHtml(b.title)}</p>
+                        ${b.note && noteOpen ? `<div class="tltb-blk-note">${escapeHtml(b.note)}</div>` : ''}
                     </div>
-                    <p class="tltb-blk-title">${escapeHtml(b.title)}</p>
-                    ${b.note && noteOpen ? `<div class="tltb-blk-note">${escapeHtml(b.note)}</div>` : ''}
+                    <div class="tltb-blk-actions">
+                        <button type="button" class="tltb-icon-btn ${b.domino ? 'domino-on' : ''}" data-toggle-domino="${b.id}" title="سنگ بزرگ روز">${b.domino ? '⭐' : '☆'}</button>
+                        <button type="button" class="tltb-icon-btn ${menuOpen ? 'menu-open' : ''}" data-toggle-menu="${b.id}" title="ابزارها">⋯</button>
+                    </div>
                 </div>
-                <div class="tltb-blk-actions">
-                    <button type="button" class="tltb-icon-btn ${b.domino ? 'domino-on' : ''}" data-toggle-domino="${b.id}" title="سنگ بزرگ روز">${b.domino ? '⭐' : '☆'}</button>
-                    <button type="button" class="tltb-icon-btn" data-move-block="${b.id}:-1" ${index === 0 ? 'disabled' : ''} title="بالا">↑</button>
-                    <button type="button" class="tltb-icon-btn" data-move-block="${b.id}:1" ${index === totalCount - 1 ? 'disabled' : ''} title="پایین">↓</button>
-                    ${hasTime ? `<button type="button" class="tltb-icon-btn" data-nudge-block="${b.id}:-15" title="۱۵ دقیقه جلوتر">−۱۵</button>` : ''}
-                    ${hasTime ? `<button type="button" class="tltb-icon-btn" data-nudge-block="${b.id}:15" title="۱۵ دقیقه عقب‌تر">+۱۵</button>` : ''}
-                    ${b.note ? `<button type="button" class="tltb-icon-btn" data-toggle-note="${b.id}" title="توضیحات">${noteOpen ? '▴' : '📝'}</button>` : ''}
-                    ${cat.studyRelevant ? `<button type="button" class="tltb-icon-btn" data-send-single-timer="${b.id}" title="ارسال به تایمر">⏱️</button>` : ''}
-                    <button type="button" class="tltb-icon-btn" data-del-block="${b.id}" title="حذف">🗑️</button>
-                </div>
+                ${menuOpen ? `
+                    <div class="tltb-drawer-actions">
+                        <div class="tltb-act-group">
+                            <button type="button" class="tltb-icon-btn edit-accent" data-edit-block="${b.id}" title="ویرایش">✎ ویرایش</button>
+                            <button type="button" class="tltb-icon-btn" data-move-block="${b.id}:-1" ${index === 0 ? 'disabled' : ''} title="بالا">↑</button>
+                            <button type="button" class="tltb-icon-btn" data-move-block="${b.id}:1" ${index === totalCount - 1 ? 'disabled' : ''} title="پایین">↓</button>
+                            ${hasTime ? `<button type="button" class="tltb-icon-btn tltb-num" data-nudge-block="${b.id}:-15" title="15 دقیقه جلوتر">-15</button>` : ''}
+                            ${hasTime ? `<button type="button" class="tltb-icon-btn tltb-num" data-nudge-block="${b.id}:15" title="15 دقیقه عقب‌تر">+15</button>` : ''}
+                        </div>
+                        <div class="tltb-act-group">
+                            ${b.note ? `<button type="button" class="tltb-icon-btn" data-toggle-note="${b.id}" title="توضیحات">${noteOpen ? 'بستن متن' : '📝 متن'}</button>` : ''}
+                            <button type="button" class="tltb-icon-btn" data-send-single-timer="${b.id}" title="ارسال به صف تایمر">⏱️ تایمر</button>
+                            <button type="button" class="tltb-icon-btn" style="color:var(--tltb-danger);" data-del-block="${b.id}" title="حذف">🗑️</button>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    function renderNowOverlayHtml(percent, nowMins) {
+        const clampedPct = Math.max(10, Math.min(90, Math.round(percent)));
+        return `
+            <div class="tltb-now-overlay" style="top:${clampedPct}%;">
+                <div class="tltb-now-overlay-bar"></div>
+                <span class="tltb-now-overlay-pill tltb-num">الان ${minutesToHHMM(nowMins)}</span>
             </div>
         `;
     }
@@ -1588,30 +1983,47 @@
         let nowRendered = false;
 
         timed.forEach((b, i) => {
-            const cat = CATEGORIES[b.category] || CATEGORIES.deep;
-            const durStr = formatDurationFa(b.end - b.start);
-            const cardBgTint = hexToRgba(b.color, 0.1);
-            const cardBorderTint = hexToRgba(b.color, 0.3);
-
-            if (prevEnd !== null && b.start - prevEnd >= 15) {
+            // بررسی فاصله زمانی (وقت آزاد) قبل از این پارت
+            if (prevEnd !== null && b.start > prevEnd) {
                 const gapMins = b.start - prevEnd;
-                html += `
-                    <div class="tltb-tl-row">
-                        <div class="tltb-tl-axis">
-                            <span class="tltb-tl-hour">${minutesToHHMM(prevEnd)}</span>
-                            <span class="tltb-tl-rail"></span>
+                const nowInGap = isToday && !nowRendered && nowMins > prevEnd && nowMins < b.start;
+
+                if (gapMins >= 15) {
+                    const gapPct = nowInGap ? ((nowMins - prevEnd) / gapMins) * 100 : 0;
+                    if (nowInGap) nowRendered = true;
+                    html += `
+                        <div class="tltb-tl-row">
+                            <div class="tltb-tl-axis">
+                                <span class="tltb-tl-hour">${minutesToHHMM(prevEnd)}</span>
+                                <span class="tltb-tl-rail"></span>
+                            </div>
+                            <div class="tltb-tl-host">
+                                <div class="tltb-free-slot" data-add-at-slot="${prevEnd}:${b.start}" title="کلیک برای پر کردن این وقت آزاد">
+                                    <span>✨ ${formatDurationEn(gapMins)} وقت آزاد</span>
+                                    <span style="font-weight:800;">+ افزودن</span>
+                                </div>
+                                ${nowInGap ? renderNowOverlayHtml(gapPct, nowMins) : ''}
+                            </div>
                         </div>
-                        <div class="tltb-free-slot" data-add-at-slot="${prevEnd}:${b.start}" title="کلیک برای پر کردن این وقت آزاد">
-                            <span>✨ ${formatDurationFa(gapMins)} وقت آزاد</span>
-                            <span style="font-weight:800;">+ افزودن</span>
-                        </div>
-                    </div>
-                `;
+                    `;
+                } else if (nowInGap) {
+                    nowRendered = true;
+                    html += `<div class="tltb-now-line">الان (<span class="tltb-num">${minutesToHHMM(nowMins)}</span>)</div>`;
+                }
             }
 
-            if (isToday && !nowRendered && nowMins <= b.start) {
+            // اگر زمان حال پیش از اولین پارت باشد
+            if (isToday && !nowRendered && nowMins < b.start) {
                 nowRendered = true;
-                html += `<div class="tltb-now-line">الان (${minutesToHHMM(nowMins)})</div>`;
+                html += `<div class="tltb-now-line">الان (<span class="tltb-num">${minutesToHHMM(nowMins)}</span>)</div>`;
+            }
+
+            // اگر زمان حال دقیقاً داخل بازه همین پارت باشد -> خط از میان همین پارت رد شود
+            const nowInsideBlock = isToday && !nowRendered && nowMins >= b.start && nowMins <= b.end;
+            let insidePct = 50;
+            if (nowInsideBlock) {
+                nowRendered = true;
+                insidePct = ((nowMins - b.start) / Math.max(1, b.end - b.start)) * 100;
             }
 
             html += `
@@ -1620,40 +2032,25 @@
                         <span class="tltb-tl-hour">${minutesToHHMM(b.start)}</span>
                         ${i < timed.length - 1 ? '<span class="tltb-tl-rail"></span>' : ''}
                     </div>
-                    <div class="tltb-tl-card ${b.done ? 'is-done' : ''}"
-                         data-card-edit="${b.id}"
-                         style="background-color:${cardBgTint}; border-color:${cardBorderTint}; border-right-color:${escapeHtml(b.color)};">
-                        <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1;">
-                            <button type="button" class="tltb-check-btn ${b.done ? 'checked' : ''}" data-toggle-done="${b.id}">✓</button>
-                            <div style="min-width:0; flex:1;">
-                                <div class="tltb-blk-top">
-                                    <span class="tltb-time-range">${minutesToHHMM(b.start)} – ${minutesToHHMM(b.end)}</span>
-                                    <span class="tltb-duration-tag">${durStr}</span>
-                                    <span class="tltb-cat-badge" style="background:${hexToRgba(b.color, 0.18)}; color:${b.color};">${cat.short}</span>
-                                </div>
-                                <div class="tltb-blk-title">${escapeHtml(b.title)}</div>
-                            </div>
-                        </div>
-                        <div class="tltb-blk-actions">
-                            <button type="button" class="tltb-icon-btn ${b.domino ? 'domino-on' : ''}" data-toggle-domino="${b.id}" title="سنگ بزرگ">${b.domino ? '⭐' : '☆'}</button>
-                            <button type="button" class="tltb-icon-btn" data-nudge-block="${b.id}:-15" title="۱۵ دقیقه جلوتر">−۱۵</button>
-                            <button type="button" class="tltb-icon-btn" data-nudge-block="${b.id}:15" title="۱۵ دقیقه عقب‌تر">+۱۵</button>
-                        </div>
+                    <div class="tltb-tl-host">
+                        ${renderBlockCard(b, i, timed.length)}
+                        ${nowInsideBlock ? renderNowOverlayHtml(insidePct, nowMins) : ''}
                     </div>
                 </div>
             `;
-            prevEnd = b.end;
+            prevEnd = Math.max(prevEnd ?? 0, b.end);
         });
 
+        // اگر زمان حال بعد از آخرین پارت روز باشد
         if (isToday && !nowRendered) {
-            html += `<div class="tltb-now-line">الان (${minutesToHHMM(nowMins)})</div>`;
+            html += `<div class="tltb-now-line">الان (<span class="tltb-num">${minutesToHHMM(nowMins)}</span>)</div>`;
         }
 
         html += '</div>';
 
         if (untimed.length) {
             html += `
-                <div style="margin-top:10px;">
+                <div style="margin-top:9px;">
                     <div style="font-size:10.5px; font-weight:800; color:var(--tltb-muted); margin-bottom:5px;">کارهای بدون ساعت مشخص:</div>
                     <div class="tltb-block-list">${untimed.map((b, idx) => renderBlockCard(b, idx, untimed.length)).join('')}</div>
                 </div>
@@ -1666,7 +2063,7 @@
     function renderEmptyDayState() {
         const info = getPersianDateInfo(uiState.selectedDate);
         return `
-            <div style="text-align:center; padding:22px 12px; border:1px dashed var(--tltb-border-soft); border-radius:14px;">
+            <div style="text-align:center; padding:22px 12px; border:1px dashed var(--tltb-border-soft); border-radius:13px;">
                 <div style="font-size:22px; margin-bottom:4px;">🌿</div>
                 <div style="font-size:13px; font-weight:900; color:var(--tltb-text);">برنامه ${info.weekday} (${info.shortDate}) هنوز خالی است</div>
                 <p style="font-size:11px; color:var(--tltb-muted); margin:5px auto 12px auto; max-width:320px; line-height:1.6;">
@@ -1686,18 +2083,18 @@
         const doneCount = dayBlocks.filter(b => b.done).length;
 
         const delayHtml = uiState.delayOpen ? `
-            <div style="background:var(--tltb-bg); border:1px solid var(--tltb-border); border-radius:12px; padding:9px; margin-bottom:8px; display:flex; flex-direction:column; gap:7px;">
+            <div style="background:var(--tltb-bg); border:1px solid var(--tltb-border); border-radius:11px; padding:8px; margin-bottom:8px; display:flex; flex-direction:column; gap:7px;">
                 <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
                     <span style="font-size:11px; font-weight:800;">جابه‌جایی دسته‌ای کارهای مانده امروز:</span>
                     <button type="button" class="tltb-pill-btn" data-toggle-delay="0">بستن</button>
                 </div>
                 <div style="display:flex; gap:4px; flex-wrap:wrap;">
-                    ${[-30, -15, 15, 30, 45, 60].map(m => `<button type="button" class="tltb-pill-btn" data-exec-delay="${m}">${m > 0 ? `+${toFaDigits(m)}` : `−${toFaDigits(Math.abs(m))}`} د</button>`).join('')}
+                    ${[-30, -15, 15, 30, 45, 60].map(m => `<button type="button" class="tltb-pill-btn tltb-num" data-exec-delay="${m}">${m > 0 ? `+${m}` : `${m}`}m</button>`).join('')}
                 </div>
                 <div style="display:flex; align-items:center; gap:6px;">
-                    <input type="number" id="tltb-custom-delay-input" class="tltb-input" style="max-width:110px; text-align:center; padding:5px 8px;" min="1" max="600" placeholder="دقیقه" value="${escapeHtml(uiState.customDelayInput)}" />
+                    <input type="number" id="tltb-custom-delay-input" class="tltb-input tltb-num" style="max-width:100px; text-align:center; padding:5px 8px;" min="1" max="600" placeholder="دقیقه" value="${escapeHtml(uiState.customDelayInput)}" />
                     <button type="button" class="tltb-pill-btn accent" data-exec-custom-delay="1">عقب (+)</button>
-                    <button type="button" class="tltb-pill-btn" data-exec-custom-delay="-1">جلو (−)</button>
+                    <button type="button" class="tltb-pill-btn" data-exec-custom-delay="-1">جلو (-)</button>
                 </div>
             </div>
         ` : '';
@@ -1715,7 +2112,7 @@
                 <div class="tltb-section-head">
                     <div>
                         <span style="font-size:13px; font-weight:900; color:var(--tltb-text);">${info.weekday} · ${info.fullDate}</span>
-                        <span style="font-size:10.5px; color:var(--tltb-muted); margin-right:6px;">(${toFaDigits(doneCount)}/${toFaDigits(dayBlocks.length)} انجام‌شده)</span>
+                        <span style="font-size:10.5px; color:var(--tltb-muted); margin-right:6px;">(<span class="tltb-num">${doneCount}/${dayBlocks.length}</span> انجام‌شده)</span>
                     </div>
                     <div style="display:flex; align-items:center; gap:5px;">
                         ${dayBlocks.some(b => !b.done && b.start !== null) ? `<button type="button" class="tltb-pill-btn" data-toggle-delay="1" title="تأخیر یا جلو انداختن دسته‌ای">⏳ جابه‌جایی</button>` : ''}
@@ -1746,7 +2143,7 @@
                 <div class="tltb-card" style="cursor:pointer;" data-jump-day="${dateISO}">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                         <strong style="font-size:13px; color:var(--tltb-accent);">${dayName} · ${info.shortDate}</strong>
-                        <span style="font-size:10.5px; color:var(--tltb-muted);">${toFaDigits(blocks.length)} بلاک · ${formatDurationFa(studyMins)} مطالعه</span>
+                        <span style="font-size:10.5px; color:var(--tltb-muted);">${blocks.length} بلاک · ${formatDurationEn(studyMins)} مطالعه</span>
                     </div>
                     ${domino
                         ? `<div style="font-size:11.5px; font-weight:700;">⭐ سنگ بزرگ: ${escapeHtml(domino.title)}</div>`
@@ -1756,7 +2153,7 @@
             `;
         }).join('');
 
-        return `<div style="display:flex; flex-direction:column; gap:8px;">${cards}</div>`;
+        return `<div style="display:flex; flex-direction:column; gap:7px;">${cards}</div>`;
     }
 
     /* ==================== بخش‌های جمع‌شونده پایین صفحه ==================== */
@@ -1767,13 +2164,13 @@
         const reviewData = uiState.store.finalized[uiState.selectedDate] || { note: '', completedAt: null };
 
         const previewHtml = uiState.pastePreview ? `
-            <div style="background:var(--tltb-bg); border:1px solid var(--tltb-border); border-radius:12px; padding:9px; display:flex; flex-direction:column; gap:5px;">
+            <div style="background:var(--tltb-bg); border:1px solid var(--tltb-border); border-radius:11px; padding:8px; display:flex; flex-direction:column; gap:5px;">
                 <div style="font-size:11px; font-weight:900; color:var(--tltb-accent);">
-                    پیش‌نمایش (${toFaDigits(uiState.pastePreview.blocks.length)} پارت برای ${getPersianDateInfo(resolveTargetDateFromMode(uiState.pasteTargetMode)).weekday} ${getPersianDateInfo(resolveTargetDateFromMode(uiState.pasteTargetMode)).shortDate}):
+                    پیش‌نمایش (${uiState.pastePreview.blocks.length} پارت برای ${getPersianDateInfo(resolveTargetDateFromMode(uiState.pasteTargetMode)).weekday} ${getPersianDateInfo(resolveTargetDateFromMode(uiState.pasteTargetMode)).shortDate}):
                 </div>
                 ${uiState.pastePreview.blocks.map(b => `
                     <div style="font-size:10.5px; padding:4px 8px; border-right:3px solid ${b.color}; background:${hexToRgba(b.color, 0.08)}; border-radius:6px;">
-                        <strong>${b.start !== null ? `${minutesToHHMM(b.start)} – ${minutesToHHMM(b.end)}` : 'بدون ساعت'}</strong> | ${escapeHtml(b.title)} <span style="color:${b.color};">(${CATEGORIES[b.category].short})</span>
+                        <strong class="tltb-num">${b.start !== null ? `${minutesToHHMM(b.start)} - ${minutesToHHMM(b.end)}` : 'بدون ساعت'}</strong> | ${escapeHtml(b.title)} <span style="color:${b.color};">(${CATEGORIES[b.category].short})</span>
                     </div>
                 `).join('')}
                 <button type="button" class="tltb-pill-btn accent" style="justify-content:center; margin-top:3px;" data-apply-paste="1">
@@ -1795,7 +2192,6 @@
         const studyBlocks = dayBlocks.filter(b => CATEGORIES[b.category]?.studyRelevant);
 
         return `
-            <!-- ۱. چسباندن برنامه از متن -->
             <div class="tltb-accordion">
                 <button type="button" class="tltb-acc-header" data-toggle-acc="paste">
                     <span>📋 چسباندن برنامه از متن (آفلاین)</span>
@@ -1803,7 +2199,7 @@
                 </button>
                 ${uiState.openAccordions.paste ? `
                     <div class="tltb-acc-body">
-                        <textarea id="tltb-paste-textarea" class="tltb-textarea" rows="4" placeholder="مثال:&#10;فقط امروز را جایگزین کن&#10;15:30 تا 16:55 | عنوان: هندسه ۳ | دسته: کار عمیق / تخصصی | توضیح: حل نمونه">${escapeHtml(uiState.pasteRaw)}</textarea>
+                        <textarea id="tltb-paste-textarea" class="tltb-textarea" rows="4" placeholder="مثال:&#10;فقط امروز را جایگزین کن&#10;05:00 تا 06:30 | عنوان: هندسه 3 | دسته: کار عمیق / تخصصی | توضیح: حل نمونه">${escapeHtml(uiState.pasteRaw)}</textarea>
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
                             <div>
                                 <label style="font-size:10px; color:var(--tltb-muted); display:block; margin-bottom:3px;">روز هدف:</label>
@@ -1827,7 +2223,6 @@
                 ` : ''}
             </div>
 
-            <!-- ۲. کپی روتین -->
             <div class="tltb-accordion">
                 <button type="button" class="tltb-acc-header" data-toggle-acc="routine">
                     <span>🔁 کپی روتین (${selectedInfo.weekday} به روز دیگر)</span>
@@ -1836,7 +2231,7 @@
                 ${uiState.openAccordions.routine ? `
                     <div class="tltb-acc-body">
                         <p style="font-size:10.5px; color:var(--tltb-muted); margin:0;">
-                            مبدأ: <strong>${selectedInfo.weekday} (${selectedInfo.shortDate})</strong> — ${toFaDigits(dayBlocks.length)} تایم‌بلاک
+                            مبدأ: <strong>${selectedInfo.weekday} (${selectedInfo.shortDate})</strong> — ${dayBlocks.length} تایم‌بلاک
                         </p>
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
                             <select id="tltb-routine-target" class="tltb-select">
@@ -1859,7 +2254,6 @@
                 ` : ''}
             </div>
 
-            <!-- ۳. بازبینی شب -->
             <div class="tltb-accordion">
                 <button type="button" class="tltb-acc-header" data-toggle-acc="review">
                     <span>🌙 بازبینی شب و جمع‌بندی پایان روز</span>
@@ -1868,8 +2262,8 @@
                 ${uiState.openAccordions.review ? `
                     <div class="tltb-acc-body">
                         <div style="display:flex; justify-content:space-between; font-size:11px;">
-                            <span>انجام‌شده: <strong style="color:var(--tltb-accent);">${toFaDigits(dayBlocks.filter(b => b.done).length)}</strong></span>
-                            <span>باقی‌مانده: <strong style="color:var(--tltb-warn);">${toFaDigits(dayBlocks.filter(b => !b.done).length)}</strong></span>
+                            <span>انجام‌شده: <strong class="tltb-num" style="color:var(--tltb-accent);">${dayBlocks.filter(b => b.done).length}</strong></span>
+                            <span>باقی‌مانده: <strong class="tltb-num" style="color:var(--tltb-warn);">${dayBlocks.filter(b => !b.done).length}</strong></span>
                         </div>
                         <textarea id="tltb-review-note" class="tltb-textarea" rows="2" placeholder="امروز چطور گذشت؟ چه چیزی انرژی‌ات را گرفت یا به تو سرعت داد؟">${escapeHtml(reviewData.note || '')}</textarea>
                         <div style="display:flex; flex-wrap:wrap; gap:6px;">
@@ -1880,7 +2274,6 @@
                 ` : ''}
             </div>
 
-            <!-- ۴. تعادل انرژی و ارسال گروهی به تایمر -->
             <div class="tltb-accordion">
                 <button type="button" class="tltb-acc-header" data-toggle-acc="energy">
                     <span>⚡ تعادل انرژی روز و ارسال به تایمر</span>
@@ -1896,7 +2289,7 @@
                                     <div style="font-size:10.5px;">
                                         <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
                                             <span>${c.icon} ${c.label}</span>
-                                            <span style="color:var(--tltb-muted);">${formatDurationFa(mins)} (${toFaDigits(pct)}٪)</span>
+                                            <span style="color:var(--tltb-muted);">${formatDurationEn(mins)} (${pct}%)</span>
                                         </div>
                                         <div style="height:5px; background:var(--tltb-bg); border-radius:99px; overflow:hidden;">
                                             <div style="height:100%; width:${pct}%; background:${c.defaultColor};"></div>
@@ -1913,7 +2306,7 @@
                                         <label style="display:flex; align-items:center; gap:7px; font-size:11px; background:var(--tltb-bg); padding:6px 9px; border-radius:9px; cursor:pointer;">
                                             <input type="checkbox" data-timer-chk="${b.id}" ${uiState.selectedForTimer[b.id] ? 'checked' : ''} />
                                             <span style="flex:1;">${escapeHtml(b.title)}</span>
-                                            <span style="color:var(--tltb-muted); font-size:10px;">${b.start !== null ? formatDurationFa(b.end - b.start) : '۶۰ دقیقه'}</span>
+                                            <span style="color:var(--tltb-muted); font-size:10px;">${b.start !== null ? formatDurationEn(b.end - b.start) : '60 دقیقه'}</span>
                                         </label>
                                     `).join('')}
                                 </div>
@@ -1924,10 +2317,9 @@
                 ` : ''}
             </div>
 
-            <!-- ۵. پشتیبان‌گیری و سطل بازیابی -->
             <div class="tltb-accordion">
                 <button type="button" class="tltb-acc-header" data-toggle-acc="backup">
-                    <span>💾 پشتیبان‌گیری و سطل بازیابی (${toFaDigits(uiState.store.trash.length)})</span>
+                    <span>💾 پشتیبان‌گیری و سطل بازیابی (${uiState.store.trash.length})</span>
                     <span>${uiState.openAccordions.backup ? '▴' : '▾'}</span>
                 </button>
                 ${uiState.openAccordions.backup ? `
@@ -1959,33 +2351,46 @@
         `;
     }
 
-    /* ==================== باتم‌شیت افزودن و ویرایش کار ==================== */
+    /* ==================== باتم‌شیت افزودن و ویرایش + چرخ ساعت ۲۴ ساعته ==================== */
+
+    function getFormStartEndMinutes() {
+        const f = uiState.form;
+        const start = f.startH * 60 + f.startM;
+        const end = f.endH * 60 + f.endM;
+        return { start, end };
+    }
 
     function openAddOrEditSheet(block = null, presetSlot = null) {
         if (block) {
+            const sp = minutesToWheelParts(block.start !== null ? block.start : 960);
+            const ep = minutesToWheelParts(block.end !== null ? block.end : 1020);
             uiState.editingBlockId = block.id;
             uiState.form = {
                 title: block.title,
                 note: block.note || '',
                 category: block.category,
-                color: block.color,
+                color: isValidHex(block.color) ? normalizeHex6(block.color) : (CATEGORIES[block.category]?.defaultColor || '#10b981'),
                 hasTime: block.start !== null && block.end !== null,
-                startStr: block.start !== null ? minutesToHHMM(block.start, false) : '16:00',
-                endStr: block.end !== null ? minutesToHHMM(block.end, false) : '17:15',
+                startH: sp.h,
+                startM: sp.m,
+                endH: ep.h,
+                endM: ep.m,
                 domino: Boolean(block.domino)
             };
         } else {
-            let defStart = 960; // 16:00
-            let defEnd = 1020;  // 17:00
+            let defStart = 960;
+            let defEnd = 1020;
             if (presetSlot && presetSlot.start !== undefined && presetSlot.end !== undefined) {
                 defStart = presetSlot.start;
                 defEnd = presetSlot.end;
             } else {
                 const existing = getBlocksForDate(uiState.selectedDate).filter(b => b.end !== null);
                 const lastEnd = existing.length ? existing[existing.length - 1].end : 960;
-                defStart = Math.min(1380, lastEnd);
-                defEnd = Math.min(1440, defStart + 60);
+                defStart = Math.min(1375, lastEnd);
+                defEnd = Math.min(1435, defStart + 60);
             }
+            const sp = minutesToWheelParts(defStart);
+            const ep = minutesToWheelParts(defEnd);
             uiState.editingBlockId = null;
             uiState.form = {
                 title: '',
@@ -1993,8 +2398,10 @@
                 category: 'deep',
                 color: CATEGORIES.deep.defaultColor,
                 hasTime: true,
-                startStr: minutesToHHMM(defStart, false),
-                endStr: minutesToHHMM(defEnd, false),
+                startH: sp.h,
+                startM: sp.m,
+                endH: ep.h,
+                endM: ep.m,
                 domino: !getBlocksForDate(uiState.selectedDate).some(b => b.domino)
             };
         }
@@ -2006,12 +2413,44 @@
         }, 40);
     }
 
+    function renderWheelColumnHtml(fieldKey, values, selectedVal) {
+        return `
+            <div class="tltb-wheel-col" data-wheel-col="${fieldKey}">
+                ${values.map((val, idx) => `
+                    <div class="tltb-wheel-item ${val === selectedVal ? 'active' : ''}" data-wheel-idx="${idx}" data-wheel-val="${val}">
+                        ${pad2(val)}
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    function renderOverlapBannerHtml() {
+        if (!uiState.form.hasTime) return '';
+        const { start, end } = getFormStartEndMinutes();
+        if (end <= start) {
+            return `
+                <div style="background:rgba(248,113,113,0.12); border:1px solid rgba(248,113,113,0.45); color:#fecaca; border-radius:10px; padding:6px 9px; font-size:10.5px;">
+                    ساعت پایان باید بعد از ساعت شروع باشد.
+                </div>
+            `;
+        }
+        const overlap = findOverlap(uiState.selectedDate, start, end, uiState.editingBlockId);
+        if (!overlap) return '';
+        return `
+            <div style="background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.45); color:#fde68a; border-radius:10px; padding:6px 9px; font-size:10.5px; display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                <span>تداخل با «${escapeHtml(overlap.title)}»</span>
+                <button type="button" class="tltb-pill-btn" data-fix-overlap="${overlap.end}">تنظیم بعد از آن</button>
+            </div>
+        `;
+    }
+
     function renderAddEditSheet() {
         if (!uiState.sheetOpen) return '';
         const f = uiState.form;
-        const startMins = f.hasTime ? hhmmToMinutes(f.startStr) : null;
-        const endMins = f.hasTime ? hhmmToMinutes(f.endStr) : null;
-        const overlap = f.hasTime ? findOverlap(uiState.selectedDate, startMins, endMins, uiState.editingBlockId) : null;
+        const { start, end } = getFormStartEndMinutes();
+        const durText = end > start ? formatDurationEn(end - start) : 'بازه نامعتبر';
+        const safeColor = normalizeHex6(f.color);
 
         return `
             <div class="tltb-sheet-backdrop" id="tltb-sheet-backdrop">
@@ -2021,15 +2460,34 @@
                         <button type="button" class="tltb-close-btn" data-close-sheet="1">×</button>
                     </div>
 
-                    <input type="text" id="tltb-form-title" class="tltb-input" placeholder="عنوان کار (مثلاً: تست‌زنی حسابان ۲)" value="${escapeHtml(f.title)}" />
+                    <input type="text" id="tltb-form-title" class="tltb-input" placeholder="عنوان کار (مثلاً: تست‌زنی حسابان 2)" value="${escapeHtml(f.title)}" />
 
+                    <!-- انتخاب دسته -->
                     <div>
-                        <div style="font-size:10.5px; color:var(--tltb-muted); margin-bottom:5px;">دسته‌بندی انرژی:</div>
+                        <div style="font-size:10.5px; color:var(--tltb-muted); margin-bottom:5px;">دسته‌بندی:</div>
                         <div class="tltb-cat-pills">
                             ${Object.values(CATEGORIES).map(c => {
                                 const active = f.category === c.id;
                                 return `<button type="button" class="tltb-cat-pill ${active ? 'active' : ''}" style="${active ? `background:${c.defaultColor};` : ''}" data-pick-cat="${c.id}">${c.icon} ${c.short}</button>`;
                             }).join('')}
+                        </div>
+                    </div>
+
+                    <!-- انتخاب رنگ پیشنهادی + دستی کامل -->
+                    <div>
+                        <div style="font-size:10.5px; color:var(--tltb-muted); margin-bottom:5px;">رنگ کارت:</div>
+                        <div class="tltb-color-row">
+                            ${COLOR_PRESETS.map(hex => `
+                                <button type="button"
+                                    class="tltb-color-dot ${safeColor === hex.toLowerCase() ? 'active' : ''}"
+                                    style="background:${hex};"
+                                    data-pick-color="${hex}"
+                                    title="${hex}"></button>
+                            `).join('')}
+                            <label class="tltb-color-custom-wrap" title="انتخاب رنگ دلخواه">
+                                <input type="color" id="tltb-form-color-input" class="tltb-color-native" value="${escapeHtml(safeColor)}" />
+                                <span id="tltb-form-color-hex" class="tltb-color-hex">${escapeHtml(safeColor)}</span>
+                            </label>
                         </div>
                     </div>
 
@@ -2045,27 +2503,46 @@
                     </div>
 
                     ${f.hasTime ? `
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:7px;">
-                            <div>
-                                <label style="font-size:10px; color:var(--tltb-muted); display:block; margin-bottom:3px;">شروع:</label>
-                                <input type="time" id="tltb-form-start" class="tltb-input" dir="ltr" value="${escapeHtml(f.startStr)}" />
+                        <div class="tltb-time-panel">
+                            <div class="tltb-time-summary-bar">
+                                <span id="tltb-live-range" class="tltb-time-summary-range">${pad2(f.startH)}:${pad2(f.startM)} - ${pad2(f.endH)}:${pad2(f.endM)}</span>
+                                <span id="tltb-live-dur" class="tltb-time-summary-dur">${durText}</span>
                             </div>
-                            <div>
-                                <label style="font-size:10px; color:var(--tltb-muted); display:block; margin-bottom:3px;">پایان:</label>
-                                <input type="time" id="tltb-form-end" class="tltb-input" dir="ltr" value="${escapeHtml(f.endStr)}" />
+
+                            <div class="tltb-wheel-grid">
+                                <div class="tltb-wheel-card">
+                                    <div class="tltb-wheel-title">شروع (24 ساعته)</div>
+                                    <div class="tltb-wheel-pair">
+                                        <div class="tltb-wheel-highlight"></div>
+                                        ${renderWheelColumnHtml('startH', WHEEL_HOURS, f.startH)}
+                                        <div class="tltb-wheel-colon">:</div>
+                                        ${renderWheelColumnHtml('startM', WHEEL_MINUTES, f.startM)}
+                                    </div>
+                                </div>
+                                <div class="tltb-wheel-card">
+                                    <div class="tltb-wheel-title">پایان (24 ساعته)</div>
+                                    <div class="tltb-wheel-pair">
+                                        <div class="tltb-wheel-highlight"></div>
+                                        ${renderWheelColumnHtml('endH', WHEEL_HOURS, f.endH)}
+                                        <div class="tltb-wheel-colon">:</div>
+                                        ${renderWheelColumnHtml('endM', WHEEL_MINUTES, f.endM)}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div style="display:flex; gap:4px; flex-wrap:wrap;">
-                            ${[30, 45, 60, 75, 90].map(dur => `<button type="button" class="tltb-pill-btn" data-quick-dur="${dur}">${toFaDigits(dur)} دقیقه</button>`).join('')}
+
+                            <div class="tltb-presets-row">
+                                <span class="tltb-presets-label">شروع سریع:</span>
+                                ${QUICK_START_PRESETS.map(p => `<button type="button" class="tltb-pill-btn tltb-num" data-quick-start="${p.h}:${p.m}">${p.label}</button>`).join('')}
+                            </div>
+
+                            <div class="tltb-presets-row">
+                                <span class="tltb-presets-label">مدت:</span>
+                                ${[30, 45, 60, 75, 90].map(dur => `<button type="button" class="tltb-pill-btn tltb-num" data-quick-dur="${dur}">${dur}m</button>`).join('')}
+                            </div>
                         </div>
                     ` : ''}
 
-                    ${overlap ? `
-                        <div style="background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.45); color:#fde68a; border-radius:10px; padding:7px 9px; font-size:10.5px; display:flex; align-items:center; justify-content:space-between; gap:6px;">
-                            <span>تداخل با «${escapeHtml(overlap.title)}»</span>
-                            <button type="button" class="tltb-pill-btn" data-fix-overlap="${overlap.end}">تنظیم بعد از آن</button>
-                        </div>
-                    ` : ''}
+                    <div id="tltb-live-overlap">${renderOverlapBannerHtml()}</div>
 
                     <textarea id="tltb-form-note" class="tltb-textarea" rows="2" placeholder="یادداشت یا جزئیات کوتاه (اختیاری)...">${escapeHtml(f.note)}</textarea>
 
@@ -2075,6 +2552,66 @@
                 </div>
             </div>
         `;
+    }
+
+    function updateLiveTimeFeedback(overlay) {
+        const f = uiState.form;
+        const { start, end } = getFormStartEndMinutes();
+        const rangeEl = overlay.querySelector('#tltb-live-range');
+        const durEl = overlay.querySelector('#tltb-live-dur');
+        const overlapEl = overlay.querySelector('#tltb-live-overlap');
+
+        if (rangeEl) {
+            rangeEl.textContent = `${pad2(f.startH)}:${pad2(f.startM)} - ${pad2(f.endH)}:${pad2(f.endM)}`;
+        }
+        if (durEl) {
+            durEl.textContent = end > start ? formatDurationEn(end - start) : 'بازه نامعتبر';
+        }
+        if (overlapEl) {
+            overlapEl.innerHTML = renderOverlapBannerHtml();
+            bindFixOverlapButton(overlay);
+        }
+    }
+
+    function syncWheelPositions(overlay, smooth = false) {
+        const f = uiState.form;
+        const targets = {
+            startH: WHEEL_HOURS.indexOf(f.startH),
+            startM: WHEEL_MINUTES.indexOf(f.startM),
+            endH: WHEEL_HOURS.indexOf(f.endH),
+            endM: WHEEL_MINUTES.indexOf(f.endM)
+        };
+
+        Object.keys(targets).forEach(key => {
+            const col = overlay.querySelector(`[data-wheel-col="${key}"]`);
+            if (!col) return;
+            const idx = Math.max(0, targets[key]);
+            const top = idx * WHEEL_ITEM_HEIGHT;
+            if (smooth && typeof col.scrollTo === 'function') {
+                col.scrollTo({ top, behavior: 'smooth' });
+            } else {
+                col.scrollTop = top;
+            }
+            col.querySelectorAll('.tltb-wheel-item').forEach((item, i) => {
+                item.classList.toggle('active', i === idx);
+            });
+        });
+    }
+
+    function bindFixOverlapButton(overlay) {
+        overlay.querySelector('[data-fix-overlap]')?.addEventListener('click', e => {
+            const newStart = Number(e.currentTarget.getAttribute('data-fix-overlap'));
+            const { start, end } = getFormStartEndMinutes();
+            const dur = Math.max(15, end > start ? end - start : 60);
+            const sp = minutesToWheelParts(Math.min(1435 - Math.min(dur, 1435), newStart));
+            const ep = minutesToWheelParts(Math.min(1435, sp.h * 60 + sp.m + dur));
+            uiState.form.startH = sp.h;
+            uiState.form.startM = sp.m;
+            uiState.form.endH = ep.h;
+            uiState.form.endM = ep.m;
+            syncWheelPositions(overlay, true);
+            updateLiveTimeFeedback(overlay);
+        });
     }
 
     /* ==================== رندر کل صفحه با حفظ دقیق موقعیت اسکرول ==================== */
@@ -2088,7 +2625,6 @@
             document.body.appendChild(overlay);
         }
 
-        // ذخیره موقعیت فعلی اسکرول قبل از بازسازی DOM
         const prevScrollArea = overlay.querySelector('.tltb-scroll-area');
         const savedScrollTop = prevScrollArea ? prevScrollArea.scrollTop : 0;
 
@@ -2128,7 +2664,6 @@
 
         bindOverlayEvents(overlay);
 
-        // بازگردانی دقیق موقعیت اسکرول تا صفحه نپرد
         const newScrollArea = overlay.querySelector('.tltb-scroll-area');
         if (newScrollArea && savedScrollTop > 0) {
             newScrollArea.scrollTop = savedScrollTop;
@@ -2142,6 +2677,7 @@
             uiState.selectedDate = today;
             uiState.weekStartISO = getSaturdayOfWeekISO(today);
             uiState.viewMode = 'day';
+            uiState.openActionMenuId = null;
             renderOverlay();
             const sc = overlay.querySelector('.tltb-scroll-area');
             if (sc) sc.scrollTop = 0;
@@ -2156,6 +2692,7 @@
                 const delta = Number(btn.getAttribute('data-nav-week'));
                 uiState.weekStartISO = addDaysISO(uiState.weekStartISO, delta);
                 uiState.selectedDate = addDaysISO(uiState.selectedDate, delta);
+                uiState.openActionMenuId = null;
                 renderOverlay();
             });
         });
@@ -2163,6 +2700,7 @@
             btn.addEventListener('click', () => {
                 uiState.selectedDate = btn.getAttribute('data-select-date');
                 uiState.viewMode = 'day';
+                uiState.openActionMenuId = null;
                 renderOverlay();
             });
         });
@@ -2170,6 +2708,7 @@
             card.addEventListener('click', () => {
                 uiState.selectedDate = card.getAttribute('data-jump-day');
                 uiState.viewMode = 'day';
+                uiState.openActionMenuId = null;
                 renderOverlay();
             });
         });
@@ -2181,8 +2720,8 @@
             });
         });
 
-        // انتخاب اولین کار به‌عنوان سنگ بزرگ
         overlay.querySelector('[data-set-first-domino]')?.addEventListener('click', e => {
+            e.preventDefault();
             e.stopPropagation();
             const dayBlocks = getBlocksForDate(uiState.selectedDate);
             if (!dayBlocks.length) return;
@@ -2191,19 +2730,31 @@
             renderOverlay();
         });
 
-        // کلیک روی بدنه کارت برای باز کردن ویرایش (بدون تداخل با دکمه‌های داخلی)
-        overlay.querySelectorAll('[data-card-edit]').forEach(cardEl => {
+        // کلیک روی بدنه کارت = فقط انتخاب/هایلایت و باز/بسته شدن منوی اکشن (⋯) — بدون باز کردن ویرایش
+        overlay.querySelectorAll('[data-card-select]').forEach(cardEl => {
             cardEl.addEventListener('click', e => {
-                if (e.target.closest('button, input, label, a')) return;
-                const id = cardEl.getAttribute('data-card-edit');
+                if (e.target.closest('button, input, label, a, .tltb-drawer-actions')) return;
+                const id = cardEl.getAttribute('data-card-select');
+                uiState.openActionMenuId = uiState.openActionMenuId === id ? null : id;
+                renderOverlay();
+            });
+        });
+
+        // دکمه عمدی ویرایش (✎)
+        overlay.querySelectorAll('[data-edit-block]').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                const id = btn.getAttribute('data-edit-block');
                 const blk = uiState.store.blocks.find(b => b.id === id);
                 if (blk) openAddOrEditSheet(blk);
             });
         });
 
-        // دکمه‌های داخلی کارت‌ها (همگی با stopPropagation)
+        // دکمه‌های داخلی کارت‌ها با stopPropagation
         overlay.querySelectorAll('[data-toggle-done]').forEach(btn => {
             btn.addEventListener('click', e => {
+                e.preventDefault();
                 e.stopPropagation();
                 toggleBlockDone(btn.getAttribute('data-toggle-done'));
                 renderOverlay();
@@ -2211,13 +2762,24 @@
         });
         overlay.querySelectorAll('[data-toggle-domino]').forEach(btn => {
             btn.addEventListener('click', e => {
+                e.preventDefault();
                 e.stopPropagation();
                 toggleBlockDomino(btn.getAttribute('data-toggle-domino'));
                 renderOverlay();
             });
         });
+        overlay.querySelectorAll('[data-toggle-menu]').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                const id = btn.getAttribute('data-toggle-menu');
+                uiState.openActionMenuId = uiState.openActionMenuId === id ? null : id;
+                renderOverlay();
+            });
+        });
         overlay.querySelectorAll('[data-move-block]').forEach(btn => {
             btn.addEventListener('click', e => {
+                e.preventDefault();
                 e.stopPropagation();
                 const [id, dir] = btn.getAttribute('data-move-block').split(':');
                 moveBlockOrder(id, Number(dir));
@@ -2226,6 +2788,7 @@
         });
         overlay.querySelectorAll('[data-nudge-block]').forEach(btn => {
             btn.addEventListener('click', e => {
+                e.preventDefault();
                 e.stopPropagation();
                 const [id, delta] = btn.getAttribute('data-nudge-block').split(':');
                 nudgeBlockTime(id, Number(delta));
@@ -2234,6 +2797,7 @@
         });
         overlay.querySelectorAll('[data-toggle-note]').forEach(btn => {
             btn.addEventListener('click', e => {
+                e.preventDefault();
                 e.stopPropagation();
                 const id = btn.getAttribute('data-toggle-note');
                 uiState.expandedNotes[id] = !uiState.expandedNotes[id];
@@ -2242,19 +2806,20 @@
         });
         overlay.querySelectorAll('[data-send-single-timer]').forEach(btn => {
             btn.addEventListener('click', e => {
+                e.preventDefault();
                 e.stopPropagation();
                 sendBlocksToStudyTimer([btn.getAttribute('data-send-single-timer')]);
             });
         });
         overlay.querySelectorAll('[data-del-block]').forEach(btn => {
             btn.addEventListener('click', e => {
+                e.preventDefault();
                 e.stopPropagation();
                 deleteBlockToTrash(btn.getAttribute('data-del-block'));
                 renderOverlay();
             });
         });
 
-        // کلیک روی وقت آزاد در محور ساعتی برای افزودن سریع در همان بازه
         overlay.querySelectorAll('[data-add-at-slot]').forEach(slotEl => {
             slotEl.addEventListener('click', () => {
                 const [s, e] = slotEl.getAttribute('data-add-at-slot').split(':').map(Number);
@@ -2262,7 +2827,7 @@
             });
         });
 
-        // تأخیر و جلو انداختن دسته‌ای
+        // جابه‌جایی دسته‌ای
         overlay.querySelectorAll('[data-toggle-delay]').forEach(btn => {
             btn.addEventListener('click', () => {
                 uiState.delayOpen = btn.getAttribute('data-toggle-delay') === '1';
@@ -2296,7 +2861,6 @@
             });
         });
 
-        // باز کردن باتم‌شیت افزودن
         overlay.querySelectorAll('[data-open-add]').forEach(btn => {
             btn.addEventListener('click', () => openAddOrEditSheet(null));
         });
@@ -2418,7 +2982,7 @@
             }));
             uiState.store.blocks.push(...moved);
             uiState.store = saveStore(uiState.store, { backup: true });
-            showToast(`${toFaDigits(moved.length)} کار ناتمام به فردا منتقل شد`);
+            showToast(`${moved.length} کار ناتمام به فردا منتقل شد`);
         });
 
         // انتخاب گروهی تایمر
@@ -2494,14 +3058,8 @@
             overlay.querySelector('#tltb-form-domino')?.addEventListener('change', e => {
                 uiState.form.domino = e.target.checked;
             });
-            overlay.querySelector('#tltb-form-start')?.addEventListener('change', e => {
-                uiState.form.startStr = e.target.value;
-                renderOverlay();
-            });
-            overlay.querySelector('#tltb-form-end')?.addEventListener('change', e => {
-                uiState.form.endStr = e.target.value;
-                renderOverlay();
-            });
+
+            // انتخاب دسته
             overlay.querySelectorAll('[data-pick-cat]').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const catId = btn.getAttribute('data-pick-cat');
@@ -2510,31 +3068,111 @@
                     renderOverlay();
                 });
             });
-            overlay.querySelectorAll('[data-quick-dur]').forEach(btn => {
+
+            // انتخاب رنگ پیشنهادی و رنگ دلخواه دستی
+            overlay.querySelectorAll('[data-pick-color]').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    const dur = Number(btn.getAttribute('data-quick-dur'));
-                    const s = hhmmToMinutes(uiState.form.startStr) ?? 960;
-                    uiState.form.endStr = minutesToHHMM(Math.min(1440, s + dur), false);
+                    uiState.form.color = normalizeHex6(btn.getAttribute('data-pick-color'));
                     renderOverlay();
                 });
             });
-            overlay.querySelector('[data-fix-overlap]')?.addEventListener('click', e => {
-                const newStart = Number(e.currentTarget.getAttribute('data-fix-overlap'));
-                const curS = hhmmToMinutes(uiState.form.startStr) ?? newStart;
-                const curE = hhmmToMinutes(uiState.form.endStr) ?? (curS + 60);
-                const dur = Math.max(15, curE - curS);
-                uiState.form.startStr = minutesToHHMM(Math.min(1440 - dur, newStart), false);
-                uiState.form.endStr = minutesToHHMM(Math.min(1440, newStart + dur), false);
-                renderOverlay();
-            });
+            const colorInp = overlay.querySelector('#tltb-form-color-input');
+            const colorHexLabel = overlay.querySelector('#tltb-form-color-hex');
+            if (colorInp) {
+                colorInp.addEventListener('input', e => {
+                    const hex = normalizeHex6(e.target.value);
+                    uiState.form.color = hex;
+                    if (colorHexLabel) colorHexLabel.textContent = hex;
+                    overlay.querySelectorAll('[data-pick-color]').forEach(dot => {
+                        dot.classList.toggle('active', dot.getAttribute('data-pick-color').toLowerCase() === hex);
+                    });
+                });
+            }
+
+            // راه‌اندازی چرخ ساعت ۲۴ ساعته (بدون تبدیل خودکار صبح/عصر)
+            if (uiState.form.hasTime) {
+                syncWheelPositions(overlay, false);
+
+                overlay.querySelectorAll('[data-wheel-col]').forEach(col => {
+                    const fieldKey = col.getAttribute('data-wheel-col');
+                    const values = (fieldKey === 'startH' || fieldKey === 'endH') ? WHEEL_HOURS : WHEEL_MINUTES;
+
+                    col.addEventListener('scroll', () => {
+                        const idx = Math.max(0, Math.min(values.length - 1, Math.round(col.scrollTop / WHEEL_ITEM_HEIGHT)));
+                        const val = values[idx];
+                        if (uiState.form[fieldKey] !== val) {
+                            uiState.form[fieldKey] = val;
+                            col.querySelectorAll('.tltb-wheel-item').forEach((item, i) => {
+                                item.classList.toggle('active', i === idx);
+                            });
+                            updateLiveTimeFeedback(overlay);
+                        }
+                    }, { passive: true });
+
+                    col.querySelectorAll('.tltb-wheel-item').forEach(item => {
+                        item.addEventListener('click', () => {
+                            const idx = Number(item.getAttribute('data-wheel-idx'));
+                            const val = Number(item.getAttribute('data-wheel-val'));
+                            uiState.form[fieldKey] = val;
+                            col.scrollTo({ top: idx * WHEEL_ITEM_HEIGHT, behavior: 'smooth' });
+                            col.querySelectorAll('.tltb-wheel-item').forEach((el, i) => {
+                                el.classList.toggle('active', i === idx);
+                            });
+                            updateLiveTimeFeedback(overlay);
+                        });
+                    });
+                });
+
+                // میانبرهای سریع ساعت شروع: 05:00 | 06:30 | 14:30 | 16:00 | 21:00
+                overlay.querySelectorAll('[data-quick-start]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const [h, m] = btn.getAttribute('data-quick-start').split(':').map(Number);
+                        const prev = getFormStartEndMinutes();
+                        const dur = prev.end > prev.start ? (prev.end - prev.start) : 60;
+                        const newStart = h * 60 + m;
+                        const ep = minutesToWheelParts(Math.min(1435, newStart + dur));
+                        uiState.form.startH = h;
+                        uiState.form.startM = m;
+                        uiState.form.endH = ep.h;
+                        uiState.form.endM = ep.m;
+                        syncWheelPositions(overlay, true);
+                        updateLiveTimeFeedback(overlay);
+                    });
+                });
+
+                // میانبرهای سریع مدت زمان
+                overlay.querySelectorAll('[data-quick-dur]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const dur = Number(btn.getAttribute('data-quick-dur'));
+                        const start = uiState.form.startH * 60 + uiState.form.startM;
+                        const ep = minutesToWheelParts(Math.min(1435, start + dur));
+                        uiState.form.endH = ep.h;
+                        uiState.form.endM = ep.m;
+                        syncWheelPositions(overlay, true);
+                        updateLiveTimeFeedback(overlay);
+                    });
+                });
+
+                bindFixOverlapButton(overlay);
+            }
+
             overlay.querySelector('[data-submit-form]')?.addEventListener('click', () => {
                 const title = uiState.form.title.trim();
                 if (!title) {
                     showToast('عنوان کار را وارد کنید');
                     return;
                 }
-                const start = uiState.form.hasTime ? hhmmToMinutes(uiState.form.startStr) : null;
-                const end = uiState.form.hasTime ? hhmmToMinutes(uiState.form.endStr) : null;
+                let start = null;
+                let end = null;
+                if (uiState.form.hasTime) {
+                    const res = getFormStartEndMinutes();
+                    start = res.start;
+                    end = res.end;
+                    if (end <= start) {
+                        showToast('ساعت پایان باید بعد از ساعت شروع باشد');
+                        return;
+                    }
+                }
 
                 upsertBlock({
                     id: uiState.editingBlockId,
@@ -2542,7 +3180,7 @@
                     title,
                     note: uiState.form.note,
                     category: uiState.form.category,
-                    color: uiState.form.color,
+                    color: normalizeHex6(uiState.form.color),
                     start,
                     end,
                     domino: uiState.form.domino
@@ -2568,6 +3206,7 @@
     function closePlanner() {
         uiState.isOpen = false;
         uiState.sheetOpen = false;
+        uiState.openActionMenuId = null;
         renderOverlay();
     }
 
@@ -2611,6 +3250,12 @@
         open: openPlanner,
         close: closePlanner,
         toggle: togglePlanner,
+        toggleBlockDomino: (id) => {
+            const res = toggleBlockDomino(id);
+            if (uiState.isOpen) renderOverlay();
+            return res;
+        },
+        sendBlocksToStudyTimer,
         getStore: () => loadStore(),
         getTodayBlocks: () => getBlocksForDate(getTehranTodayISO()),
         refresh: () => {
@@ -2626,6 +3271,13 @@
         uiState.store = loadStore();
         if (uiState.isOpen) renderOverlay();
     });
+
+    // به‌روزرسانی خودکار خط «الان» هر ۱ دقیقه وقتی محور ساعتی امروز باز است
+    setInterval(() => {
+        if (uiState.isOpen && !uiState.sheetOpen && uiState.viewMode === 'day' && uiState.daySubView === 'timeline' && uiState.selectedDate === getTehranTodayISO()) {
+            renderOverlay();
+        }
+    }, 60000);
 
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape' && uiState.isOpen) {
