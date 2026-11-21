@@ -1,51 +1,93 @@
-/* tilo — calm workspace. Full replacement; no IDs, storage or JS behavior changed.
-   html body specificity intentionally beats late styles from tilo-upgrade.js.
-   Keep this stylesheet unlayered: legacy !important rules are unlayered too. */
+/* tilo-ui.css (v16) — فضای کار آرام، بدون ظاهر شلوغ و هوش‌مصنوعی
+   پشتیبانی از تم روز/شب، ۴ رنگ تأکیدی ملایم، آنبوردینگ ۴ مرحله‌ای و تایمر خلوت */
+
 :root, body.tilo-theme-night {
   color-scheme: dark;
   --t-bg: #111916;
   --t-card: #1b2520;
   --t-inset: #15201b;
   --t-text: #e9efeb;
-  --t-muted: #afbeb4;
+  --t-muted: #9eb0a5;
   --t-accent: #a1cfb6;
   --t-accent-solid: #35634e;
   --t-accent-hover: #2b5441;
-  --t-accent-soft: #263e31;
+  --t-accent-soft: #24382d;
   --t-on-accent: #ffffff;
-  --t-border: #3a4c40;
-  --t-field-border: #718779;
+  --t-border: #304137;
+  --t-field-border: #55685d;
   --t-danger: #ffb4aa;
-  --t-danger-soft: #422924;
+  --t-danger-soft: #3c2522;
   --t-warning: #e5c58c;
-  --t-warning-soft: #393225;
-  --t-overlay: rgba(7, 16, 11, .66);
-  --t-shadow: 0 2px 6px rgba(0, 0, 0, .09);
+  --t-warning-soft: #362f22;
+  --t-overlay: rgba(8, 14, 11, 0.72);
+  --t-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
   --t-radius: 14px;
-  --t-control-radius: 12px;
-  --t-nav-height: 5.25rem;
+  --t-control-radius: 11px;
+  --t-nav-height: 4.75rem;
 }
+
 body.tilo-theme-day {
   color-scheme: light;
-  --t-bg: #f3f3ed;
+  --t-bg: #f4f4ef;
   --t-card: #fffefb;
-  --t-inset: #eeefe8;
-  --t-text: #24342a;
-  --t-muted: #56685c;
+  --t-inset: #eceee8;
+  --t-text: #223027;
+  --t-muted: #5a6c60;
   --t-accent: #35634e;
   --t-accent-solid: #35634e;
   --t-accent-hover: #2b5441;
-  --t-accent-soft: #e1ece3;
-  --t-border: #cfd8ce;
-  --t-field-border: #7a8b7c;
+  --t-accent-soft: #e2ede5;
+  --t-on-accent: #ffffff;
+  --t-border: #d4ddd5;
+  --t-field-border: #99a89d;
   --t-danger: #a43830;
   --t-danger-soft: #f8e9e5;
   --t-warning: #7b591e;
   --t-warning-soft: #f4ecda;
-  --t-overlay: rgba(25, 37, 29, .42);
-  --t-shadow: 0 2px 6px rgba(28, 45, 34, .04);
+  --t-overlay: rgba(24, 34, 28, 0.45);
+  --t-shadow: 0 2px 8px rgba(24, 38, 30, 0.05);
 }
-:root:has(body.tilo-theme-day) { color-scheme: light; }
+
+/* ۴ گزینه رنگ تأکیدی ملایم (بدون رنگین‌کمان) */
+body[data-accent="slate"].tilo-theme-night {
+  --t-accent: #9ec5df;
+  --t-accent-solid: #2f5d7c;
+  --t-accent-hover: #264d68;
+  --t-accent-soft: #1f3342;
+}
+body[data-accent="slate"].tilo-theme-day {
+  --t-accent: #2f5d7c;
+  --t-accent-solid: #2f5d7c;
+  --t-accent-hover: #264d68;
+  --t-accent-soft: #e1ecf3;
+}
+
+body[data-accent="olive"].tilo-theme-night {
+  --t-accent: #c2d1b2;
+  --t-accent-solid: #57664f;
+  --t-accent-hover: #485640;
+  --t-accent-soft: #2b3326;
+}
+body[data-accent="olive"].tilo-theme-day {
+  --t-accent: #57664f;
+  --t-accent-solid: #57664f;
+  --t-accent-hover: #485640;
+  --t-accent-soft: #e9eee4;
+}
+
+body[data-accent="amber"].tilo-theme-night {
+  --t-accent: #e5c58c;
+  --t-accent-solid: #8a6532;
+  --t-accent-hover: #735327;
+  --t-accent-soft: #382e1f;
+}
+body[data-accent="amber"].tilo-theme-day {
+  --t-accent: #8a6532;
+  --t-accent-solid: #8a6532;
+  --t-accent-hover: #735327;
+  --t-accent-soft: #f4eadc;
+}
+
 html body:is(.tilo-theme-day, .tilo-theme-night) {
   background: var(--t-bg) !important;
   color: var(--t-text) !important;
@@ -54,350 +96,597 @@ html body:is(.tilo-theme-day, .tilo-theme-night) {
 html body.h-screen { height: 100vh; height: 100dvh; }
 html body #app, html body main { min-width: 0; min-height: 0; }
 html body main {
-  padding-bottom: 2rem !important;
-  scroll-padding-block: 1rem 2rem;
+  padding-bottom: 2.5rem !important;
   scrollbar-gutter: stable;
 }
 html body :is(input, select, textarea) { font-family: inherit; }
 html body :is(p, h2, h3, h4, label, .tilo-break) { overflow-wrap: anywhere; }
-html body :is(p, .tilo-break) { line-height: 1.85; }
-html body :is(input, textarea, .tilo-share-code-box, .tn2-text) {
+html body :is(input, textarea, .tilo-share-code-box) {
   user-select: text;
   -webkit-user-select: text;
 }
-html body [dir="ltr"] { unicode-bidi: isolate; }
 
-/* Card hierarchy: paper panels; quieter inset rows; no floating hover. */
+/* پایه چیدمان حتی اگر Tailwind CDN در ایران کند یا قطع شود */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.flex-wrap { flex-wrap: wrap; }
+.flex-1 { flex: 1 1 0%; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.justify-around { justify-content: space-around; }
+.justify-end { justify-content: flex-end; }
+.grid { display: grid; }
+.grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+.grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.gap-1\.5 { gap: 0.375rem; }
+.gap-2 { gap: 0.5rem; }
+.gap-2\.5 { gap: 0.625rem; }
+.gap-3 { gap: 0.75rem; }
+.gap-4 { gap: 1rem; }
+.space-y-2 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.5rem; }
+.space-y-2\.5 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.625rem; }
+.space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.75rem; }
+.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem; }
+.space-y-5 > :not([hidden]) ~ :not([hidden]) { margin-top: 1.25rem; }
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+.min-w-0 { min-width: 0; }
+.shrink-0 { flex-shrink: 0; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hidden { display: none; }
+.fixed { position: fixed; }
+.relative { position: relative; }
+.absolute { position: absolute; }
+.inset-0 { inset: 0; }
+.overflow-hidden { overflow: hidden; }
+.overflow-y-auto { overflow-y: auto; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-left { text-align: left; }
+.mx-auto { margin-left: auto; margin-right: auto; }
+.max-w-lg { max-width: 32rem; }
+.max-w-xl { max-width: 36rem; }
+.max-w-4xl { max-width: 56rem; }
+.max-w-7xl { max-width: 80rem; }
+.p-2 { padding: 0.5rem; }
+.p-4 { padding: 1rem; }
+.p-5 { padding: 1.25rem; }
+.p-6 { padding: 1.5rem; }
+@media (min-width: 640px) {
+  .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sm\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .sm\:flex-row { flex-direction: row; }
+  .sm\:items-center { align-items: center; }
+}
+@media (min-width: 768px) {
+  .md\:flex-row { flex-direction: row; }
+  .md\:flex-col { flex-direction: column; }
+  .md\:flex { display: flex; }
+  .md\:w-60 { width: 15rem; }
+  .md\:h-full { height: 100%; }
+  .md\:relative { position: relative; }
+  .md\:order-first { order: -9999; }
+  .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .md\:col-span-2 { grid-column: span 2 / span 2; }
+  .md\:mt-auto { margin-top: auto; }
+  .md\:p-7 { padding: 1.75rem; }
+}
+@media (min-width: 1024px) {
+  .lg\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* کارت‌ها و هدر آرام */
 html body:is(.tilo-theme-day, .tilo-theme-night) .soft-card,
-html body:is(.tilo-theme-day, .tilo-theme-night) .fixed.inset-0 .soft-card,
-html body:is(.tilo-theme-day, .tilo-theme-night) main > header:first-child,
-html body:is(.tilo-theme-day, .tilo-theme-night) nav.soft-card,
-html body:is(.tilo-theme-day, .tilo-theme-night) .tilo-timer-pro-card {
+html body:is(.tilo-theme-day, .tilo-theme-night) nav.soft-card {
   background: var(--t-card) !important;
-  border-color: var(--t-border) !important;
+  border: 1px solid var(--t-border) !important;
   border-radius: var(--t-radius) !important;
   box-shadow: var(--t-shadow) !important;
   color: var(--t-text);
   backdrop-filter: none !important;
 }
-html body .soft-card { min-width: 0; }
-html body .soft-card:hover { transform: none !important; }
-html body main > header:first-child { position: static; }
-html body .soft-card .soft-card { box-shadow: none !important; }
-html body .tilo-stat-card {
-  border-right-width: 1px !important;
-  box-shadow: none !important;
-}
-html body .tilo-stat-value { font-weight: 700; font-variant-numeric: tabular-nums; }
-html body :is(.rounded-lg, .rounded-xl, .rounded-2xl, .rounded-3xl) {
-  border-radius: var(--t-control-radius);
-}
-/* Keep circular avatars, status dots, progress rings and colour swatches circular. */
-html body [class*="shadow-primary"],
-html body [class*="shadow-teal"],
-html body .shadow-2xl { box-shadow: var(--t-shadow) !important; }
 
-/* Existing Tailwind surface variants, in both themes. Overlay rule follows below. */
-html body:is(.tilo-theme-day, .tilo-theme-night) :is(
-  [class~="bg-slate-700"], [class~="bg-slate-800"], [class*="bg-slate-800/"],
-  [class~="bg-slate-900"], [class*="bg-slate-900/"],
-  [class~="bg-slate-950"], [class*="bg-slate-950/"],
-  [class~="bg-indigo-950/40"], [class~="bg-[#172033]"]
-) {
-  background-color: var(--t-inset) !important;
+.tilo-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--t-border);
+}
+
+/* خلاصه یک‌خطی امروز */
+.tilo-today-strip {
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.tilo-today-strip-text {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--t-text);
+}
+.tilo-today-bar {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--t-inset);
+  overflow: hidden;
+}
+.tilo-today-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--t-accent-solid);
+  transition: width 0.25s ease;
+}
+
+/* ردیف‌های لیست، برچسب‌ها و وضعیت خالی */
+.tilo-list-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--t-control-radius);
+  background: var(--t-inset);
+  border: 1px solid var(--t-border);
+}
+.tilo-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--t-accent-soft);
+  color: var(--t-accent);
+}
+.tilo-empty-box {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  border-radius: var(--t-control-radius);
+  background: var(--t-inset);
+  border: 1px dashed var(--t-border);
+}
+.tilo-field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--t-muted);
+  margin-bottom: 6px;
+}
+
+/* تایپوگرافی و رنگ‌ها */
+html body:is(.tilo-theme-day, .tilo-theme-night) :is(.text-white, .text-slate-200, .text-slate-300) {
   color: var(--t-text) !important;
 }
-html body:is(.tilo-theme-day, .tilo-theme-night) [class~="bg-[#162032]"] {
-  background: var(--t-card) !important;
-}
-html body:is(.tilo-theme-day, .tilo-theme-night) :is(
-  [class*="border-slate-"], [class*="border-white"],
-  [class*="border-primary"], [class*="border-indigo-"],
-  [class*="border-tealSoft"], [class*="border-sage"]
-) { border-color: var(--t-border) !important; }
-
-/* Text: a single brand accent; red/amber are semantic, not decoration. */
-html body:is(.tilo-theme-day, .tilo-theme-night) :is(
-  .text-white, .text-slate-200, .text-slate-300, .text-slate-900, .text-slate-950
-) { color: var(--t-text) !important; }
 html body:is(.tilo-theme-day, .tilo-theme-night) :is(.text-slate-400, .text-slate-500) {
   color: var(--t-muted) !important;
 }
-html body:is(.tilo-theme-day, .tilo-theme-night) :is(
-  [class*="text-primarySoft"], [class*="text-tealSoft"], [class*="text-sage"],
-  .text-indigo-200, .text-indigo-300
-) { color: var(--t-accent) !important; }
-html body:is(.tilo-theme-day, .tilo-theme-night) [class*="text-amberSoft"] {
-  color: var(--t-warning) !important;
+html body:is(.tilo-theme-day, .tilo-theme-night) :is(.text-primarySoft, .text-tealSoft, .text-sage) {
+  color: var(--t-accent) !important;
 }
-html body:is(.tilo-theme-day, .tilo-theme-night) :is(.text-roseSoft, .text-rose-500) {
-  color: var(--t-danger) !important;
-}
-html body .bg-clip-text {
-  background: none !important;
+html body:is(.tilo-theme-day, .tilo-theme-night) .text-amberSoft { color: var(--t-warning) !important; }
+html body:is(.tilo-theme-day, .tilo-theme-night) .text-roseSoft { color: var(--t-danger) !important; }
+html body:is(.tilo-theme-day, .tilo-theme-night) .bg-slate-800,
+html body:is(.tilo-theme-day, .tilo-theme-night) .bg-slate-900\/60,
+html body:is(.tilo-theme-day, .tilo-theme-night) .bg-slate-900\/90 {
+  background-color: var(--t-inset) !important;
   color: var(--t-text) !important;
-  -webkit-text-fill-color: currentColor;
 }
-html body :is(.text-\[9px\], .text-\[10px\], .text-\[11px\]) { font-size: 12px; }
-html body .bg-gradient-to-tr {
-  background: var(--t-accent-soft) !important;
-  color: var(--t-accent) !important;
-  box-shadow: none !important;
-}
-html body .bg-gradient-to-tr :is(.text-white, .text-slate-950) {
-  color: var(--t-accent) !important;
-}
-html body .bg-gradient-to-r { background: var(--t-accent-solid) !important; }
-html body:is(.tilo-theme-day, .tilo-theme-night) :is(
-  [class*="bg-primary/"], [class*="bg-tealSoft/"], [class*="bg-sage/"], .bg-indigo-500\/15
-) { background: var(--t-accent-soft) !important; }
-html body:is(.tilo-theme-day, .tilo-theme-night) [class*="bg-amberSoft/"] {
-  background: var(--t-warning-soft) !important;
-}
-html body:is(.tilo-theme-day, .tilo-theme-night) [class*="bg-roseSoft/"] {
-  background: var(--t-danger-soft) !important;
-}
-/* State dots preserve their warning/error meaning; only action buttons unify. */
-html body .bg-tealSoft, html body .bg-sage { background-color: var(--t-accent-solid) !important; }
-html body .bg-amberSoft { background-color: var(--t-warning) !important; }
-html body .bg-roseSoft { background-color: var(--t-danger) !important; }
-html body .btn-calm {
-  border-radius: var(--t-control-radius);
-  font-weight: 600;
-  transition: background-color .15s, border-color .15s !important;
-}
-html body .btn-calm:is(:hover, :active) { transform: none !important; filter: none !important; }
-html body:is(.tilo-theme-day, .tilo-theme-night) :is(
-  .bg-primary, button.bg-gradient-to-r, button.bg-tealSoft, button.bg-sage,
-  button.bg-amberSoft
-) {
-  background: var(--t-accent-solid) !important;
-  color: var(--t-on-accent) !important;
-  box-shadow: none !important;
-}
-html body:is(.tilo-theme-day, .tilo-theme-night) :is(
-  .bg-primary, button.bg-gradient-to-r, button.bg-tealSoft, button.bg-sage,
-  button.bg-amberSoft
-) * { color: var(--t-on-accent) !important; }
-html body:is(.tilo-theme-day, .tilo-theme-night) button.bg-roseSoft {
-  background: var(--t-accent-soft) !important;
-  color: var(--t-accent) !important;
-  border: 1px solid var(--t-accent);
-  box-shadow: none !important;
-}
-html body:is(.tilo-theme-day, .tilo-theme-night) button.bg-roseSoft * { color: inherit !important; }
-html body:is(.tilo-theme-day, .tilo-theme-night) button.bg-slate-700 {
-  background: var(--t-accent-soft) !important;
-  color: var(--t-accent) !important;
-  box-shadow: inset 0 -2px var(--t-accent) !important;
-}
-html body .tilo-chip {
-  background: var(--t-inset);
-  border-color: var(--t-border);
-  color: var(--t-text);
-  border-radius: var(--t-control-radius);
-  font-weight: 600;
-}
-html body .tilo-chip.active {
-  background: var(--t-accent-soft);
-  color: var(--t-accent);
-  border-color: var(--t-accent);
-}
-html body button:disabled { opacity: .6; cursor: not-allowed; }
-html body :is(button, a, summary, input, select, textarea):focus-visible {
-  outline: 2px solid var(--t-accent) !important;
-  outline-offset: 3px;
-}
-@media (hover: hover) {
-  html body button.bg-primary:hover,
-  html body button.bg-gradient-to-r:hover { background: var(--t-accent-hover) !important; }
-  html body .tilo-part-option:hover { border-color: var(--t-accent) !important; }
+html body:is(.tilo-theme-day, .tilo-theme-night) [class*="border-slate-"] {
+  border-color: var(--t-border) !important;
 }
 
-/* Forms: same controls, more air; no collapsing or removing optional fields. */
+/* دکمه‌ها و فیلدها */
+.btn-calm {
+  border: 1px solid var(--t-border);
+  border-radius: var(--t-control-radius);
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+html body:is(.tilo-theme-day, .tilo-theme-night) .bg-primary {
+  background: var(--t-accent-solid) !important;
+  border-color: var(--t-accent-solid) !important;
+  color: var(--t-on-accent) !important;
+}
+html body:is(.tilo-theme-day, .tilo-theme-night) .bg-primary:hover {
+  background: var(--t-accent-hover) !important;
+}
+html body:is(.tilo-theme-day, .tilo-theme-night) .bg-primary\/20 {
+  background: var(--t-accent-soft) !important;
+}
+html body:is(.tilo-theme-day, .tilo-theme-night) button.bg-roseSoft {
+  background: var(--t-danger-soft) !important;
+  color: var(--t-danger) !important;
+  border-color: var(--t-danger) !important;
+}
+.tilo-link-btn {
+  background: transparent;
+  border: none;
+  color: var(--t-accent);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.tilo-chip, .tilo-choice-btn {
+  background: var(--t-inset);
+  color: var(--t-text);
+  border: 1px solid var(--t-border);
+  border-radius: var(--t-control-radius);
+  padding: 0.45rem 0.75rem;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.tilo-chip.active, .tilo-choice-btn.is-active {
+  background: var(--t-accent-soft);
+  border-color: var(--t-accent);
+  color: var(--t-accent);
+}
+.tilo-accent-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--t-inset);
+  border: 1px solid var(--t-border);
+  color: var(--t-text);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tilo-accent-chip.is-active {
+  border-color: var(--t-accent);
+  background: var(--t-accent-soft);
+}
+.tilo-accent-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
 html body:is(.tilo-theme-day, .tilo-theme-night) .input-calm {
   background: var(--t-inset) !important;
   color: var(--t-text) !important;
   border: 1px solid var(--t-field-border) !important;
   border-radius: var(--t-control-radius);
-  min-height: 44px;
-  line-height: 1.65;
-  box-shadow: none !important;
+  padding: 0.65rem 0.85rem;
+  width: 100%;
+  min-height: 42px;
+  outline: none;
 }
 html body .input-calm:focus { border-color: var(--t-accent) !important; }
-html body .input-calm::placeholder { color: var(--t-muted); opacity: 1; }
-html body textarea.input-calm { min-height: 6rem; }
-html body :is(input[type="checkbox"], input[type="radio"]) { accent-color: var(--t-accent-solid); }
-html body .input-calm option { background: var(--t-card); color: var(--t-text); }
-html body form > .grid { row-gap: 1.25rem; }
-html body form > .bg-slate-900\/60 { margin-top: 1.5rem; padding: 1rem; }
-html body:is(.tilo-theme-day, .tilo-theme-night) .tilo-part-option {
-  background: var(--t-inset) !important;
-  color: var(--t-text) !important;
-  border-color: var(--t-border) !important;
-  border-radius: var(--t-control-radius);
-}
-html body:is(.tilo-theme-day, .tilo-theme-night) .tilo-part-option.is-selected {
-  background: var(--t-accent-soft) !important;
-  border-color: var(--t-accent) !important;
-  box-shadow: inset -3px 0 var(--t-accent);
-}
-html body :is(.tilo-part-pick-list, .tilo-dropdown-panel) { overscroll-behavior: contain; }
-html body .tilo-timer-spacer { height: 1rem !important; }
-html body .soft-card:has(circle[r="52"]) > .relative {
-  width: min(64vw, 16rem);
-  height: auto;
-  aspect-ratio: 1;
-}
-html body .soft-card:has(circle[r="52"]) circle:first-child { stroke: var(--t-border); }
-html body .soft-card:has(circle[r="52"]) circle:nth-child(2) { stroke: var(--t-accent); }
-html body:is(.tilo-theme-day, .tilo-theme-night) .tilo-timer-digits-glow,
-html body .soft-card:has(circle[r="52"]) .font-mono.font-black {
-  color: var(--t-text) !important;
-  text-shadow: none !important;
-  font-size: clamp(1.75rem, 8vw, 3rem);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0 !important;
-  white-space: nowrap;
-}
-
-/* Drawer: restore only its backdrop, hidden by the old body > div rule.
-   Do not override v-cloak, modal visibility, .hidden or notebook open/close. */
-html body > .tilo-drawer-backdrop { display: block !important; }
-html body:is(.tilo-theme-day, .tilo-theme-night) .tilo-drawer-panel {
-  background: var(--t-card) !important;
-  color: var(--t-text) !important;
-  border-color: var(--t-border) !important;
-  padding-top: max(1.1rem, env(safe-area-inset-top));
-  padding-bottom: max(1.1rem, env(safe-area-inset-bottom));
-}
-html body:is(.tilo-theme-day, .tilo-theme-night) :is(.tilo-hamburger-btn, .tilo-theme-switch-btn) {
+html body .tilo-theme-switch-btn {
   background: var(--t-inset) !important;
   border: 1px solid var(--t-border) !important;
   color: var(--t-text) !important;
   border-radius: var(--t-control-radius);
-  min-width: 44px;
-  min-height: 44px;
-  transform: none !important;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
-html body:is(.tilo-theme-day, .tilo-theme-night) .tilo-drawer-panel button {
-  color: var(--t-text) !important;
-  min-height: 44px;
+
+/* آنبوردینگ ۴ مرحله‌ای */
+.tilo-onboard-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: var(--t-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  overflow-y: auto;
 }
-html body:is(.tilo-theme-day, .tilo-theme-night) #app .fixed.inset-0,
-html body .tilo-drawer-backdrop {
-  background: var(--t-overlay) !important;
-  backdrop-filter: none !important;
+.tilo-onboard-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--t-card);
+  border: 1px solid var(--t-border);
+  border-radius: 18px;
+  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.tilo-onboard-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.tilo-onboard-step {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--t-accent);
+}
+.tilo-onboard-progress {
+  width: 100%;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--t-inset);
+  overflow: hidden;
+}
+.tilo-onboard-progress-fill {
+  height: 100%;
+  background: var(--t-accent-solid);
+  transition: width 0.25s ease;
+}
+.tilo-onboard-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--t-text);
+}
+.tilo-onboard-sub {
+  margin: 4px 0 14px 0;
+  font-size: 12.5px;
+  color: var(--t-muted);
+}
+.tilo-role-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+.tilo-role-card {
+  text-align: right;
+  padding: 13px 14px;
+  border-radius: 13px;
+  background: var(--t-inset);
+  border: 1.5px solid var(--t-border);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: inherit;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.tilo-role-card.is-active {
+  border-color: var(--t-accent);
+  background: var(--t-accent-soft);
+}
+.tilo-role-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--t-text);
+}
+.tilo-role-desc {
+  font-size: 11.5px;
+  color: var(--t-muted);
+}
+.tilo-summary-box {
+  background: var(--t-inset);
+  border: 1px solid var(--t-border);
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 12.5px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tilo-onboard-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 6px;
+}
+
+/* تایمر مدرن و حالت تمرکز سبک */
+.tilo-timer-stage {
+  padding: 1.5rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.tilo-timer-stage.is-focus {
+  padding: 2.25rem 1.25rem;
+  border-color: var(--t-accent) !important;
+}
+.tilo-timer-digits {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(2.6rem, 11vw, 4rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: var(--t-text);
+  line-height: 1.15;
+  margin: 0.5rem 0;
+}
+.tilo-status-pill {
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--t-inset);
+  color: var(--t-muted);
+  border: 1px solid var(--t-border);
+}
+.tilo-status-pill.is-running {
+  background: var(--t-accent-soft);
+  color: var(--t-accent);
+  border-color: var(--t-accent);
+}
+.tilo-status-pill.is-paused {
+  background: var(--t-warning-soft);
+  color: var(--t-warning);
+  border-color: var(--t-warning);
+}
+.tilo-part-pick-list {
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tilo-part-option {
+  width: 100%;
+  text-align: right;
+  padding: 10px 12px;
+  border-radius: var(--t-control-radius);
+  background: var(--t-inset);
+  border: 1px solid var(--t-border);
+  cursor: pointer;
+  font-family: inherit;
+}
+.tilo-part-option.is-selected {
+  background: var(--t-accent-soft);
+  border-color: var(--t-accent);
+}
+
+/* نمودار ساده CSS برای روند ۳ تا ۱۴ روزه */
+.tilo-trend-bars {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 8px;
+  align-items: end;
+  padding-top: 8px;
+}
+.tilo-trend-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.tilo-trend-val {
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--t-muted);
+}
+.tilo-trend-track {
+  width: 100%;
+  max-width: 30px;
+  height: 88px;
+  border-radius: 8px;
+  background: var(--t-inset);
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+.tilo-trend-fill {
+  width: 100%;
+  background: var(--t-border);
+  border-radius: 6px 6px 0 0;
+  transition: height 0.25s ease;
+}
+.tilo-trend-fill.is-today {
+  background: var(--t-accent-solid);
+}
+.tilo-trend-lbl {
+  font-size: 10.5px;
+  color: var(--t-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.tilo-insight-list {
+  margin: 0;
+  padding: 0 1rem 0 0;
+  font-size: 12.5px;
+  color: var(--t-text);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* منوی بیشتر و مودال‌ها */
+.tilo-more-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100050;
+  background: var(--t-overlay);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 14px;
+}
+.tilo-more-sheet {
+  width: 100%;
+  max-width: 380px;
+  padding: 16px;
+}
+.tilo-more-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: var(--t-control-radius);
+  background: var(--t-inset);
+  border: 1px solid var(--t-border);
+  color: var(--t-text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tilo-more-item.is-active {
+  border-color: var(--t-accent);
+  color: var(--t-accent);
+  background: var(--t-accent-soft);
+}
+.tilo-toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483646;
+  background: var(--t-card);
+  color: var(--t-accent);
+  border: 1px solid var(--t-accent);
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: var(--t-shadow);
 }
 html body #app .fixed.inset-0 {
+  background: var(--t-overlay) !important;
   overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-top: max(1rem, env(safe-area-inset-top));
-  padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
-html body #app .fixed.inset-0 > .soft-card {
-  max-height: calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+.tilo-dropdown-panel {
+  max-height: 260px;
   overflow-y: auto;
-  margin-block: auto;
 }
 
-/* Notebook: respect the user's separate paper/background and ink choices. */
-html body #tn2-root { font-family: Vazirmatn, Tahoma, system-ui, sans-serif !important; }
-html body #tn2-root :is(.tn2-ico, .tn2-btn, .tn2-card) { border-radius: var(--t-control-radius); }
-html body #tn2-root .tn2-primary {
-  background: var(--t-accent-solid) !important;
-  border-color: var(--t-accent-solid) !important;
-  color: var(--t-on-accent) !important;
-}
-html body #tn2-root .tn2-item.on {
-  border-color: var(--t-accent);
-  background: transparent;
-  box-shadow: inset -3px 0 var(--t-accent);
-}
-html body #tn2-root .tn2-ai { background: transparent; border-color: var(--t-accent); }
-html body #tn2-root .tn2-chip.on { box-shadow: 0 0 0 2px var(--t-accent); }
-html body #tn2-root [data-bg][style*="outline"] { outline-color: var(--t-accent) !important; }
-html body #tn2-root .tn2-body { overflow-y: auto; }
-html body #tn2-root .tn2-top {
-  padding-top: max(10px, env(safe-area-inset-top));
-  flex-wrap: wrap;
-}
-html body #tn2-root .tn2-foot { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
-html body #tn2-fab {
-  background: var(--t-accent-solid) !important;
-  color: var(--t-on-accent) !important;
-  box-shadow: var(--t-shadow) !important;
-  border-color: var(--t-border) !important;
-  bottom: calc(1rem + env(safe-area-inset-bottom)) !important;
-  left: max(14px, env(safe-area-inset-left)) !important;
-}
-html body #tn2-fab * { color: inherit !important; }
-
-/* Mobile: seven destinations remain reachable, not seven crushed columns. */
+/* موبایل */
 @media (max-width: 767px) {
-  html body :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea),
-  html body #tn2-root :is(input, select, textarea) { font-size: 16px !important; }
-  html body main {
-    padding-inline: max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-left));
-    padding-top: max(12px, env(safe-area-inset-top));
-    padding-bottom: calc(var(--t-nav-height) + 2rem + env(safe-area-inset-bottom)) !important;
-    scroll-padding-bottom: calc(var(--t-nav-height) + 2rem + env(safe-area-inset-bottom));
+  html body :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea) {
+    font-size: 16px !important;
   }
-  html body:is(.tilo-theme-day, .tilo-theme-night) nav.soft-card {
-    justify-content: flex-start;
-    gap: 4px;
-    padding: 6px max(8px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scrollbar-width: thin;
+  html body main {
+    padding-bottom: calc(var(--t-nav-height) + 2rem + env(safe-area-inset-bottom)) !important;
+  }
+  html body nav.soft-card {
     border-radius: 0 !important;
-    border-top: 1px solid var(--t-border) !important;
-    box-shadow: none !important;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom)) 8px;
   }
   html body nav.soft-card > button {
-    flex: 0 0 88px;
-    min-width: 88px;
-    min-height: 60px;
-    padding: 6px 4px;
-    text-align: center;
-    justify-content: center;
-    gap: 3px;
-    line-height: 1.3;
+    min-height: 52px;
+    flex: 1 1 0;
   }
-  html body nav.soft-card > button > span:not(.absolute) {
-    white-space: normal;
-    font-size: 12px;
-    margin-top: 0;
-  }
-  html body #tn2-fab {
-    bottom: calc(var(--t-nav-height) + 12px + env(safe-area-inset-bottom)) !important;
-  }
-  html body .soft-card:has(circle[r="52"]) { padding: 1rem; }
-  html body .soft-card:has(circle[r="52"]) > .flex { flex-wrap: wrap; }
-  html body form .flex:has(> input[type="number"]) { flex-wrap: wrap; }
-  html body form .flex > input.input-calm[type="number"] { flex: 1 1 5rem; min-width: 5rem; }
-  html body form .grid.grid-cols-2:has(> div > select) { grid-template-columns: 1fr; }
-  html body #tn2-root :is(.tn2-ico, .tn2-btn, .tn2-search, .tn2-select) { min-height: 44px; }
-  html body #tn2-root .tn2-ico { min-width: 44px; }
-  html body #tn2-root .tn2-chip { width: 44px; height: 44px; }
-  html body #tn2-root .tn2-text { min-height: 12rem; }
 }
 @media (min-width: 768px) {
-  html body:is(.tilo-theme-day, .tilo-theme-night) nav.soft-card {
+  html body nav.soft-card {
     border-radius: 0 !important;
-    box-shadow: none !important;
-  }
-}
-@media (pointer: coarse) {
-  html body :is(.btn-calm, .tilo-chip, .tilo-part-option) { min-height: 44px; }
-  html body main button[title], html body #tilo-drawer-close { min-width: 44px; min-height: 44px; }
-  html body label:has(> input[type="checkbox"]) { min-height: 44px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  html body *, html body *::before, html body *::after {
-    animation-duration: .01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: .01ms !important;
-    scroll-behavior: auto !important;
   }
 }
