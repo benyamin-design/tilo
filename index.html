@@ -20,7 +20,6 @@
         }
         body > div:not(#app) { display: none !important; }
 
-        /* لودر اولیه با تگ section و !important تا قانون بالا آن را مخفی نکند */
         html body > #tilo-boot-loader {
             position: fixed;
             inset: 0;
@@ -61,7 +60,6 @@
             to { transform: rotate(360deg); }
         }
 
-        /* صفحه خطای فارسی در صورت لود نشدن Vue از تمام منابع */
         html body > #tilo-vue-fallback {
             display: none !important;
             position: fixed;
@@ -100,7 +98,6 @@
             cursor: pointer;
         }
 
-        /* بنر غیرمزاحم خطاهای سراسری */
         html body > #tilo-err-banner {
             display: none !important;
             position: fixed;
@@ -126,14 +123,14 @@
         }
     </style>
 
-    <!-- استایل اصلی محلی (سریع و بدون وابستگی به CDN) -->
-    <link rel="stylesheet" href="./tilo-ui.css?v=16">
+    <!-- استایل اصلی محلی نسخه v17 -->
+    <link rel="stylesheet" href="./tilo-ui.css?v=17">
 
-    <!-- فونت و آیکون‌ها به‌صورت غیرمسدودکننده تا لودر از میلی‌ثانیه اول دیده شود -->
+    <!-- فونت و آیکون‌ها غیرمسدودکننده -->
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.0.0/Vazirmatn-font-face.css" rel="stylesheet" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
 
-    <!-- Tailwind غیرمسدودکننده (در صورت کندی CDN صفحه را قفل نمی‌کند) -->
+    <!-- Tailwind غیرمسدودکننده -->
     <script>
         (function () {
             'use strict';
@@ -166,7 +163,7 @@
         })();
     </script>
 
-    <!-- لودر مقاوم Vue 3 (محلی -> jsdelivr -> cdnjs -> unpkg) + کنترل خطا -->
+    <!-- لودر مقاوم Vue 3 (محلی -> jsdelivr -> cdnjs -> unpkg) + کنترل خطای سراسری -->
     <script>
         (function () {
             'use strict';
@@ -221,7 +218,7 @@
             };
 
             var vueSources = [
-                { url: './vue.global.prod.js?v=16', timeout: 2500 },
+                { url: './vue.global.prod.js?v=17', timeout: 2500 },
                 { url: 'https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js', timeout: 6500 },
                 { url: 'https://cdnjs.cloudflare.com/ajax/libs/vue/3.5.13/vue.global.prod.min.js', timeout: 6500 },
                 { url: 'https://unpkg.com/vue@3/dist/vue.global.prod.js', timeout: 6500 }
@@ -279,7 +276,7 @@
         })();
     </script>
 
-    <!-- بارگذاری تنبل Firebase فقط زمانی که کاربر کانفیگ داشته باشد یا درخواست اتصال بدهد -->
+    <!-- بارگذاری تنبل Firebase (کاملاً اختیاری و آفلاین‌دوست) -->
     <script>
         window.__tiloLoadFirebaseSDK = function () {
             if (window.FirebaseSDK) return Promise.resolve(window.FirebaseSDK);
@@ -317,14 +314,14 @@
 </head>
 <body class="font-sans antialiased h-screen flex flex-col md:flex-row overflow-hidden select-none tilo-theme-night" data-accent="sage">
 
-    <!-- لودر اولیه: از میلی‌ثانیه اول دیده می‌شود و تا mount موفق یا fallback می‌ماند -->
+    <!-- لودر اولیه از میلی‌ثانیه اول -->
     <section id="tilo-boot-loader" aria-live="polite" style="display:flex;">
         <div class="tilo-boot-mark">t</div>
         <div class="tilo-boot-spin"></div>
         <div style="font-size: 13px; font-weight: 700; color: #afbeb4;">در حال آماده‌سازی tilo...</div>
     </section>
 
-    <!-- صفحه خطای فارسی در صورت لود نشدن هسته Vue -->
+    <!-- صفحه خطای فارسی در صورت لود نشدن Vue -->
     <section id="tilo-vue-fallback" role="alert">
         <div class="tilo-fb-card">
             <div style="font-size: 16px; font-weight: 800; margin-bottom: 8px;">هسته برنامه بارگذاری نشد</div>
@@ -335,7 +332,7 @@
         </div>
     </section>
 
-    <!-- بنر غیرمزاحم خطاهای احتمالی اسکریپت -->
+    <!-- بنر غیرمزاحم خطاهای سراسری -->
     <aside id="tilo-err-banner" role="status">
         <span id="tilo-err-banner-msg"></span>
         <button type="button" onclick="document.getElementById('tilo-err-banner').classList.remove('show')" style="background:transparent;border:1px solid rgba(255,180,170,0.4);color:#ffb4aa;border-radius:8px;padding:3px 9px;cursor:pointer;font-family:inherit;font-size:11px;">بستن</button>
@@ -344,10 +341,10 @@
     <!-- ریشه اصلی برنامه Vue -->
     <div id="app" class="w-full h-full flex flex-col md:flex-row max-w-7xl mx-auto relative" v-cloak>
 
-        <!-- توست ساده بازخورد عملیات -->
+        <!-- توست بازخورد -->
         <div v-if="toastMessage" class="tilo-toast" role="status">{{ toastMessage }}</div>
 
-        <!-- ==================== آنبوردینگ ۴ مرحله‌ای آرام و شخصی ==================== -->
+        <!-- ==================== آنبوردینگ ۴ مرحله‌ای ==================== -->
         <div v-if="showWelcomeModal" class="tilo-onboard-backdrop">
             <div class="tilo-onboard-card">
                 <div class="tilo-onboard-top">
@@ -359,11 +356,9 @@
                     <div class="tilo-onboard-progress-fill" :style="{ width: (onboardingStep * 25) + '%' }"></div>
                 </div>
 
-                <!-- مرحله ۱: انتخاب نقش (اجباری) -->
                 <div v-if="onboardingStep === 1" class="tilo-onboard-body">
                     <h2 class="tilo-onboard-title">الان بیشتر در چه نقشی از tilo استفاده می‌کنی؟</h2>
                     <p class="tilo-onboard-sub">بخش‌ها و فرم‌های برنامه را دقیقاً بر اساس نیاز تو خلوت و آماده می‌کنیم.</p>
-
                     <div class="tilo-role-grid">
                         <button type="button" v-for="r in roleOptions" :key="r.id"
                             @click="selectRole(r.id)"
@@ -375,7 +370,6 @@
                     </div>
                 </div>
 
-                <!-- مرحله ۲: جزئیات نقش + هدف دوره -->
                 <div v-else-if="onboardingStep === 2" class="tilo-onboard-body">
                     <h2 class="tilo-onboard-title">کمی دقیق‌تر درباره مسیر فعلی‌ات</h2>
                     <p class="tilo-onboard-sub">هر زمان خواستی می‌توانی این موارد را در تنظیمات عوض کنی.</p>
@@ -421,7 +415,6 @@
                     </div>
                 </div>
 
-                <!-- مرحله ۳: ساعت تمرکز و هدف روزانه -->
                 <div v-else-if="onboardingStep === 3" class="tilo-onboard-body">
                     <h2 class="tilo-onboard-title">ریتم روزانه‌ات چطور است؟</h2>
                     <p class="tilo-onboard-sub">یک هدف واقع‌بینانه کمک می‌کند هر روز با حس خوب کار را ببندی.</p>
@@ -453,7 +446,6 @@
                     </div>
                 </div>
 
-                <!-- مرحله ۴: نام نمایشی و ورود -->
                 <div v-else class="tilo-onboard-body">
                     <h2 class="tilo-onboard-title">چه صدایت کنیم؟</h2>
                     <p class="tilo-onboard-sub">همه اطلاعات روی همین دستگاه ذخیره می‌شود و بدون اینترنت هم کار می‌کند.</p>
@@ -472,22 +464,15 @@
                     </div>
                 </div>
 
-                <!-- دکمه‌های ناوبری مراحل -->
                 <div class="tilo-onboard-actions">
-                    <button type="button" v-if="onboardingStep > 1" @click="prevOnboardingStep" class="btn-calm bg-slate-800 text-slate-200 text-xs px-4">
-                        قبلی
-                    </button>
-                    <button type="button" v-if="onboardingStep < 4" @click="nextOnboardingStep" class="btn-calm bg-primary text-white text-sm flex-1 py-3">
-                        ادامه
-                    </button>
-                    <button type="button" v-else @click="completeWelcome" class="btn-calm bg-primary text-white text-sm flex-1 py-3">
-                        ورود به فضای کار
-                    </button>
+                    <button type="button" v-if="onboardingStep > 1" @click="prevOnboardingStep" class="btn-calm bg-slate-800 text-slate-200 text-xs px-4">قبلی</button>
+                    <button type="button" v-if="onboardingStep < 4" @click="nextOnboardingStep" class="btn-calm bg-primary text-white text-sm flex-1 py-3">ادامه</button>
+                    <button type="button" v-else @click="completeWelcome" class="btn-calm bg-primary text-white text-sm flex-1 py-3">ورود به فضای کار</button>
                 </div>
             </div>
         </div>
 
-        <!-- ==================== منوی ناوبری اصلی (تطبیق‌شده با نقش + «بیشتر») ==================== -->
+        <!-- ==================== منوی ناوبری اصلی ==================== -->
         <nav class="soft-card w-full md:w-60 md:h-full flex md:flex-col justify-around md:justify-start p-2 md:p-4 order-last md:order-first z-50 fixed md:relative bottom-0 left-0 right-0 border-t md:border-t-0 md:border-l border-slate-800/80">
             <div class="hidden md:flex items-center gap-3 mb-6 px-2 pt-1">
                 <div class="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-white font-black text-base">t</div>
@@ -510,7 +495,6 @@
                 <span v-if="tab.id === 'timer' && timer.active" class="absolute top-1.5 right-3 w-2 h-2 bg-sage rounded-full"></span>
             </button>
 
-            <!-- دکمه «بیشتر» برای تب‌های فرعی -->
             <button v-if="moreNavTabs.length > 0"
                 type="button"
                 @click="moreMenuOpen = !moreMenuOpen"
@@ -521,7 +505,7 @@
             </button>
         </nav>
 
-        <!-- منوی کشویی آرام «بیشتر» -->
+        <!-- منوی کشویی «بیشتر» -->
         <div v-if="moreMenuOpen" class="tilo-more-backdrop" @click.self="moreMenuOpen = false">
             <div class="tilo-more-sheet soft-card">
                 <div class="flex justify-between items-center pb-2 mb-2 border-b border-slate-800">
@@ -547,15 +531,12 @@
         <!-- ==================== محتوای اصلی ==================== -->
         <main class="flex-1 overflow-y-auto p-4 md:p-7 pb-28 md:pb-8">
 
-            <!-- هدر آرام و خلوت -->
+            <!-- هدر آرام -->
             <header class="tilo-page-header" v-show="!(currentTab === 'timer' && timerFocusMode)">
                 <div>
-                    <h2 class="text-lg md:text-xl font-extrabold text-white">
-                        {{ tabTitle }}
-                    </h2>
+                    <h2 class="text-lg md:text-xl font-extrabold text-white">{{ tabTitle }}</h2>
                     <p class="text-slate-400 text-xs mt-0.5">{{ currentDateStr }}</p>
                 </div>
-
                 <div class="flex items-center gap-2">
                     <button type="button" @click="toggleTheme" class="tilo-theme-switch-btn text-xs" :title="settings.theme === 'day' ? 'حالت شب' : 'حالت روز'">
                         <i :class="settings.theme === 'day' ? 'fas fa-moon' : 'fas fa-sun'"></i>
@@ -566,14 +547,41 @@
                 </div>
             </header>
 
-            <!-- ==================== ۱. تب داشبورد و تحلیل ==================== -->
+            <!-- ==================== ۱. تب داشبورد، استریک، نمودار و گزارش مشاور ==================== -->
             <div v-show="currentTab === 'dashboard'" class="space-y-5 max-w-4xl mx-auto">
 
-                <!-- خلاصه یک‌خطی امروز (انجام‌شده / باقی‌مانده) -->
+                <!-- خلاصه یک‌خطی امروز -->
                 <div class="tilo-today-strip soft-card">
                     <div class="tilo-today-strip-text">{{ todaySummaryLine }}</div>
                     <div class="tilo-today-bar">
                         <div class="tilo-today-bar-fill" :style="{ width: todayStats.goalProgress + '%' }"></div>
+                    </div>
+                </div>
+
+                <!-- کارت استمرار مطالعه (Study Streak — پارت ۲) -->
+                <div class="soft-card tilo-streak-card">
+                    <div class="tilo-streak-main">
+                        <div>
+                            <div class="tilo-streak-head">
+                                <span class="tilo-streak-count">
+                                    <template v-if="studyStreak.current > 0">{{ studyStreak.current }} روز پشت‌سرهم</template>
+                                    <template v-else>زنجیره امروز را شروع کن</template>
+                                </span>
+                                <span class="tilo-streak-badge" :class="studyStreak.todayDone ? 'is-done' : 'is-pending'">
+                                    {{ studyStreak.todayDone ? 'امروز ثبت شد' : 'امروز ثبت نشده' }}
+                                </span>
+                            </div>
+                            <p class="tilo-streak-sub">
+                                بهترین رکورد: <strong>{{ studyStreak.best }} روز</strong>
+                                <span v-if="!studyStreak.todayDone && studyStreak.current > 0"> · با تکمیل یک پارت امروز، زنجیره حفظ می‌شود</span>
+                            </p>
+                        </div>
+                        <div class="tilo-streak-week" aria-label="وضعیت ۷ روز اخیر">
+                            <div v-for="d in studyStreak.last7" :key="d.iso" class="tilo-streak-day" :title="d.label + ': ' + d.minutes + ' دقیقه'">
+                                <span class="tilo-streak-dot" :class="{ 'is-active': d.active, 'is-today': d.isToday }"></span>
+                                <span class="tilo-streak-dlbl">{{ d.shortDay }}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -634,7 +642,7 @@
                     </div>
                 </div>
 
-                <!-- صف امروز + تکمیل‌شده‌ها -->
+                <!-- صف امروز + انجام‌شده‌های امروز -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div class="soft-card p-5">
                         <div class="flex justify-between items-center mb-3.5">
@@ -658,9 +666,7 @@
                                     <p class="text-sm font-bold text-white truncate">{{ part.topic }}</p>
                                     <p class="text-xs text-slate-400 mt-0.5">{{ part.plannedTime }} دقیقه</p>
                                 </div>
-                                <button type="button" @click="selectPartAndGoToTimer(part)" class="btn-calm bg-primary text-white text-xs py-2 px-3 shrink-0">
-                                    شروع
-                                </button>
+                                <button type="button" @click="selectPartAndGoToTimer(part)" class="btn-calm bg-primary text-white text-xs py-2 px-3 shrink-0">شروع</button>
                             </div>
                         </div>
                     </div>
@@ -697,18 +703,18 @@
                     </div>
                 </div>
 
-                <!-- تحلیل ساده و کاربردی (بدون گزارش رباتیک و بدون Chart.js سنگین) -->
+                <!-- نمودار روند ۷ و ۱۴ روزه با بیشترین/کمترین و جمع هفته (پارت ۲) -->
                 <div class="soft-card p-5 space-y-4">
                     <div class="flex flex-wrap justify-between items-center gap-3">
                         <div>
-                            <h3 class="font-bold text-white text-base">روند {{ analyticsDays }} روز اخیر</h3>
+                            <h3 class="font-bold text-white text-base">روند مطالعه ({{ analyticsDays }} روز اخیر)</h3>
                             <p class="text-xs text-slate-400 mt-0.5">
-                                مجموع: {{ formatMinutes(analyticsSummary.totalMinutes) }} در {{ analyticsSummary.totalParts }} پارت
-                                <span v-if="isStudent && analyticsSummary.totalTests > 0"> · {{ analyticsSummary.totalTests }} تست</span>
+                                جمع هفته اخیر: <strong class="text-white">{{ formatMinutes(weeklyTotalMinutes) }}</strong>
+                                · {{ analyticsSummary.totalParts }} پارت در این بازه
                             </p>
                         </div>
                         <div class="flex items-center gap-1.5">
-                            <button type="button" v-for="d in [3, 7, 14]" :key="d"
+                            <button type="button" v-for="d in [7, 14]" :key="d"
                                 @click="analyticsDays = d"
                                 class="tilo-chip"
                                 :class="{ active: analyticsDays === d }">
@@ -717,30 +723,189 @@
                         </div>
                     </div>
 
-                    <!-- نمودار میله‌ای خیلی ساده با CSS خالص -->
-                    <div class="tilo-trend-bars">
-                        <div v-for="day in analyticsSeries" :key="day.iso" class="tilo-trend-col">
-                            <span class="tilo-trend-val">{{ day.minutes > 0 ? day.minutes : '۰' }}</span>
-                            <div class="tilo-trend-track">
-                                <div class="tilo-trend-fill" :style="{ height: day.barPercent + '%' }" :class="{ 'is-today': day.isToday }"></div>
-                            </div>
-                            <span class="tilo-trend-lbl">{{ day.label }}</span>
+                    <div class="tilo-an-kpi-grid">
+                        <div class="tilo-an-kpi">
+                            <span class="tilo-an-kpi-lbl">جمع ۷ روز اخیر</span>
+                            <strong class="tilo-an-kpi-val">{{ formatMinutes(weeklyTotalMinutes) }}</strong>
+                            <span class="tilo-an-kpi-sub">میانگین بازه: {{ formatMinutes(analyticsSummary.avgMinutes) }}</span>
+                        </div>
+                        <div class="tilo-an-kpi is-max">
+                            <span class="tilo-an-kpi-lbl">بیشترین (Max)</span>
+                            <strong class="tilo-an-kpi-val">{{ analyticsMinMax.maxDay ? formatMinutes(analyticsMinMax.maxDay.minutes) : '—' }}</strong>
+                            <span class="tilo-an-kpi-sub">{{ analyticsMinMax.maxDay ? analyticsMinMax.maxDay.fullLabel : 'بدون ثبت' }}</span>
+                        </div>
+                        <div class="tilo-an-kpi is-min">
+                            <span class="tilo-an-kpi-lbl">کمترین (Min)</span>
+                            <strong class="tilo-an-kpi-val">{{ analyticsMinMax.minDay ? formatMinutes(analyticsMinMax.minDay.minutes) : '—' }}</strong>
+                            <span class="tilo-an-kpi-sub">{{ analyticsMinMax.minDay ? analyticsMinMax.minDay.fullLabel : 'بدون ثبت' }}</span>
                         </div>
                     </div>
 
-                    <!-- ۲ تا ۳ نکته کوتاه و عملی -->
+                    <div class="tilo-chart-shell">
+                        <div v-if="analyticsSummary.avgMinutes > 0"
+                            class="tilo-chart-avg-line"
+                            :style="{ bottom: (analyticsMinMax.avgLinePercent * 0.96 + 24) + 'px' }">
+                            <span>میانگین {{ analyticsSummary.avgMinutes }}m</span>
+                        </div>
+
+                        <div class="tilo-trend-bars" :class="{ 'is-dense': analyticsDays >= 14 }">
+                            <button type="button"
+                                v-for="day in analyticsSeries"
+                                :key="day.iso"
+                                @click="selectAnalyticsDay(day.iso)"
+                                class="tilo-trend-col"
+                                :class="{
+                                    'is-selected': selectedAnalyticsDay && selectedAnalyticsDay.iso === day.iso,
+                                    'is-max': day.isMax,
+                                    'is-min': day.isMin
+                                }"
+                                :title="day.fullLabel + ' — ' + day.minutes + ' دقیقه'">
+                                <span class="tilo-trend-val">{{ day.minutes > 0 ? day.minutes : '۰' }}</span>
+                                <div class="tilo-trend-track">
+                                    <div class="tilo-trend-fill"
+                                        :style="{ height: day.barPercent + '%' }"
+                                        :class="{ 'is-today': day.isToday, 'is-max': day.isMax, 'is-min': day.isMin }"></div>
+                                </div>
+                                <span class="tilo-trend-lbl">{{ day.label }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-if="selectedAnalyticsDay" class="tilo-an-detail-bar">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <strong class="text-white">{{ selectedAnalyticsDay.fullLabel }}</strong>
+                            <span v-if="selectedAnalyticsDay.isMax" class="tilo-tag">بیشترین روز</span>
+                            <span v-if="selectedAnalyticsDay.isMin" class="tilo-an-min-tag">کمترین روز</span>
+                        </div>
+                        <div class="tilo-an-detail-stats">
+                            <span>زمان: <strong>{{ formatMinutes(selectedAnalyticsDay.minutes) }}</strong></span>
+                            <span>پارت‌ها: <strong>{{ selectedAnalyticsDay.partsCount }}</strong></span>
+                            <span v-if="isStudent && selectedAnalyticsDay.tests > 0">
+                                تست: <strong>{{ selectedAnalyticsDay.tests }}</strong>
+                                <template v-if="selectedAnalyticsDay.score !== null"> ({{ selectedAnalyticsDay.score }}٪)</template>
+                            </span>
+                            <span v-if="(isStudent || isUniversity) && selectedAnalyticsDay.descriptive > 0">
+                                {{ isStudent ? 'تشریحی' : 'تمرین' }}: <strong>{{ selectedAnalyticsDay.descriptive }}</strong>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="tilo-an-legend">
+                        <span><i class="tilo-leg-dot is-max"></i> بیشترین</span>
+                        <span><i class="tilo-leg-dot is-min"></i> کمترین</span>
+                        <span><i class="tilo-leg-dot is-today"></i> امروز</span>
+                    </div>
+
                     <ul class="tilo-insight-list">
                         <li v-for="(line, idx) in analyticsInsights" :key="idx">{{ line }}</li>
                     </ul>
 
                     <div class="flex flex-wrap gap-2 pt-1">
                         <button type="button" @click="copyWeeklySummary" class="btn-calm bg-slate-800 text-slate-200 text-xs py-2 px-3.5">
-                            <i class="fas fa-copy"></i> کپی خلاصه برای مشاور / خودم
+                            <i class="fas fa-copy"></i> کپی خلاصه روند
                         </button>
                     </div>
                 </div>
 
-                <!-- بازبینی ۳ خطی پایان روز (اختیاری و جمع‌شونده) -->
+                <!-- آرشیو و گزارش مشاور (پارت ۳: امروز / ۷ روز / ۱۴ روز + کپی متن + چاپ/PDF فارسی) -->
+                <div class="soft-card p-5 space-y-4">
+                    <div class="flex flex-wrap justify-between items-center gap-3">
+                        <div>
+                            <h3 class="font-bold text-white text-base">آرشیو و گزارش مشاور</h3>
+                            <p class="text-xs text-slate-400 mt-0.5">
+                                {{ advisorRangeLabel }} · {{ advisorSummary.activeDays }} روز دارای فعالیت · {{ advisorSummary.totalParts }} پارت
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" v-for="r in [1, 7, 14]" :key="r"
+                                @click="advisorRange = r"
+                                class="tilo-chip"
+                                :class="{ active: advisorRange === r }">
+                                {{ r === 1 ? 'امروز' : (r + ' روز') }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="tilo-rep-summary">
+                        <div class="tilo-rep-stat">
+                            <span>مجموع مطالعه</span>
+                            <strong>{{ formatMinutes(advisorSummary.totalMinutes) }}</strong>
+                        </div>
+                        <div class="tilo-rep-stat">
+                            <span>تحقق هدف بازه</span>
+                            <strong>{{ advisorSummary.goalPercent }}٪</strong>
+                        </div>
+                        <div class="tilo-rep-stat">
+                            <span>پارت‌های تکمیل‌شده</span>
+                            <strong>{{ advisorSummary.totalParts }} پارت</strong>
+                        </div>
+                        <div v-if="isStudent" class="tilo-rep-stat">
+                            <span>عملکرد تستی</span>
+                            <strong>{{ advisorSummary.totalTests > 0 ? (advisorSummary.totalTests + ' تست (' + advisorSummary.netScore + ')') : '—' }}</strong>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" @click="copyAdvisorReportText" class="btn-calm bg-slate-800 text-slate-200 text-xs py-2.5 px-3.5 flex-1">
+                            <i class="fas fa-copy"></i> کپی متن برای واتساپ / تلگرام
+                        </button>
+                        <button type="button" @click="printAdvisorPDF(null)" class="btn-calm bg-primary text-white text-xs py-2.5 px-4 flex-1">
+                            <i class="fas fa-file-pdf"></i> چاپ / ذخیره PDF فارسی
+                        </button>
+                    </div>
+
+                    <div v-if="advisorDays.length === 0" class="tilo-empty-box">
+                        <p class="text-xs text-slate-400">در بازه «{{ advisorRangeLabel }}» هنوز پارت تکمیل‌شده‌ای ثبت نشده است.</p>
+                    </div>
+
+                    <div v-else class="space-y-3">
+                        <div v-for="day in advisorDays" :key="day.iso" class="tilo-rep-day-card">
+                            <div class="tilo-rep-day-head">
+                                <div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <strong class="text-sm text-white">{{ day.fullLabel }}</strong>
+                                        <span class="tilo-tag">{{ formatMinutes(day.totalMinutes) }}</span>
+                                        <span class="text-xs text-slate-400">({{ day.goalPercent }}٪ هدف)</span>
+                                    </div>
+                                    <div class="text-xs text-slate-400 mt-1">
+                                        {{ day.parts.length }} پارت
+                                        <span v-if="isStudent && day.totalTests > 0">
+                                            · {{ day.totalTests }} تست (✓{{ day.correct }} ✗{{ day.wrong }} · {{ day.netScore }})
+                                        </span>
+                                        <span v-if="day.descriptive > 0">
+                                            · {{ day.descriptive }} {{ isStudent ? 'تشریحی' : 'تمرین' }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <button type="button" @click="printAdvisorPDF(day.iso)" class="tilo-chip text-xs shrink-0" title="دریافت PDF همین روز">
+                                    <i class="fas fa-print"></i> PDF این روز
+                                </button>
+                            </div>
+
+                            <div class="tilo-rep-part-list">
+                                <div v-for="p in day.parts" :key="p.id" class="tilo-rep-part-row">
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex flex-wrap items-center gap-1.5">
+                                            <span class="tilo-rep-sub">{{ (p.subjects || []).join('، ') || 'مطالعه' }}</span>
+                                            <span class="text-xs font-bold text-white">{{ p.topic || 'بدون عنوان' }}</span>
+                                            <span v-if="p.type" class="text-[11px] text-slate-400">({{ p.type }})</span>
+                                        </div>
+                                        <div class="text-[11px] text-slate-400 mt-0.5 flex flex-wrap gap-2">
+                                            <span v-if="isStudent && p.tests && p.tests.total > 0">
+                                                تست: {{ p.tests.total }} (درست {{ p.tests.correct }} · غلط {{ p.tests.wrong }} · نزده {{ p.tests.unanswered }} · {{ calcPartPercent(p.tests) }}٪)
+                                            </span>
+                                            <span v-if="p.descriptiveCount > 0">{{ isStudent ? 'تشریحی' : 'تمرین' }}: {{ p.descriptiveCount }}</span>
+                                            <span v-if="p.notes" class="tilo-rep-note">یادداشت: {{ p.notes }}</span>
+                                        </div>
+                                    </div>
+                                    <span class="text-xs font-bold text-sage shrink-0">{{ p.realTime }} دقیقه</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- بازبینی ۳ خطی پایان روز -->
                 <div class="soft-card p-4">
                     <button type="button" @click="showReviewBox = !showReviewBox" class="w-full flex justify-between items-center text-right">
                         <div>
@@ -771,13 +936,12 @@
                 </div>
             </div>
 
-            <!-- ==================== ۲. تب مدیریت پارت‌ها / کارها (وابسته به نقش) ==================== -->
+            <!-- ==================== ۲. تب مدیریت پارت‌ها / کارها ==================== -->
             <div v-show="currentTab === 'parts'" class="space-y-5 max-w-4xl mx-auto">
                 <div class="soft-card p-5">
                     <h3 class="text-base font-bold text-white mb-4">{{ roleLabels.createPartHeading }}</h3>
 
                     <form @submit.prevent="createNewPart" class="space-y-4">
-                        <!-- حالت دانش‌آموز / کنکوری -->
                         <div v-if="isStudent" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="relative">
                                 <label class="tilo-field-label">انتخاب درس یا فعالیت *</label>
@@ -847,7 +1011,6 @@
                             </div>
                         </div>
 
-                        <!-- حالت دانشجو -->
                         <div v-else-if="isUniversity" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="tilo-field-label">نام درس دانشگاه یا پروژه *</label>
@@ -882,7 +1045,6 @@
                             </div>
                         </div>
 
-                        <!-- حالت شاغل / فریلنسر / آزاد -->
                         <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="md:col-span-2">
                                 <label class="tilo-field-label">عنوان کار *</label>
@@ -914,17 +1076,12 @@
                         </div>
 
                         <div class="flex flex-wrap gap-2.5 pt-1">
-                            <button type="submit" class="btn-calm bg-primary text-white text-xs md:text-sm flex-1 py-3">
-                                + افزودن به صف امروز
-                            </button>
-                            <button type="button" @click="openDirectCompleteModal" class="btn-calm bg-slate-800 text-slate-200 text-xs py-3 px-4">
-                                ثبت مستقیم (بدون تایمر)
-                            </button>
+                            <button type="submit" class="btn-calm bg-primary text-white text-xs md:text-sm flex-1 py-3">+ افزودن به صف امروز</button>
+                            <button type="button" @click="openDirectCompleteModal" class="btn-calm bg-slate-800 text-slate-200 text-xs py-3 px-4">ثبت مستقیم (بدون تایمر)</button>
                         </div>
                     </form>
                 </div>
 
-                <!-- لیست صف انتظار -->
                 <div class="soft-card p-5">
                     <h3 class="font-bold text-white mb-4 text-sm">{{ roleLabels.queueTitle }} ({{ pendingParts.length }})</h3>
                     <div v-if="pendingParts.length === 0" class="tilo-empty-box">
@@ -958,7 +1115,6 @@
                     </div>
                 </div>
 
-                <!-- آرشیو انجام‌شده‌ها -->
                 <div class="soft-card p-5">
                     <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
                         <h3 class="font-bold text-white text-sm">سوابق انجام‌شده ({{ filteredCompletedParts.length }})</h3>
@@ -967,9 +1123,7 @@
                                 <option value="">همه دسته‌ها</option>
                                 <option v-for="cat in partCategories" :key="cat" :value="cat">{{ cat }}</option>
                             </select>
-                            <button type="button" v-if="completedParts.length > 0" @click="exportCSV" class="btn-calm bg-slate-800 text-xs py-1.5 px-3 text-slate-200">
-                                خروجی CSV
-                            </button>
+                            <button type="button" v-if="completedParts.length > 0" @click="exportCSV" class="btn-calm bg-slate-800 text-xs py-1.5 px-3 text-slate-200">خروجی CSV</button>
                         </div>
                     </div>
 
@@ -1001,7 +1155,6 @@
                     </div>
                 </div>
 
-                <!-- سطل بازیابی -->
                 <div v-if="trashedParts.length > 0" class="soft-card p-4">
                     <h3 class="font-bold text-roseSoft mb-3 text-xs">سطل بازیابی ({{ trashedParts.length }})</h3>
                     <div class="space-y-2">
@@ -1016,108 +1169,232 @@
                 </div>
             </div>
 
-            <!-- ==================== ۳. تب تایمر مدرن و خلوت ==================== -->
-            <div v-show="currentTab === 'timer'" class="max-w-lg mx-auto space-y-4">
+                        <!-- ==================== ۳. تب تایمر تمرکز ==================== -->
+            <div v-show="currentTab === 'timer'" class="max-w-xl mx-auto space-y-4">
 
-                <!-- کارت اصلی تایمر (اول صفحه، درشت، با حالت تمرکز سبک هنگام اجرا) -->
-                <div class="soft-card tilo-timer-stage" :class="{ 'is-focus': timerFocusMode }">
-                    <div class="flex justify-between items-center w-full mb-2">
-                        <span class="tilo-status-pill" :class="timerStatusClass">{{ timerStatusLabel }}</span>
-                        <button type="button" v-if="timer.active" @click="timerShowConfig = !timerShowConfig" class="tilo-link-btn">
-                            {{ timerShowConfig ? 'بستن تنظیمات' : 'تنظیمات تایمر' }}
-                        </button>
+                <!-- سوییچ ۴ حالت تایمر -->
+                <div v-if="!timerFocusMode || timerShowConfig" class="soft-card tilo-tm-modes" role="tablist" aria-label="حالت تایمر">
+                    <button type="button"
+                        v-for="m in timerModes"
+                        :key="m.id"
+                        @click="selectTimerMode(m.id)"
+                        :disabled="timer.active"
+                        class="tilo-tm-mode-btn"
+                        :class="{ 'is-active': activeTimerModeKey === m.id }">
+                        <i :class="m.icon"></i>
+                        <span>{{ m.label }}</span>
+                    </button>
+                </div>
+
+                <!-- کارت اصلی تایمر -->
+                <div class="soft-card tilo-tm-stage" :class="{ 'is-focus': timerFocusMode, 'is-break': timer.active && timer.phase === 'break' }">
+                    <div class="tilo-tm-top">
+                        <div class="flex items-center gap-2">
+                            <span class="tilo-status-pill" :class="timerStatusClass">
+                                <span class="tilo-status-dot"></span>
+                                {{ timerStatusLabel }}
+                            </span>
+                            <span v-if="timer.style === 'pomodoro'" class="tilo-tm-round-badge">
+                                دور {{ timer.currentRound }} از ۴
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" @click="toggleTimerSound" class="tilo-tm-mini-btn" :title="timer.soundEnabled ? 'قطع زنگ پایان' : 'فعال کردن زنگ پایان'">
+                                <i :class="timer.soundEnabled ? 'fas fa-volume-up' : 'fas fa-volume-mute'"></i>
+                            </button>
+                            <button type="button" v-if="timer.active" @click="timerShowConfig = !timerShowConfig" class="tilo-tm-mini-btn">
+                                <i :class="timerShowConfig ? 'fas fa-chevron-up' : 'fas fa-sliders-h'"></i>
+                                <span>{{ timerShowConfig ? 'بستن' : 'تنظیمات' }}</span>
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="text-center my-2 min-h-[44px]">
+                    <!-- پارت یا درس فعال -->
+                    <div class="tilo-tm-active">
                         <template v-if="activeTimerInfo">
-                            <div class="flex flex-wrap justify-center gap-1 mb-1">
+                            <div class="flex flex-wrap justify-center gap-1.5 mb-1">
                                 <span v-for="s in activeTimerInfo.subjects" :key="s" class="tilo-tag">{{ s }}</span>
+                                <span v-if="activeTimerInfo.plannedTime" class="tilo-tm-subtle-tag">هدف {{ activeTimerInfo.plannedTime }} دقیقه</span>
                             </div>
-                            <p class="text-base font-bold text-white">{{ activeTimerInfo.topic }}</p>
+                            <p class="tilo-tm-active-title">{{ activeTimerInfo.topic }}</p>
                         </template>
-                        <p v-else class="text-slate-400 text-xs">پارت فعال انتخاب نشده؛ می‌توانی تایمر آزاد بزنی یا از زیر انتخاب کنی</p>
+                        <p v-else class="text-xs text-slate-400">
+                            {{ activeTimerModeKey === 'free' ? 'تمرکز آزاد · عنوان یا درس را پایین انتخاب کن (اختیاری)' : 'یک پارت از لیست امروز پایین انتخاب کن' }}
+                        </p>
                     </div>
 
-                    <!-- عدد درشت و خوانای تایمر -->
-                    <div class="tilo-timer-digits" dir="ltr">{{ formattedTimer }}</div>
-
-                    <!-- نوار پیشرفت ساده نسبت به هدف پارت -->
-                    <div class="w-full max-w-xs mx-auto mt-3">
-                        <div class="tilo-today-bar">
-                            <div class="tilo-today-bar-fill" :style="{ width: timerProgressPercent + '%' }"></div>
+                    <!-- حلقه پیشرفت و شمارنده -->
+                    <div class="tilo-tm-ring-wrap">
+                        <svg class="tilo-tm-ring-svg" viewBox="0 0 120 120" aria-hidden="true">
+                            <circle class="tilo-tm-ring-track" cx="60" cy="60" r="54"></circle>
+                            <circle class="tilo-tm-ring-prog"
+                                :class="{ 'is-break': timer.phase === 'break', 'is-paused': timer.active && !timer.running }"
+                                cx="60" cy="60" r="54"
+                                :stroke-dasharray="339.29"
+                                :stroke-dashoffset="timerRingOffset"></circle>
+                        </svg>
+                        <div class="tilo-tm-ring-center">
+                            <span class="tilo-tm-phase-lbl">{{ timerPhaseLabel }}</span>
+                            <div class="tilo-timer-digits" dir="ltr">{{ formattedTimer }}</div>
+                            <span class="tilo-tm-sub-lbl">
+                                <template v-if="timer.style === 'stopwatch'">
+                                    هدف {{ currentTargetMinutes }} دقیقه · {{ Math.round(timerProgressPercent) }}٪
+                                </template>
+                                <template v-else>
+                                    {{ Math.round(timerProgressPercent) }}٪ از {{ currentTargetMinutes }} دقیقه
+                                </template>
+                            </span>
                         </div>
-                        <div class="flex justify-between text-xs text-slate-400 mt-1.5">
-                            <span>هدف: {{ currentTargetMinutes }} دقیقه</span>
-                            <span>{{ Math.round(timerProgressPercent) }}٪</span>
-                        </div>
                     </div>
 
-                    <div v-if="timer.active" class="text-xs text-slate-400 mt-3">
-                        شروع: {{ timer.startTehranStr }} · وقفه‌ها: {{ timer.pauseCount }} بار
+                    <!-- نشانگر دورهای پومودورو -->
+                    <div v-if="timer.style === 'pomodoro'" class="tilo-tm-rounds" aria-label="دورهای پومودورو">
+                        <span v-for="n in 4" :key="n"
+                            class="tilo-tm-round-dot"
+                            :class="{
+                                'is-done': n < timer.currentRound,
+                                'is-current': n === timer.currentRound && timer.active,
+                                'is-break': n === timer.currentRound && timer.active && timer.phase === 'break'
+                            }"></span>
                     </div>
 
-                    <!-- دکمه‌های درشت و موبایل‌فرندلی -->
-                    <div class="flex gap-2.5 w-full mt-6">
-                        <button type="button" v-if="!timer.active" @click="startTimer" class="btn-calm bg-primary text-white w-full py-4 text-base">
-                            <i class="fas fa-play"></i> شروع
+                    <!-- اطلاعات جلسه در حال اجرا -->
+                    <div v-if="timer.active" class="tilo-tm-meta">
+                        <span>شروع: <strong>{{ timer.startTehranStr }}</strong></span>
+                        <span>تمرکز: <strong>{{ totalSessionFocusMinutes }} دقیقه</strong></span>
+                        <span>وقفه‌ها: <strong>{{ timer.pauseCount }}</strong></span>
+                    </div>
+
+                    <!-- دکمه‌های کنترل اصلی -->
+                    <div class="tilo-tm-actions">
+                        <button type="button" v-if="!timer.active" @click="startTimer" class="btn-calm bg-primary text-white w-full py-3.5 text-sm md:text-base">
+                            <i class="fas fa-play"></i>
+                            <span>شروع تمرکز</span>
                         </button>
                         <template v-else>
-                            <button type="button" v-if="timer.running" @click="pauseTimer" class="btn-calm bg-slate-800 text-white flex-1 py-4 text-sm">
+                            <button type="button" v-if="timer.running" @click="pauseTimer" class="btn-calm bg-slate-800 text-white flex-1 py-3.5 text-sm">
                                 <i class="fas fa-pause"></i> مکث
                             </button>
-                            <button type="button" v-else @click="resumeTimer" class="btn-calm bg-primary text-white flex-1 py-4 text-sm">
+                            <button type="button" v-else @click="resumeTimer" class="btn-calm bg-primary text-white flex-1 py-3.5 text-sm">
                                 <i class="fas fa-play"></i> ادامه
                             </button>
-                            <button type="button" @click="finishTimerAndRecord" class="btn-calm bg-roseSoft flex-1 py-4 text-sm">
+                            <button type="button" v-if="timer.phase === 'break'" @click="skipBreakPhase" class="btn-calm bg-slate-800 text-slate-200 py-3.5 px-3 text-xs">
+                                رد استراحت
+                            </button>
+                            <button type="button" @click="finishTimerAndRecord" class="btn-calm bg-roseSoft flex-1 py-3.5 text-sm">
                                 <i class="fas fa-check"></i> اتمام و ثبت
                             </button>
                         </template>
                     </div>
+
+                    <div v-if="timer.active" class="tilo-tm-subactions">
+                        <button type="button" v-if="timer.style !== 'stopwatch'" @click="extendTimerMinutes(5)" class="tilo-chip text-xs">+۵ دقیقه</button>
+                        <button type="button" @click="cancelActiveTimer" class="tilo-link-btn text-xs" style="color: var(--t-muted);">لغو بدون ثبت</button>
+                    </div>
                 </div>
 
-                <!-- کادر انتخاب پارت و نوع تایمر (در حالت اجرا جمع می‌شود تا حواس‌پرتی کم شود) -->
+                <!-- پنل تنظیمات حالت انتخابی + لیست انتخاب سریع پارت امروز -->
                 <div v-if="!timerFocusMode || timerShowConfig" class="soft-card p-4 space-y-4">
-                    <div class="grid grid-cols-3 gap-2 text-xs">
-                        <button type="button" @click="setTimerStyle('stopwatch')" class="tilo-choice-btn" :class="{ 'is-active': timer.style === 'stopwatch' }">پیش‌رونده</button>
-                        <button type="button" @click="setTimerStyle('countdown')" class="tilo-choice-btn" :class="{ 'is-active': timer.style === 'countdown' }">معکوس</button>
-                        <button type="button" @click="setTimerStyle('pomodoro')" class="tilo-choice-btn" :class="{ 'is-active': timer.style === 'pomodoro' }">پومودورو (۲۵)</button>
+
+                    <!-- توضیحات و تنظیم پومودورو ۲۵+۵ -->
+                    <div v-if="activeTimerModeKey === 'pomodoro'" class="tilo-tm-panel-box">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-bold text-white">پومودورو استاندارد</span>
+                            <span class="text-xs text-slate-400">۲۵ دقیقه تمرکز + ۵ دقیقه استراحت</span>
+                        </div>
+                        <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300 mt-2.5">
+                            <input type="checkbox" v-model="timer.autoStartBreak" @change="saveTimer" class="w-4 h-4 rounded">
+                            <span>شروع خودکار ۵ دقیقه استراحت پس از هر دور</span>
+                        </label>
                     </div>
 
-                    <div class="flex justify-between items-center">
-                        <span class="text-xs font-bold text-slate-300">منبع تایمر</span>
-                        <div class="flex gap-1.5">
-                            <button type="button" @click="switchTimerMode('part')" class="tilo-chip" :class="{ active: timer.mode === 'part' }">از صف امروز</button>
-                            <button type="button" @click="switchTimerMode('quick')" class="tilo-chip" :class="{ active: timer.mode === 'quick' }">تایمر آزاد</button>
+                    <!-- تنظیمات حالت آزاد -->
+                    <div v-if="activeTimerModeKey === 'free'" class="space-y-3">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-bold text-white">جهت شمارش آزاد</span>
+                            <div class="flex gap-1.5">
+                                <button type="button" :disabled="timer.active" @click="setFreeTimerDirection('countdown')" class="tilo-chip" :class="{ active: timer.style === 'countdown' }">معکوس</button>
+                                <button type="button" :disabled="timer.active" @click="setFreeTimerDirection('stopwatch')" class="tilo-chip" :class="{ active: timer.style === 'stopwatch' }">پیش‌رونده</button>
+                            </div>
                         </div>
+
+                        <div>
+                            <span class="tilo-field-label">مدت هدف (دقیقه)</span>
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <button type="button" v-for="d in [25, 45, 50, 60, 90]" :key="d"
+                                    :disabled="timer.active"
+                                    @click="timer.quickTarget = d; saveTimer()"
+                                    class="tilo-chip"
+                                    :class="{ active: timer.quickTarget === d }">{{ d }}</button>
+                                <input type="number" v-model.number="timer.quickTarget" @change="saveTimer" :disabled="timer.active" min="5" max="300" class="input-calm text-xs w-20 text-center">
+                            </div>
+                        </div>
+
+                        <div>
+                            <span class="tilo-field-label">{{ isStudent ? 'انتخاب سریع درس (اختیاری)' : 'برچسب سریع (اختیاری)' }}</span>
+                            <div class="flex flex-wrap gap-1.5">
+                                <button type="button" v-for="sub in quickSubjectPicks" :key="sub"
+                                    :disabled="timer.active"
+                                    @click="toggleQuickSubject(sub)"
+                                    class="tilo-chip"
+                                    :class="{ active: timer.quickSubjects.includes(sub) }">{{ sub }}</button>
+                            </div>
+                        </div>
+
+                        <input type="text" v-model="timer.quickTopic" @change="saveTimer" :disabled="timer.active" class="input-calm text-xs" :placeholder="isStudent ? 'عنوان مبحث (مثلاً: تست فصل ۲)' : 'عنوان کار یا تمرکز (اختیاری)'">
                     </div>
 
-                    <div v-if="timer.mode === 'part'">
-                        <div v-if="pendingParts.length === 0" class="tilo-empty-box">
-                            <p class="text-xs text-slate-400">صف امروز خالی است.</p>
-                            <button type="button" @click="currentTab = 'parts'" class="tilo-link-btn mt-2">+ تعریف پارت جدید</button>
+                    <!-- لیست پارت‌های امروز داخل صفحه تایمر + انتخاب یک‌کلیکی -->
+                    <div v-if="activeTimerModeKey !== 'free'" class="space-y-2.5">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <span class="text-xs font-bold text-white">
+                                {{ activeTimerModeKey === 'pomodoro' ? 'اتصال به پارت امروز (اختیاری)' : 'پارت‌های امروز (یک کلیک برای انتخاب)' }}
+                            </span>
+                            <div class="flex items-center gap-2">
+                                <button type="button" v-if="pendingParts.length > todayPendingParts.length"
+                                    @click="timerPartScope = timerPartScope === 'today' ? 'all' : 'today'"
+                                    class="tilo-link-btn text-xs">
+                                    {{ timerPartScope === 'today' ? 'همه صف (' + pendingParts.length + ')' : 'فقط امروز (' + todayPendingParts.length + ')' }}
+                                </button>
+                                <button type="button" v-if="activeTimerModeKey === 'pomodoro' && timer.mode === 'part' && timer.selectedPartId && !timer.active"
+                                    @click="clearTimerPartSelection"
+                                    class="tilo-link-btn text-xs" style="color: var(--t-muted);">
+                                    بدون پارت
+                                </button>
+                            </div>
                         </div>
-                        <div v-else class="tilo-part-pick-list" :class="timer.active ? 'opacity-60 pointer-events-none' : ''">
-                            <button type="button" v-for="p in pendingParts" :key="p.id"
-                                class="tilo-part-option text-xs"
-                                :class="{ 'is-selected': timer.selectedPartId === p.id }"
-                                @click="timer.selectedPartId = p.id; saveTimer()">
-                                <span class="font-bold text-white block">{{ p.topic || 'بدون عنوان' }}</span>
-                                <span class="text-slate-400 block mt-0.5">{{ (p.subjects || []).join('، ') }} · هدف {{ p.plannedTime || 60 }} دقیقه</span>
+
+                        <div v-if="displayedTimerParts.length === 0" class="tilo-empty-box">
+                            <p class="text-xs text-slate-400">پارتی برای امروز در صف انتظار نیست.</p>
+                            <div class="flex justify-center gap-2 mt-2.5">
+                                <button type="button" @click="currentTab = 'parts'" class="btn-calm bg-primary text-white text-xs py-1.5 px-3">+ تعریف پارت</button>
+                                <button type="button" @click="selectTimerMode('free')" class="btn-calm bg-slate-800 text-slate-200 text-xs py-1.5 px-3">حالت آزاد</button>
+                            </div>
+                        </div>
+
+                        <div v-else class="tilo-tm-part-list" :class="timer.active ? 'opacity-60 pointer-events-none' : ''">
+                            <button type="button"
+                                v-for="p in displayedTimerParts"
+                                :key="p.id"
+                                @click="quickSelectTimerPart(p)"
+                                class="tilo-tm-part-card"
+                                :class="{ 'is-selected': timer.mode === 'part' && timer.selectedPartId === p.id }">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="tilo-tm-part-topic truncate">{{ p.topic || 'بدون عنوان' }}</span>
+                                    <span class="tilo-tag shrink-0">{{ p.plannedTime || 50 }} دقیقه</span>
+                                </div>
+                                <div class="flex items-center justify-between gap-2 mt-1 text-[11px] text-slate-400">
+                                    <span class="truncate">{{ (p.subjects || []).join('، ') || 'مطالعه' }}</span>
+                                    <span v-if="p.realTime > 0" class="text-sage shrink-0">{{ p.realTime }} دقیقه ثبت‌شده</span>
+                                </div>
                             </button>
                         </div>
                     </div>
 
-                    <div v-else class="space-y-2.5">
-                        <input type="text" v-model="timer.quickTopic" :disabled="timer.active" class="input-calm text-xs" :placeholder="isStudent ? 'نام درس یا مبحث...' : 'عنوان کار یا تمرکز...'">
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs text-slate-400 shrink-0">مدت هدف (دقیقه):</span>
-                            <input type="number" v-model.number="timer.quickTarget" :disabled="timer.active" min="5" max="300" class="input-calm text-xs w-28 text-center">
-                        </div>
-                    </div>
-
-                    <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300 pt-1">
-                        <input type="checkbox" v-model="timer.autoStop" class="w-4 h-4 rounded">
-                        <span>ثبت خودکار پس از پایان {{ currentTargetMinutes }} دقیقه</span>
+                    <!-- ثبت خودکار در پایان شمارش‌معکوس -->
+                    <label v-if="timer.style === 'countdown'" class="flex items-center gap-2 cursor-pointer text-xs text-slate-300 pt-2 border-t border-slate-800">
+                        <input type="checkbox" v-model="timer.autoStop" @change="saveTimer" class="w-4 h-4 rounded">
+                        <span>ثبت خودکار هنگام رسیدن به {{ currentTargetMinutes }} دقیقه</span>
                     </label>
                 </div>
             </div>
@@ -1500,6 +1777,95 @@
                 <button type="button" @click="detailPart = null" class="btn-calm bg-slate-800 text-white w-full py-2.5">بستن</button>
             </div>
         </div>
+
+        <!-- ==================== قالب رسمی چاپ / PDF فارسی A4 ==================== -->
+        <section id="tilo-print-report" class="tilo-print-sheet" dir="rtl" aria-hidden="true">
+            <div class="tp-header">
+                <div>
+                    <h1 class="tp-title">گزارش عملکرد مطالعاتی — tilo</h1>
+                    <p class="tp-subtitle">بازه گزارش: {{ printReportMeta.rangeTitle }} · تاریخ صدور: {{ currentDateStr }}</p>
+                </div>
+                <div class="tp-brand-box">
+                    <strong>{{ settings.userName || 'کاربر tilo' }}</strong>
+                    <span v-if="isStudent">{{ settings.grade }} · رشته {{ settings.major }}</span>
+                    <span v-else>{{ currentRoleLabel }}</span>
+                </div>
+            </div>
+
+            <div class="tp-kpi-grid">
+                <div class="tp-kpi">
+                    <span>مجموع زمان مطالعه</span>
+                    <strong>{{ formatMinutes(printReportMeta.totalMinutes) }}</strong>
+                </div>
+                <div class="tp-kpi">
+                    <span>مقایسه با هدف روزانه</span>
+                    <strong>{{ printReportMeta.goalPercent }}٪ (هدف: {{ formatMinutes(settings.dailyGoal) }})</strong>
+                </div>
+                <div class="tp-kpi">
+                    <span>تعداد پارت‌ها / استمرار</span>
+                    <strong>{{ printReportMeta.totalParts }} پارت · {{ studyStreak.current }} روز متوالی</strong>
+                </div>
+                <div class="tp-kpi" v-if="isStudent">
+                    <span>آمار تستی و تشریحی</span>
+                    <strong>{{ printReportMeta.totalTests }} تست ({{ printReportMeta.netScore }}) · {{ printReportMeta.totalDescriptive }} تشریحی</strong>
+                </div>
+            </div>
+
+            <div v-if="printReportDays.length === 0" class="tp-empty">
+                در این بازه فعالیتی ثبت نشده است.
+            </div>
+
+            <div v-for="day in printReportDays" :key="day.iso" class="tp-day-block">
+                <div class="tp-day-bar">
+                    <strong>{{ day.fullLabel }}</strong>
+                    <span>
+                        جمع روز: {{ formatMinutes(day.totalMinutes) }} ({{ day.goalPercent }}٪ هدف)
+                        · {{ day.parts.length }} پارت
+                        <template v-if="isStudent && day.totalTests > 0">
+                            · {{ day.totalTests }} تست ({{ day.netScore }})
+                        </template>
+                    </span>
+                </div>
+
+                <table class="tp-table">
+                    <thead>
+                        <tr>
+                            <th style="width:6%;">#</th>
+                            <th style="width:18%;">درس / دسته</th>
+                            <th style="width:24%;">مبحث و فعالیت</th>
+                            <th style="width:12%;">زمان واقعی</th>
+                            <th v-if="isStudent" style="width:20%;">تست و تشریحی</th>
+                            <th>یادداشت و تحلیل</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(p, idx) in day.parts" :key="p.id">
+                            <td>{{ idx + 1 }}</td>
+                            <td>{{ (p.subjects || []).join('، ') || 'مطالعه' }}</td>
+                            <td>
+                                <strong>{{ p.topic || 'بدون عنوان' }}</strong>
+                                <div v-if="p.type" class="tp-muted">{{ p.type }}</div>
+                            </td>
+                            <td>{{ p.realTime }} دقیقه</td>
+                            <td v-if="isStudent">
+                                <div v-if="p.tests && p.tests.total > 0">
+                                    کل: {{ p.tests.total }} (✓{{ p.tests.correct }} ✗{{ p.tests.wrong }} نزده:{{ p.tests.unanswered }})
+                                    <div class="tp-muted">درصد: {{ calcPartPercent(p.tests) }}٪</div>
+                                </div>
+                                <div v-if="p.descriptiveCount > 0">تشریحی: {{ p.descriptiveCount }}</div>
+                                <span v-if="!(p.tests && p.tests.total > 0) && !p.descriptiveCount">—</span>
+                            </td>
+                            <td>{{ p.notes || p.description || '—' }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="tp-footer">
+                <div>یادداشت مشاور: ................................................................................................</div>
+                <div class="tp-sign">امضای مشاور / ولی: ........................</div>
+            </div>
+        </section>
     </div>
 
     <script>
@@ -1604,7 +1970,7 @@
                         const problems = ref([]);
                         const settings = ref({
                             userName: '',
-                            userRole: 'student', // 'student' | 'university' | 'work' | 'personal'
+                            userRole: 'student',
                             periodGoal: '',
                             focusTime: 'morning',
                             universityField: '',
@@ -1617,6 +1983,7 @@
                             grade: 'دوازدهم',
                             hideIrrelevantTabs: true,
                             accentColor: 'sage',
+                            bestStreak: 0,
                             theme: localStorage.getItem('tilo_ui_theme') || 'night'
                         });
 
@@ -1663,7 +2030,6 @@
                             };
                         });
 
-                        // ناوبری خلوت: فقط تب‌های مرتبط در نوار اصلی؛ بقیه در «بیشتر»
                         const visibleNavTabs = computed(() => {
                             const base = [
                                 { id: 'dashboard', label: 'امروز', icon: 'fas fa-home' },
@@ -1678,9 +2044,7 @@
                         });
 
                         const moreNavTabs = computed(() => {
-                            if (isWorkOrPersonal.value && settings.value.hideIrrelevantTabs) {
-                                return [];
-                            }
+                            if (isWorkOrPersonal.value && settings.value.hideIrrelevantTabs) return [];
                             const list = [];
                             if (isStudent.value || !settings.value.hideIrrelevantTabs) {
                                 list.push({ id: 'problems', label: 'دفترچه مشکلات', icon: 'fas fa-book-open' });
@@ -1697,7 +2061,7 @@
                             moreMenuOpen.value = false;
                         };
 
-                        // وضعیت بازبینی ۳ خطی پایان روز
+                        // بازبینی ۳ خطی پایان روز
                         const showReviewBox = ref(false);
                         const reviewSavedMsg = ref('');
                         const dailyReview = ref({ win: '', blocker: '', nextFirst: '' });
@@ -1757,9 +2121,7 @@
 
                         const setPlannedTimePreset = (preset) => {
                             newPart.value.plannedTime = preset;
-                            if (newPart.value.subParts.length === 1) {
-                                newPart.value.subParts[0].duration = preset;
-                            }
+                            if (newPart.value.subParts.length === 1) newPart.value.subParts[0].duration = preset;
                         };
 
                         const addSubPartToNew = () => {
@@ -1770,8 +2132,15 @@
                             }
                         };
 
-                        // تایمر
-                        const timer = ref({
+                        /* ==================== پارت ۱: تایمر تمرکز ==================== */
+                        const timerModes = [
+                            { id: 'part-countdown', label: 'هدف پارت', icon: 'fas fa-hourglass-half' },
+                            { id: 'part-stopwatch', label: 'روی پارت', icon: 'fas fa-stopwatch' },
+                            { id: 'pomodoro', label: 'پومودورو ۲۵+۵', icon: 'fas fa-seedling' },
+                            { id: 'free', label: 'آزاد', icon: 'fas fa-feather-alt' }
+                        ];
+
+                        const defaultTimerState = () => ({
                             style: 'countdown',
                             mode: 'part',
                             selectedPartId: null,
@@ -1786,20 +2155,75 @@
                             lastPause: null,
                             elapsed: 0,
                             pauseCount: 0,
-                            startTehranStr: ''
+                            startTehranStr: '',
+                            phase: 'focus',
+                            currentRound: 1,
+                            autoStartBreak: true,
+                            soundEnabled: true,
+                            extraMinutes: 0,
+                            accumulatedFocusMs: 0
                         });
+
+                        const timer = ref(defaultTimerState());
                         const timerShowConfig = ref(false);
+                        const timerPartScope = ref('today');
                         const timerFocusMode = computed(() => Boolean(timer.value.active && timer.value.running));
                         let intervalId = null;
 
+                        const activeTimerModeKey = computed(() => {
+                            if (timer.value.style === 'pomodoro') return 'pomodoro';
+                            if (timer.value.mode === 'quick') return 'free';
+                            if (timer.value.style === 'stopwatch') return 'part-stopwatch';
+                            return 'part-countdown';
+                        });
+
                         const timerStatusLabel = computed(() => {
                             if (!timer.value.active) return 'آماده';
-                            return timer.value.running ? 'در حال اجرا' : 'مکث';
+                            if (!timer.value.running) return 'مکث';
+                            return timer.value.phase === 'break' ? 'استراحت' : 'در حال اجرا';
                         });
+
                         const timerStatusClass = computed(() => {
                             if (!timer.value.active) return 'is-idle';
-                            return timer.value.running ? 'is-running' : 'is-paused';
+                            if (!timer.value.running) return 'is-paused';
+                            return timer.value.phase === 'break' ? 'is-break' : 'is-running';
                         });
+
+                        const timerPhaseLabel = computed(() => {
+                            if (timer.value.phase === 'break') return 'استراحت (۵ دقیقه)';
+                            if (timer.value.style === 'stopwatch') return 'زمان سپری‌شده';
+                            if (timer.value.style === 'pomodoro') return 'تمرکز پومودورو';
+                            return 'باقی‌مانده';
+                        });
+
+                        const playTimerChime = () => {
+                            if (!timer.value.soundEnabled) return;
+                            try {
+                                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                                if (!AudioCtx) return;
+                                const ctx = new AudioCtx();
+                                const now = ctx.currentTime;
+                                [523.25, 659.25].forEach((freq, i) => {
+                                    const osc = ctx.createOscillator();
+                                    const gain = ctx.createGain();
+                                    osc.type = 'sine';
+                                    osc.frequency.setValueAtTime(freq, now + i * 0.16);
+                                    gain.gain.setValueAtTime(0.001, now + i * 0.16);
+                                    gain.gain.exponentialRampToValueAtTime(0.08, now + i * 0.16 + 0.03);
+                                    gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.16 + 0.36);
+                                    osc.connect(gain);
+                                    gain.connect(ctx.destination);
+                                    osc.start(now + i * 0.16);
+                                    osc.stop(now + i * 0.16 + 0.38);
+                                });
+                            } catch (_) {}
+                        };
+
+                        const toggleTimerSound = () => {
+                            timer.value.soundEnabled = !timer.value.soundEnabled;
+                            saveTimer();
+                            showToast(timer.value.soundEnabled ? 'زنگ پایان فعال شد' : 'زنگ پایان قطع شد');
+                        };
 
                         const completingPart = ref(null);
                         const pendingSession = ref(null);
@@ -1858,7 +2282,7 @@
                         }[currentTab.value] || 'tilo'));
 
                         const pendingParts = computed(() => parts.value.filter(p => p.status === 'pending'));
-                        const completedParts = computed(() => parts.value.filter(p => p.status === 'completed').sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0)));
+                        const completedParts = computed(() => parts.value.filter(p => p.status === 'completed' || p.status === 'done').sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0)));
                         const filteredCompletedParts = computed(() => {
                             if (!filterCategory.value || !isStudent.value) return completedParts.value;
                             return completedParts.value.filter(p => p.category === filterCategory.value);
@@ -1872,36 +2296,59 @@
                             return completedParts.value.filter(p => p.dateISO >= minISO);
                         });
 
+                        const todayPendingParts = computed(() => pendingParts.value.filter(p => p.dateISO === todayISO));
+                        const displayedTimerParts = computed(() => {
+                            if (timerPartScope.value === 'today' && todayPendingParts.value.length > 0) return todayPendingParts.value;
+                            return pendingParts.value;
+                        });
+
+                        const quickSubjectPicks = computed(() => {
+                            if (isStudent.value) {
+                                const majorKey = settings.value.major || 'ریاضی';
+                                const gradeKey = (settings.value.grade || 'دوازدهم').split(' ')[0];
+                                const exact = subjectGroups.value.find(g => g.category.includes(majorKey) && g.category.includes(gradeKey));
+                                const general = subjectGroups.value.find(g => g.category.includes('عمومی'));
+                                const list = [...(exact ? exact.items : []), ...(general ? general.items.slice(0, 4) : [])];
+                                return Array.from(new Set(list)).slice(0, 10);
+                            }
+                            if (isUniversity.value) return uniTagOptions;
+                            return workTagOptions;
+                        });
+
                         const currentTargetMinutes = computed(() => {
-                            if (timer.value.style === 'pomodoro') return 25;
+                            const extra = Number(timer.value.extraMinutes) || 0;
+                            if (timer.value.phase === 'break') return Math.max(1, 5 + extra);
+                            if (timer.value.style === 'pomodoro') return Math.max(5, 25 + extra);
                             if (timer.value.mode === 'part' && timer.value.selectedPartId) {
                                 const found = parts.value.find(p => p.id === timer.value.selectedPartId);
-                                if (found) return Number(found.plannedTime || 50);
+                                if (found) return Math.max(1, (Number(found.plannedTime) || 50) + extra);
                             }
-                            return Number(timer.value.quickTarget || 50);
+                            return Math.max(1, (Number(timer.value.quickTarget) || 50) + extra);
                         });
 
                         const activeTimerInfo = computed(() => {
                             if (timer.value.mode === 'part' && timer.value.selectedPartId) {
                                 const found = parts.value.find(p => p.id === timer.value.selectedPartId);
-                                if (found) return { subjects: found.subjects || [], topic: found.topic };
-                            } else if (timer.value.mode === 'quick' && (timer.value.quickTopic || timer.value.quickSubjects.length)) {
-                                return { subjects: timer.value.quickSubjects, topic: timer.value.quickTopic || 'تمرکز آزاد' };
+                                if (found) return { subjects: found.subjects || [], topic: found.topic || 'بدون عنوان', plannedTime: found.plannedTime || 50 };
+                            }
+                            if (timer.value.mode === 'quick' && (timer.value.quickTopic || timer.value.quickSubjects.length)) {
+                                return { subjects: timer.value.quickSubjects, topic: timer.value.quickTopic || 'تمرکز آزاد', plannedTime: null };
                             }
                             return null;
                         });
 
                         const formattedTimer = computed(() => {
                             let ms = timer.value.elapsed || 0;
-                            if (timer.value.style === 'countdown' || timer.value.style === 'pomodoro') {
+                            if (timer.value.style !== 'stopwatch') {
                                 const targetMs = currentTargetMinutes.value * 60000;
                                 ms = Math.max(0, targetMs - ms);
                             }
                             const totalSecs = Math.floor(ms / 1000);
-                            const h = String(Math.floor(totalSecs / 3600)).padStart(2, '0');
-                            const m = String(Math.floor((totalSecs % 3600) / 60)).padStart(2, '0');
-                            const s = String(totalSecs % 60).padStart(2, '0');
-                            return `${h}:${m}:${s}`;
+                            const h = Math.floor(totalSecs / 3600);
+                            const m = Math.floor((totalSecs % 3600) / 60);
+                            const s = totalSecs % 60;
+                            if (h > 0) return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                            return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
                         });
 
                         const timerProgressPercent = computed(() => {
@@ -1910,14 +2357,25 @@
                             return Math.min(100, Math.max(0, (timer.value.elapsed / targetMs) * 100));
                         });
 
+                        const timerRingOffset = computed(() => {
+                            const circumference = 339.292;
+                            return circumference - (circumference * timerProgressPercent.value) / 100;
+                        });
+
+                        const totalSessionFocusMinutes = computed(() => {
+                            const base = Number(timer.value.accumulatedFocusMs) || 0;
+                            const cur = timer.value.phase === 'focus' ? (Number(timer.value.elapsed) || 0) : 0;
+                            return Math.floor((base + cur) / 60000);
+                        });
+
                         const todayStats = computed(() => {
                             let totalTime = 0, lifeTime = 0, totalTests = 0, descriptive = 0, correct = 0, wrong = 0;
                             todayCompleted.value.forEach(p => {
                                 const rt = Number(p.realTime || 0);
-                                if (p.isLife) lifeTime += rt;
+                                if (p.isLife || p.isNonStudy) lifeTime += rt;
                                 else totalTime += rt;
                                 descriptive += Number(p.descriptiveCount || 0);
-                                if (p.tests && !p.isLife) {
+                                if (p.tests && !p.isLife && !p.isNonStudy) {
                                     correct += Number(p.tests.correct || 0);
                                     wrong += Number(p.tests.wrong || 0);
                                     totalTests += Number(p.tests.total || 0);
@@ -1925,7 +2383,7 @@
                             });
                             pendingParts.value.forEach(p => {
                                 if (p.dateISO === todayISO && p.realTime > 0) {
-                                    if (p.isLife) lifeTime += Number(p.realTime);
+                                    if (p.isLife || p.isNonStudy) lifeTime += Number(p.realTime);
                                     else totalTime += Number(p.realTime);
                                 }
                             });
@@ -1948,72 +2406,193 @@
                             return `امروز: ${doneText} · ${remainText}`;
                         });
 
-                        // تحلیل ساده ۳ تا ۱۴ روزه بدون Chart.js
+                        /* ==================== پارت ۲: Study Streak + نمودار ۷/۱۴ روز ==================== */
+                        const shiftISO = (iso, deltaDays) => {
+                            const [y, m, d] = String(iso || todayISO).split('-').map(Number);
+                            const dt = new Date(Date.UTC(y, (m || 1) - 1, d || 1, 12, 0, 0));
+                            dt.setUTCDate(dt.getUTCDate() + deltaDays);
+                            return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
+                        };
+
+                        const isCountableStudyPart = (p) => {
+                            if (!p) return false;
+                            if (p.status !== 'completed' && p.status !== 'done') return false;
+                            if (p.isLife || p.isNonStudy) return false;
+                            return (Number(p.realTime) || 0) > 0 || (p.tests && (Number(p.tests.total) || 0) > 0);
+                        };
+
+                        const studyMinutesByDate = computed(() => {
+                            const map = {};
+                            parts.value.forEach(p => {
+                                if (!isCountableStudyPart(p) || !p.dateISO) return;
+                                map[p.dateISO] = (map[p.dateISO] || 0) + Math.max(0, Number(p.realTime) || 0);
+                            });
+                            return map;
+                        });
+
+                        const studyStreak = computed(() => {
+                            const byDate = studyMinutesByDate.value;
+                            const activeSet = new Set(Object.keys(byDate).filter(k => byDate[k] > 0));
+                            const todayDone = activeSet.has(todayISO);
+                            const yesterdayISO = shiftISO(todayISO, -1);
+
+                            let current = 0;
+                            let cursor = todayDone ? todayISO : (activeSet.has(yesterdayISO) ? yesterdayISO : null);
+                            while (cursor && activeSet.has(cursor)) {
+                                current++;
+                                cursor = shiftISO(cursor, -1);
+                            }
+
+                            const sortedDates = Array.from(activeSet).sort();
+                            let historyBest = 0, run = 0, prev = null;
+                            sortedDates.forEach(iso => {
+                                if (prev && shiftISO(prev, 1) === iso) run++;
+                                else run = 1;
+                                if (run > historyBest) historyBest = run;
+                                prev = iso;
+                            });
+
+                            const best = Math.max(Number(settings.value.bestStreak) || 0, historyBest, current);
+
+                            const last7 = [];
+                            for (let i = 6; i >= 0; i--) {
+                                const iso = shiftISO(todayISO, -i);
+                                const dt = new Date(Date.UTC(...iso.split('-').map((v, idx) => idx === 1 ? Number(v) - 1 : Number(v)), 12, 0, 0));
+                                const label = new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', weekday: 'long', day: 'numeric', month: 'short' }).format(dt);
+                                const shortDay = new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', weekday: 'narrow' }).format(dt);
+                                last7.push({ iso, label, shortDay, minutes: byDate[iso] || 0, active: activeSet.has(iso), isToday: iso === todayISO });
+                            }
+
+                            return { current, best, todayDone, last7 };
+                        });
+
+                        watch(() => studyStreak.value.best, (newBest) => {
+                            if (newBest > (Number(settings.value.bestStreak) || 0)) {
+                                settings.value.bestStreak = newBest;
+                                try { localStorage.setItem('sp_pro_settings', JSON.stringify(settings.value)); } catch (_) {}
+                            }
+                        });
+
                         const analyticsDays = ref(7);
-                        const analyticsSeries = computed(() => {
-                            const range = analyticsDays.value || 7;
-                            const raw = [];
-                            let maxMin = 60;
+                        const selectedAnalyticsISO = ref(todayISO);
+                        const selectAnalyticsDay = (iso) => { selectedAnalyticsISO.value = iso; };
+
+                        const weeklyTotalMinutes = computed(() => {
+                            const byDate = studyMinutesByDate.value;
+                            let sum = 0;
+                            for (let i = 0; i < 7; i++) sum += byDate[shiftISO(todayISO, -i)] || 0;
+                            return sum;
+                        });
+
+                        const analyticsRawSeries = computed(() => {
+                            const range = analyticsDays.value === 14 ? 14 : 7;
+                            const list = [];
                             for (let i = range - 1; i >= 0; i--) {
-                                const d = new Date(Date.now() - i * 86400000);
-                                const iso = getTehranDateISO(d);
-                                const label = new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', weekday: range <= 7 ? 'short' : undefined, day: 'numeric' }).format(d);
-                                let minutes = 0, partsCount = 0, tests = 0;
-                                completedParts.value.forEach(p => {
-                                    if (p.dateISO === iso && !p.isLife) {
-                                        minutes += Number(p.realTime || 0);
-                                        partsCount++;
-                                        if (p.tests) tests += Number(p.tests.total || 0);
+                                const iso = shiftISO(todayISO, -i);
+                                const dt = new Date(Date.UTC(...iso.split('-').map((v, idx) => idx === 1 ? Number(v) - 1 : Number(v)), 12, 0, 0));
+                                const label = range <= 7
+                                    ? new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', weekday: 'short' }).format(dt)
+                                    : new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', day: 'numeric' }).format(dt);
+                                const fullLabel = new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', weekday: 'long', day: 'numeric', month: 'long' }).format(dt);
+
+                                let minutes = 0, partsCount = 0, tests = 0, correct = 0, wrong = 0, descriptive = 0;
+                                parts.value.forEach(p => {
+                                    if (!isCountableStudyPart(p) || p.dateISO !== iso) return;
+                                    minutes += Math.max(0, Number(p.realTime) || 0);
+                                    partsCount++;
+                                    descriptive += Number(p.descriptiveCount || 0);
+                                    if (p.tests) {
+                                        tests += Number(p.tests.total || 0);
+                                        correct += Number(p.tests.correct || 0);
+                                        wrong += Number(p.tests.wrong || 0);
                                     }
                                 });
-                                if (minutes > maxMin) maxMin = minutes;
-                                raw.push({ iso, label, minutes, partsCount, tests, isToday: iso === todayISO });
+
+                                let score = null;
+                                if (tests > 0) {
+                                    const r = settings.value.negativeMarkRatio;
+                                    const rawScore = r > 0 ? ((correct - (wrong / r)) / tests) * 100 : (correct / tests) * 100;
+                                    score = Number(rawScore.toFixed(1));
+                                }
+
+                                list.push({ iso, label, fullLabel, minutes, partsCount, tests, descriptive, score, isToday: iso === todayISO });
                             }
-                            return raw.map(item => ({
-                                ...item,
-                                barPercent: item.minutes > 0 ? Math.max(8, Math.round((item.minutes / maxMin) * 100)) : 0
-                            }));
+                            return list;
                         });
 
                         const analyticsSummary = computed(() => {
                             let totalMinutes = 0, totalParts = 0, totalTests = 0, activeDays = 0;
-                            analyticsSeries.value.forEach(d => {
+                            analyticsRawSeries.value.forEach(d => {
                                 totalMinutes += d.minutes;
                                 totalParts += d.partsCount;
                                 totalTests += d.tests;
                                 if (d.minutes > 0) activeDays++;
                             });
-                            const avgMinutes = analyticsSeries.value.length ? Math.round(totalMinutes / analyticsSeries.value.length) : 0;
+                            const avgMinutes = analyticsRawSeries.value.length ? Math.round(totalMinutes / analyticsRawSeries.value.length) : 0;
                             return { totalMinutes, totalParts, totalTests, activeDays, avgMinutes };
+                        });
+
+                        const analyticsMinMax = computed(() => {
+                            const list = analyticsRawSeries.value;
+                            if (!list.length || !list.some(d => d.minutes > 0)) {
+                                return { maxDay: null, minDay: null, scaleMax: 60, avgLinePercent: 0 };
+                            }
+                            let maxDay = list[0], minDay = list[0];
+                            list.forEach(d => {
+                                if (d.minutes >= maxDay.minutes) maxDay = d;
+                                if (d.minutes <= minDay.minutes) minDay = d;
+                            });
+                            const scaleMax = Math.max(60, maxDay.minutes);
+                            const avgLinePercent = Math.min(96, Math.round((analyticsSummary.value.avgMinutes / scaleMax) * 100));
+                            return { maxDay, minDay, scaleMax, avgLinePercent };
+                        });
+
+                        const analyticsSeries = computed(() => {
+                            const { maxDay, minDay, scaleMax } = analyticsMinMax.value;
+                            return analyticsRawSeries.value.map(d => ({
+                                ...d,
+                                isMax: Boolean(maxDay && d.iso === maxDay.iso && d.minutes > 0),
+                                isMin: Boolean(minDay && d.iso === minDay.iso && (!maxDay || maxDay.iso !== minDay.iso)),
+                                barPercent: d.minutes > 0 ? Math.max(8, Math.round((d.minutes / scaleMax) * 100)) : 0
+                            }));
+                        });
+
+                        const selectedAnalyticsDay = computed(() => {
+                            const list = analyticsSeries.value;
+                            if (!list.length) return null;
+                            return list.find(d => d.iso === selectedAnalyticsISO.value) || list[list.length - 1];
                         });
 
                         const analyticsInsights = computed(() => {
                             const s = analyticsSummary.value;
+                            const { maxDay, minDay } = analyticsMinMax.value;
                             const d = analyticsDays.value;
                             const lines = [];
                             if (s.totalMinutes === 0) {
-                                lines.push(`در ${d} روز اخیر هنوز پارتی ثبت نشده؛ برای شروع یک پارت کوتاه ۲۵ دقیقه‌ای بردار.`);
+                                lines.push(`در ${d} روز اخیر هنوز پارتی ثبت نشده؛ برای شروع یک پارت ۲۵ دقیقه‌ای بردار.`);
                                 return lines;
                             }
-                            lines.push(`در ${s.activeDays} روز از ${d} روز اخیر فعال بودی و میانگین روزانه‌ات ${formatMinutes(s.avgMinutes)} است.`);
-                            if (s.avgMinutes >= settings.value.dailyGoal * 0.85) {
-                                lines.push('نظم روزانه‌ات نزدیک هدف است؛ همین ریتم آرام و پیوسته را حفظ کن.');
-                            } else {
-                                lines.push(`برای نزدیک شدن به هدف ${formatMinutes(settings.value.dailyGoal)}، فردا یک پارت اضافه در ساعت اوج تمرکزت بگذار.`);
+                            lines.push(`جمع ۷ روز اخیر ${formatMinutes(weeklyTotalMinutes.value)} و میانگین ${d} روزه برابر ${formatMinutes(s.avgMinutes)} در روز است.`);
+                            if (maxDay && minDay && maxDay.iso !== minDay.iso) {
+                                lines.push(`بهترین روز: ${maxDay.fullLabel} (${formatMinutes(maxDay.minutes)}) · کمترین روز: ${minDay.fullLabel} (${formatMinutes(minDay.minutes)}).`);
                             }
                             if (isStudent.value && s.totalMinutes >= 120 && s.totalTests === 0) {
-                                lines.push('زمان مطالعه خوب است؛ کنار هر بخش درس‌نامه چند تست آموزشی هم ثبت کن تا تثبیت شود.');
+                                lines.push('زمان مطالعه خوب است؛ کنار مطالعه چند تست آموزشی هم ثبت کن تا تثبیت شود.');
                             }
                             return lines;
                         });
 
                         const copyWeeklySummary = async () => {
                             const s = analyticsSummary.value;
-                            const rows = analyticsSeries.value.map(d => `- ${d.label}: ${d.minutes} دقیقه (${d.partsCount} پارت)`).join('\n');
+                            const { maxDay, minDay } = analyticsMinMax.value;
+                            const rows = analyticsSeries.value.map(d => `- ${d.fullLabel}: ${d.minutes} دقیقه (${d.partsCount} پارت${d.tests ? '، ' + d.tests + ' تست' : ''})`).join('\n');
                             const report = [
                                 `گزارش ${analyticsDays.value} روزه tilo — ${settings.value.userName || 'کاربر'}`,
-                                `مجموع زمان: ${formatMinutes(s.totalMinutes)} | تعداد پارت: ${s.totalParts} | روزهای فعال: ${s.activeDays}/${analyticsDays.value}`,
-                                isStudent.value ? `تعداد تست ثبت‌شده: ${s.totalTests}` : '',
+                                `استمرار مطالعه: ${studyStreak.value.current} روز متوالی (بهترین رکورد: ${studyStreak.value.best} روز)`,
+                                `جمع ۷ روز اخیر: ${formatMinutes(weeklyTotalMinutes.value)} | مجموع بازه: ${formatMinutes(s.totalMinutes)} | میانگین: ${formatMinutes(s.avgMinutes)}`,
+                                maxDay ? `بیشترین روز: ${maxDay.fullLabel} (${formatMinutes(maxDay.minutes)})` : '',
+                                minDay ? `کمترین روز: ${minDay.fullLabel} (${formatMinutes(minDay.minutes)})` : '',
+                                isStudent.value ? `کل تست‌های بازه: ${s.totalTests}` : '',
                                 'جزئیات روزانه:',
                                 rows
                             ].filter(Boolean).join('\n');
@@ -2026,6 +2605,143 @@
                             }
                         };
 
+                        /* ==================== پارت ۳: آرشیو و گزارش مشاور + PDF ==================== */
+                        const advisorRange = ref(7);
+                        const printSingleDateISO = ref(null);
+
+                        const advisorRangeLabel = computed(() => advisorRange.value === 1 ? 'امروز' : `${advisorRange.value} روز اخیر`);
+
+                        const buildDayReport = (iso) => {
+                            const dt = new Date(Date.UTC(...iso.split('-').map((v, idx) => idx === 1 ? Number(v) - 1 : Number(v)), 12, 0, 0));
+                            const fullLabel = new Intl.DateTimeFormat('fa-IR', {
+                                timeZone: 'Asia/Tehran', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+                            }).format(dt);
+
+                            const dayParts = parts.value
+                                .filter(p => isCountableStudyPart(p) && p.dateISO === iso)
+                                .sort((a, b) => (a.completedAt || a.id || 0) - (b.completedAt || b.id || 0));
+
+                            let totalMinutes = 0, totalTests = 0, correct = 0, wrong = 0, unanswered = 0, descriptive = 0;
+                            dayParts.forEach(p => {
+                                totalMinutes += Math.max(0, Number(p.realTime) || 0);
+                                descriptive += Number(p.descriptiveCount || 0);
+                                if (p.tests) {
+                                    totalTests += Number(p.tests.total || 0);
+                                    correct += Number(p.tests.correct || 0);
+                                    wrong += Number(p.tests.wrong || 0);
+                                    unanswered += Number(p.tests.unanswered || 0);
+                                }
+                            });
+
+                            const goal = Math.max(1, Number(settings.value.dailyGoal) || 360);
+                            const goalPercent = Math.round((totalMinutes / goal) * 100);
+                            let netScore = '—';
+                            if (totalTests > 0) {
+                                const r = settings.value.negativeMarkRatio;
+                                const sc = r > 0 ? ((correct - (wrong / r)) / totalTests) * 100 : (correct / totalTests) * 100;
+                                netScore = sc.toFixed(1) + '%';
+                            }
+
+                            return { iso, fullLabel, parts: dayParts, totalMinutes, goalPercent, totalTests, correct, wrong, unanswered, descriptive, netScore };
+                        };
+
+                        const advisorDays = computed(() => {
+                            const range = [1, 7, 14].includes(advisorRange.value) ? advisorRange.value : 7;
+                            const out = [];
+                            for (let i = 0; i < range; i++) {
+                                const rep = buildDayReport(shiftISO(todayISO, -i));
+                                if (rep.parts.length > 0) out.push(rep);
+                            }
+                            return out;
+                        });
+
+                        const summarizeReportDays = (daysList, expectedDaysCount) => {
+                            let totalMinutes = 0, totalParts = 0, totalTests = 0, correct = 0, wrong = 0, totalDescriptive = 0;
+                            daysList.forEach(d => {
+                                totalMinutes += d.totalMinutes;
+                                totalParts += d.parts.length;
+                                totalTests += d.totalTests;
+                                correct += d.correct;
+                                wrong += d.wrong;
+                                totalDescriptive += d.descriptive;
+                            });
+                            const targetTotal = Math.max(1, (Number(settings.value.dailyGoal) || 360) * Math.max(1, expectedDaysCount));
+                            const goalPercent = Math.round((totalMinutes / targetTotal) * 100);
+                            let netScore = '—';
+                            if (totalTests > 0) {
+                                const r = settings.value.negativeMarkRatio;
+                                const sc = r > 0 ? ((correct - (wrong / r)) / totalTests) * 100 : (correct / totalTests) * 100;
+                                netScore = sc.toFixed(1) + '%';
+                            }
+                            return { activeDays: daysList.length, totalMinutes, totalParts, totalTests, correct, wrong, totalDescriptive, goalPercent, netScore };
+                        };
+
+                        const advisorSummary = computed(() => summarizeReportDays(advisorDays.value, advisorRange.value));
+
+                        const printReportDays = computed(() => {
+                            if (printSingleDateISO.value) {
+                                const single = buildDayReport(printSingleDateISO.value);
+                                return single.parts.length ? [single] : [];
+                            }
+                            return advisorDays.value;
+                        });
+
+                        const printReportMeta = computed(() => {
+                            const isSingle = Boolean(printSingleDateISO.value);
+                            const days = printReportDays.value;
+                            const s = summarizeReportDays(days, isSingle ? 1 : advisorRange.value);
+                            return { ...s, rangeTitle: isSingle && days[0] ? days[0].fullLabel : advisorRangeLabel.value };
+                        });
+
+                        const copyAdvisorReportText = async () => {
+                            if (!advisorDays.value.length) return showToast('در این بازه پارتی برای کپی ثبت نشده است');
+                            const s = advisorSummary.value;
+                            const headerLines = [
+                                `گزارش مطالعه tilo (${advisorRangeLabel.value})`,
+                                `نام: ${settings.value.userName || 'کاربر'}${isStudent.value ? ` | ${settings.value.grade} ${settings.value.major}` : ''}`,
+                                `مجموع مطالعه: ${formatMinutes(s.totalMinutes)} (${s.goalPercent}٪ هدف) | پارت‌ها: ${s.totalParts} | استمرار: ${studyStreak.value.current} روز`,
+                                isStudent.value && s.totalTests > 0 ? `تست کل بازه: ${s.totalTests} (درست ${s.correct} · غلط ${s.wrong} · درصد ${s.netScore})` : '',
+                                '────────────────────'
+                            ].filter(Boolean);
+
+                            const bodyLines = advisorDays.value.map(day => {
+                                const dayHead = `📅 ${day.fullLabel} — ${formatMinutes(day.totalMinutes)} (${day.goalPercent}٪ هدف)`;
+                                const partLines = day.parts.map((p, idx) => {
+                                    const sub = (p.subjects || []).join('، ') || 'مطالعه';
+                                    const testTxt = (isStudent.value && p.tests && p.tests.total > 0)
+                                        ? ` | تست: ${p.tests.total} (✓${p.tests.correct} ✗${p.tests.wrong} · ${calcPartPercent(p.tests)}٪)`
+                                        : '';
+                                    const descTxt = p.descriptiveCount > 0 ? ` | تشریحی: ${p.descriptiveCount}` : '';
+                                    const noteTxt = p.notes ? ` | نکته: ${p.notes}` : '';
+                                    return `  ${idx + 1}. ${sub} — ${p.topic || 'بدون عنوان'} (${p.realTime} دقیقه)${testTxt}${descTxt}${noteTxt}`;
+                                });
+                                return [dayHead, ...partLines].join('\n');
+                            });
+
+                            const finalText = [...headerLines, ...bodyLines].join('\n\n');
+                            try {
+                                await navigator.clipboard.writeText(finalText);
+                                showToast('گزارش مرتب برای ارسال کپی شد ✓');
+                            } catch (_) {
+                                prompt('گزارش زیر را کپی کنید:', finalText);
+                            }
+                        };
+
+                        const printAdvisorPDF = (singleISO = null) => {
+                            printSingleDateISO.value = singleISO || null;
+                            if (!printReportDays.value.length) {
+                                printSingleDateISO.value = null;
+                                return showToast('برای این بازه گزارشی جهت چاپ وجود ندارد');
+                            }
+                            const resetAfter = () => {
+                                printSingleDateISO.value = null;
+                                window.removeEventListener('afterprint', resetAfter);
+                            };
+                            window.addEventListener('afterprint', resetAfter);
+                            setTimeout(() => { window.print(); }, 90);
+                        };
+
+                        /* ==================== ابزارها، تم، ذخیره و عملیات پارت/تایمر ==================== */
                         const currentDaySchedule = computed(() => schedule.value.filter(s => s.day === selectedWeekDay.value));
                         const calcTotalTests = computed(() => (calc.value.c || 0) + (calc.value.w || 0) + (calc.value.u || 0));
                         const calcPercentTotal = computed(() => calcTotalTests.value === 0 ? '—' : ((calc.value.c / calcTotalTests.value) * 100).toFixed(1) + '%');
@@ -2082,20 +2798,15 @@
                             saveAll();
                         };
 
-                        // مراحل آنبوردینگ
                         const selectRole = (roleId) => {
                             settings.value.userRole = roleId;
-                            if (roleId === 'work' || roleId === 'personal') {
-                                if (settings.value.dailyGoal === 360) settings.value.dailyGoal = 240;
+                            if ((roleId === 'work' || roleId === 'personal') && settings.value.dailyGoal === 360) {
+                                settings.value.dailyGoal = 240;
                             }
                             newPart.value = getEmptyPartForm();
                         };
-                        const nextOnboardingStep = () => {
-                            if (onboardingStep.value < 4) onboardingStep.value++;
-                        };
-                        const prevOnboardingStep = () => {
-                            if (onboardingStep.value > 1) onboardingStep.value--;
-                        };
+                        const nextOnboardingStep = () => { if (onboardingStep.value < 4) onboardingStep.value++; };
+                        const prevOnboardingStep = () => { if (onboardingStep.value > 1) onboardingStep.value--; };
                         const skipOnboarding = () => {
                             if (!settings.value.userRole) settings.value.userRole = 'personal';
                             settings.value.onboarded = true;
@@ -2114,12 +2825,19 @@
                         };
 
                         const onMajorOrGradeChange = () => saveAll();
-
                         const isLifeSubject = (name) => Boolean(name && lifeActivityItems.includes(name));
 
                         const quickStartMinutes = (mins) => {
+                            if (timer.value.active) {
+                                currentTab.value = 'timer';
+                                return showToast('تایمر فعلی هنوز در حال اجراست');
+                            }
                             timer.value.mode = 'quick';
                             timer.value.style = 'countdown';
+                            timer.value.phase = 'focus';
+                            timer.value.currentRound = 1;
+                            timer.value.extraMinutes = 0;
+                            timer.value.accumulatedFocusMs = 0;
                             timer.value.quickTarget = mins;
                             timer.value.autoStop = true;
                             if (!timer.value.quickTopic) {
@@ -2176,7 +2894,11 @@
                                 if (p) parts.value = JSON.parse(p);
                                 if (s) {
                                     const parsedS = JSON.parse(s);
-                                    settings.value = { ...settings.value, ...parsedS };
+                                    settings.value = {
+                                        ...settings.value,
+                                        ...parsedS,
+                                        bestStreak: Math.max(0, Number(parsedS.bestStreak) || 0)
+                                    };
                                 }
                                 if (sub) {
                                     const parsed = JSON.parse(sub);
@@ -2186,12 +2908,10 @@
                                 if (arc) archive.value = JSON.parse(arc);
                                 if (probs) problems.value = JSON.parse(probs);
 
-                                if (!settings.value.onboarded && parts.value.length === 0) {
-                                    showWelcomeModal.value = true;
-                                }
+                                if (!settings.value.onboarded && parts.value.length === 0) showWelcomeModal.value = true;
 
                                 if (t) {
-                                    timer.value = { ...timer.value, ...JSON.parse(t) };
+                                    timer.value = { ...defaultTimerState(), ...JSON.parse(t) };
                                     if (timer.value.active && timer.value.running) startTick();
                                 }
                                 if (!timer.value.selectedPartId && pendingParts.value.length > 0) {
@@ -2239,7 +2959,6 @@
                             }
                         };
 
-                        // اشتراک فشرده آفلاین
                         const utf8ToB64 = (str) => btoa(unescape(encodeURIComponent(str)));
                         const b64ToUtf8 = (b64) => decodeURIComponent(escape(atob(b64)));
                         const compressPayload = async (str) => {
@@ -2317,7 +3036,7 @@
                             try {
                                 const provider = new window.FirebaseSDK.GoogleAuthProvider();
                                 await window.FirebaseSDK.signInWithPopup(authInstance.value, provider);
-                            } catch (e) {
+                            } catch (_) {
                                 showToast('خطا در ورود با گوگل');
                             }
                         };
@@ -2367,7 +3086,6 @@
                             }
                         };
 
-                        // عملیات ساخت و مدیریت پارت‌ها
                         const onPasteAdvance = () => {};
                         const createNewPart = () => {
                             let subjects = [];
@@ -2457,16 +3175,13 @@
                             };
                         };
 
-                        // ارسال امن پارت به تایم‌بلاک زندگی (بدون شکستن ساختار tilo_martell_planner)
                         const sendPartToTimeblock = (part) => {
                             try {
                                 const raw = localStorage.getItem('tilo_martell_planner');
                                 let store = { version: 2, updatedAt: Date.now(), blocks: [], trash: [], finalized: {} };
                                 if (raw) {
                                     const parsed = JSON.parse(raw);
-                                    if (parsed && typeof parsed === 'object' && Array.isArray(parsed.blocks)) {
-                                        store = parsed;
-                                    }
+                                    if (parsed && typeof parsed === 'object' && Array.isArray(parsed.blocks)) store = parsed;
                                 }
                                 const tag = (part.subjects && part.subjects[0]) || '';
                                 let cat = 'deep';
@@ -2511,41 +3226,150 @@
                         };
 
                         // عملیات تایمر
+                        const selectTimerMode = (modeKey) => {
+                            if (timer.value.active) return showToast('هنگام اجرای تایمر نمی‌توان حالت را تغییر داد');
+                            timer.value.phase = 'focus';
+                            timer.value.currentRound = 1;
+                            timer.value.extraMinutes = 0;
+
+                            if (modeKey === 'part-countdown') {
+                                timer.value.style = 'countdown';
+                                timer.value.mode = 'part';
+                            } else if (modeKey === 'part-stopwatch') {
+                                timer.value.style = 'stopwatch';
+                                timer.value.mode = 'part';
+                            } else if (modeKey === 'pomodoro') {
+                                timer.value.style = 'pomodoro';
+                                if (!timer.value.selectedPartId && todayPendingParts.value.length > 0) {
+                                    timer.value.mode = 'part';
+                                    timer.value.selectedPartId = todayPendingParts.value[0].id;
+                                }
+                            } else if (modeKey === 'free') {
+                                timer.value.mode = 'quick';
+                                if (timer.value.style === 'pomodoro') timer.value.style = 'countdown';
+                            }
+                            saveTimer();
+                        };
+
+                        const setFreeTimerDirection = (dir) => {
+                            if (timer.value.active) return;
+                            timer.value.style = dir === 'stopwatch' ? 'stopwatch' : 'countdown';
+                            timer.value.mode = 'quick';
+                            saveTimer();
+                        };
+
+                        const quickSelectTimerPart = (part) => {
+                            if (timer.value.active) return;
+                            timer.value.mode = 'part';
+                            timer.value.selectedPartId = part.id;
+                            timer.value.extraMinutes = 0;
+                            saveTimer();
+                        };
+
+                        const clearTimerPartSelection = () => {
+                            if (timer.value.active) return;
+                            timer.value.selectedPartId = null;
+                            timer.value.mode = 'quick';
+                            saveTimer();
+                        };
+
+                        const toggleQuickSubject = (name) => {
+                            if (timer.value.active) return;
+                            const idx = timer.value.quickSubjects.indexOf(name);
+                            if (idx !== -1) timer.value.quickSubjects.splice(idx, 1);
+                            else timer.value.quickSubjects.push(name);
+                            saveTimer();
+                        };
+
                         const selectPartAndGoToTimer = (part) => {
                             if (timer.value.active && timer.value.selectedPartId !== part.id) {
                                 if (!confirm('تایمر در حال اجراست. پارت عوض شود؟')) return;
                             }
                             timer.value.mode = 'part';
+                            if (timer.value.style !== 'stopwatch' && timer.value.style !== 'pomodoro') {
+                                timer.value.style = 'countdown';
+                            }
                             timer.value.selectedPartId = part.id;
+                            if (!timer.value.active) timer.value.extraMinutes = 0;
                             saveTimer();
                             currentTab.value = 'timer';
                         };
 
-                        const setTimerStyle = (st) => { timer.value.style = st; saveTimer(); };
+                        const setTimerStyle = (st) => {
+                            if (timer.value.active) return;
+                            timer.value.style = st;
+                            saveTimer();
+                        };
+
                         const switchTimerMode = (m) => {
                             if (timer.value.active) return showToast('هنگام اجرا نمی‌توان منبع را عوض کرد');
                             timer.value.mode = m;
+                            saveTimer();
+                        };
+
+                        const handlePomodoroPhaseEnd = (targetMs) => {
+                            playTimerChime();
+                            if (timer.value.phase === 'focus') {
+                                timer.value.accumulatedFocusMs = (Number(timer.value.accumulatedFocusMs) || 0) + targetMs;
+                                timer.value.extraMinutes = 0;
+
+                                if (timer.value.currentRound >= 4) {
+                                    finishTimerAndRecord();
+                                    showToast('هر ۴ دور پومودورو کامل شد ✓');
+                                    return;
+                                }
+
+                                timer.value.phase = 'break';
+                                timer.value.startTime = Date.now();
+                                timer.value.totalPaused = 0;
+                                timer.value.lastPause = null;
+                                timer.value.elapsed = 0;
+
+                                if (!timer.value.autoStartBreak) {
+                                    timer.value.running = false;
+                                    clearInterval(intervalId);
+                                    showToast(`دور ${timer.value.currentRound} تمام شد؛ آماده ۵ دقیقه استراحت`);
+                                } else {
+                                    showToast(`دور ${timer.value.currentRound} تمام شد — شروع ۵ دقیقه استراحت`);
+                                }
+                                saveTimer();
+                            } else {
+                                timer.value.phase = 'focus';
+                                timer.value.currentRound = Math.min(4, timer.value.currentRound + 1);
+                                timer.value.extraMinutes = 0;
+                                timer.value.startTime = Date.now();
+                                timer.value.totalPaused = 0;
+                                timer.value.lastPause = null;
+                                timer.value.elapsed = 0;
+                                saveTimer();
+                                showToast(`استراحت تمام شد — شروع دور ${timer.value.currentRound}`);
+                            }
                         };
 
                         const startTick = () => {
                             if (intervalId) clearInterval(intervalId);
-                            intervalId = setInterval(() => {
-                                timer.value.elapsed = Date.now() - timer.value.startTime - timer.value.totalPaused;
+                            const updateElapsed = () => {
+                                if (!timer.value.running || !timer.value.startTime) return;
+                                timer.value.elapsed = Math.max(0, Date.now() - timer.value.startTime - (timer.value.totalPaused || 0));
                                 saveTimer();
-                                if (timer.value.autoStop) {
-                                    const targetMs = currentTargetMinutes.value * 60000;
-                                    if (timer.value.elapsed >= targetMs) {
-                                        finishTimerAndRecord();
-                                        showToast('زمان هدف پارت به پایان رسید');
-                                    }
+
+                                const targetMs = currentTargetMinutes.value * 60000;
+                                if (timer.value.style === 'pomodoro') {
+                                    if (timer.value.elapsed >= targetMs) handlePomodoroPhaseEnd(targetMs);
+                                } else if (timer.value.style === 'countdown' && timer.value.autoStop && timer.value.elapsed >= targetMs) {
+                                    playTimerChime();
+                                    finishTimerAndRecord();
+                                    showToast('زمان هدف پارت به پایان رسید ✓');
                                 }
-                            }, 1000);
+                            };
+                            updateElapsed();
+                            intervalId = setInterval(updateElapsed, 1000);
                         };
 
                         const startTimer = () => {
                             if (timer.value.mode === 'part' && !timer.value.selectedPartId) {
-                                if (pendingParts.value.length > 0) {
-                                    timer.value.selectedPartId = pendingParts.value[0].id;
+                                if (displayedTimerParts.value.length > 0) {
+                                    timer.value.selectedPartId = displayedTimerParts.value[0].id;
                                 } else {
                                     timer.value.mode = 'quick';
                                     if (!timer.value.quickTopic) timer.value.quickTopic = 'تمرکز آزاد';
@@ -2553,6 +3377,10 @@
                             }
                             timer.value.active = true;
                             timer.value.running = true;
+                            timer.value.phase = 'focus';
+                            timer.value.currentRound = 1;
+                            timer.value.accumulatedFocusMs = 0;
+                            timer.value.extraMinutes = 0;
                             timerShowConfig.value = false;
                             timer.value.startTime = Date.now();
                             timer.value.totalPaused = 0;
@@ -2581,17 +3409,58 @@
                             startTick();
                         };
 
+                        const skipBreakPhase = () => {
+                            if (!timer.value.active || timer.value.phase !== 'break') return;
+                            timer.value.phase = 'focus';
+                            timer.value.currentRound = Math.min(4, timer.value.currentRound + 1);
+                            timer.value.extraMinutes = 0;
+                            timer.value.startTime = Date.now();
+                            timer.value.totalPaused = 0;
+                            timer.value.lastPause = null;
+                            timer.value.elapsed = 0;
+                            timer.value.running = true;
+                            saveTimer();
+                            startTick();
+                            showToast(`شروع دور ${timer.value.currentRound}`);
+                        };
+
+                        const extendTimerMinutes = (mins) => {
+                            if (!timer.value.active) return;
+                            timer.value.extraMinutes = (Number(timer.value.extraMinutes) || 0) + mins;
+                            saveTimer();
+                            showToast(`${mins} دقیقه اضافه شد`);
+                        };
+
+                        const cancelActiveTimer = () => {
+                            if (!confirm('این جلسه بدون ثبت زمان لغو شود؟')) return;
+                            clearInterval(intervalId);
+                            timer.value.active = false;
+                            timer.value.running = false;
+                            timer.value.phase = 'focus';
+                            timer.value.currentRound = 1;
+                            timer.value.elapsed = 0;
+                            timer.value.startTime = null;
+                            timer.value.totalPaused = 0;
+                            timer.value.lastPause = null;
+                            timer.value.extraMinutes = 0;
+                            timer.value.accumulatedFocusMs = 0;
+                            localStorage.removeItem('sp_pro_timer');
+                            showToast('جلسه لغو شد');
+                        };
+
                         const finishTimerAndRecord = () => {
                             clearInterval(intervalId);
-                            const totalDurationMs = timer.value.running
-                                ? (Date.now() - timer.value.startTime - timer.value.totalPaused)
-                                : timer.value.elapsed;
-                            const sessionMinutes = Math.max(1, Math.round(totalDurationMs / 60000));
+                            const currentPhaseMs = timer.value.running && timer.value.startTime
+                                ? Math.max(0, Date.now() - timer.value.startTime - (timer.value.totalPaused || 0))
+                                : (timer.value.elapsed || 0);
+
+                            const totalFocusMs = (Number(timer.value.accumulatedFocusMs) || 0) + (timer.value.phase === 'focus' ? currentPhaseMs : 0);
+                            const sessionMinutes = Math.max(1, Math.round(totalFocusMs / 60000));
                             const pauseMins = Math.round((timer.value.totalPaused || 0) / 60000);
                             const endTehran = getTehranTimeStr();
 
                             let draft = null;
-                            if (timer.value.mode === 'part') {
+                            if (timer.value.mode === 'part' && timer.value.selectedPartId) {
                                 const targetPart = parts.value.find(p => p.id === timer.value.selectedPartId);
                                 if (targetPart) {
                                     draft = JSON.parse(JSON.stringify(targetPart));
@@ -2634,9 +3503,14 @@
 
                             timer.value.active = false;
                             timer.value.running = false;
+                            timer.value.phase = 'focus';
+                            timer.value.currentRound = 1;
                             timer.value.elapsed = 0;
                             timer.value.startTime = null;
                             timer.value.totalPaused = 0;
+                            timer.value.lastPause = null;
+                            timer.value.extraMinutes = 0;
+                            timer.value.accumulatedFocusMs = 0;
                             localStorage.removeItem('sp_pro_timer');
                         };
 
@@ -2823,7 +3697,6 @@
                                     } catch (_) {}
                                 }
                             });
-                            // همگام‌سازی بدون تخریب با پل‌های جانبی
                             window.TiloPlus = window.TiloPlus || {};
                             window.TiloPlus.reloadParts = () => {
                                 try {
@@ -2840,14 +3713,21 @@
                             isStudent, isUniversity, isWorkOrPersonal, currentRoleLabel, roleLabels,
                             visibleNavTabs, moreNavTabs, moreMenuOpen, selectTab,
                             todaySummaryLine, showReviewBox, dailyReview, saveDailyReview, reviewSavedMsg,
-                            analyticsDays, analyticsSeries, analyticsSummary, analyticsInsights, copyWeeklySummary,
+                            studyStreak, weeklyTotalMinutes, analyticsDays, analyticsSeries, analyticsSummary, analyticsMinMax,
+                            selectedAnalyticsISO, selectedAnalyticsDay, selectAnalyticsDay, analyticsInsights, copyWeeklySummary,
+                            advisorRange, advisorRangeLabel, advisorDays, advisorSummary,
+                            printReportDays, printReportMeta, copyAdvisorReportText, printAdvisorPDF,
                             cloudStatus, authInstance, currentUser, firebaseConfigInput, activeShareCode, shareCodeInput, shareSyncStatus,
                             copySimpleShare, importShareText, simpleSharePaste, toggleTheme, applyTheme, applyAccent,
                             subjectGroups, partCategories, uniTagOptions, workTagOptions, filterCategory, dropdownOpen,
                             gradeOptions, onMajorOrGradeChange, quickStartMinutes,
                             parts, pendingParts, completedParts, filteredCompletedParts, trashedParts, todayCompleted, weekCompletedParts, todayStats,
                             newPart, setPlannedTimePreset, addSubPartToNew,
-                            timer, timerShowConfig, timerFocusMode, timerStatusLabel, timerStatusClass,
+                            timer, timerModes, activeTimerModeKey, timerShowConfig, timerFocusMode, timerPartScope,
+                            timerStatusLabel, timerStatusClass, timerPhaseLabel, timerRingOffset, totalSessionFocusMinutes,
+                            todayPendingParts, displayedTimerParts, quickSubjectPicks,
+                            selectTimerMode, setFreeTimerDirection, quickSelectTimerPart, clearTimerPartSelection, toggleQuickSubject,
+                            toggleTimerSound, skipBreakPhase, extendTimerMinutes, cancelActiveTimer,
                             setTimerStyle, switchTimerMode, currentTargetMinutes, activeTimerInfo, formattedTimer, timerProgressPercent,
                             completingPart, pendingSession, detailPart, closeCompleteModal,
                             weekDays, selectedWeekDay, scheduleForm, currentDaySchedule, openTimeblockModal, sendPartToTimeblock,
@@ -2875,14 +3755,14 @@
         });
     </script>
 
-    <!-- اسکریپت‌های جانبی همگی با defer و نسخه v=16 تا mount اصلی را بلوکه نکنند -->
-    <script src="./tilo-cloud.js?v=16" defer></script>
-    <script src="./tilo-upgrade.js?v=16" defer></script>
-    <script src="./tilo-extras.js?v=16" defer></script>
-    <script src="./tilo-notes.js?v=16" defer></script>
-    <script src="./tilo-martell.js?v=16" defer></script>
-    <script src="./tilo-martell-paste.js?v=16" defer></script>
-    <script src="./tilo-martell-bridge.js?v=16" defer></script>
+    <!-- اسکریپت‌های جانبی محلی با defer و نسخه کش v=17 -->
+    <script src="./tilo-cloud.js?v=17" defer></script>
+    <script src="./tilo-upgrade.js?v=17" defer></script>
+    <script src="./tilo-extras.js?v=17" defer></script>
+    <script src="./tilo-notes.js?v=17" defer></script>
+    <script src="./tilo-martell.js?v=17" defer></script>
+    <script src="./tilo-martell-paste.js?v=17" defer></script>
+    <script src="./tilo-martell-bridge.js?v=17" defer></script>
 
     <script>
         (function () {
