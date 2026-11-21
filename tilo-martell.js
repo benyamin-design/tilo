@@ -12,9 +12,11 @@
     const STORAGE_KEY = 'tilo_martell_planner';
     const BACKUP_KEY = 'tilo_martell_planner_ai_backup';
     const TILO_PARTS_KEY = 'sp_pro_parts';
+    const TILO_NOTES_KEY = 'tilo_notes';
     const SCHEMA_VERSION = 2;
 
     const WEEKDAYS_FA = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
+    const WEEKDAY_KEYS = ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'];
     const WHEEL_HOURS = Array.from({ length: 24 }, (_, i) => i);
     const WHEEL_MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
     const WHEEL_ITEM_HEIGHT = 36;
@@ -224,17 +226,16 @@
     }
 
     /**
-     * فقط مخصوص پارس متن برنامه (پیست آفلاین)؛ در فرم افزودن/ویرایش استفاده نمی‌شود.
-     * هیچ تبدیل خودکار صبح به عصر روی اعداد 00..23 انجام نمی‌دهد.
+     * فقط مخصوص پارس متن برنامه (پیست آفلاین)؛ هیچ تبدیل خودکار صبح به عصر انجام نمی‌دهد.
      */
     function parseTextTimeToMinutes(input) {
-        const raw = toEnDigits(String(input || '')).trim().replace(/[٫.,،\-]/g, ':');
+        const raw = toEnDigits(String(input || '')).trim().replace(/[٫.,،]/g, ':');
         if (!raw) return null;
 
         let h = null;
         let m = 0;
 
-        if (/^\d{1,2}:\d{1,2}$/.test(raw)) {
+        if (/^\d{1,2}:\d{2}$/.test(raw)) {
             const [hStr, mStr] = raw.split(':');
             h = parseInt(hStr, 10);
             m = parseInt(mStr, 10);
@@ -258,6 +259,16 @@
         if (h > 0 && rem > 0) return `${h} ساعت و ${rem} دقیقه`;
         if (h > 0) return `${h} ساعت`;
         return `${rem} دقیقه`;
+    }
+
+    function formatShortDurationEn(mins) {
+        const m = Math.max(0, Math.round(Number(mins) || 0));
+        if (m === 0) return '0m';
+        const h = Math.floor(m / 60);
+        const rem = m % 60;
+        if (h > 0 && rem > 0) return `${h}h ${rem}m`;
+        if (h > 0) return `${h}h`;
+        return `${rem}m`;
     }
 
     function generateId(prefix = 'blk') {
@@ -394,6 +405,75 @@
         }
     }
 
+    /* ==================== ذخیره بازبینی شب در دفترچه یادداشت tilo ==================== */
+
+    function saveNightReviewToNotes(dateISO, noteText, doneCount, totalCount) {
+        const info = getPersianDateInfo(dateISO);
+        const title = `بازبینی شب — ${info.weekday} ${info.shortDate}`;
+        const cleanText = String(noteText || '').trim();
+        const body = cleanText || `جمع‌بندی روز: ${doneCount} از ${totalCount} تایم‌بلاک انجام شد.`;
+        const noteId = `night_review_${dateISO}`;
+        const nowTs = Date.now();
+
+        const notePayload = {
+            id: noteId,
+            source: 'tilo_martell_review',
+            date: dateISO,
+            dateStr: info.fullDate,
+            title,
+            text: body,
+            content: body,
+            note: body,
+            updatedAt: nowTs,
+            createdAt: nowTs
+        };
+
+        // ۱. اتصال به API یادداشت‌ها در صورت وجود در صفحه
+        try {
+            if (window.tiloNotes && typeof window.tiloNotes.upsert === 'function') {
+                window.tiloNotes.upsert(notePayload);
+            } else if (window.tiloNotes && typeof window.tiloNotes.add === 'function') {
+                window.tiloNotes.add(notePayload);
+            } else if (window.TiloNotes && typeof window.TiloNotes.add === 'function') {
+                window.TiloNotes.add(notePayload);
+            }
+        } catch (_) {}
+
+        // ۲. ذخیره مستقیم و بدون خطا در localStorage یادداشت‌ها (tilo_notes)
+        try {
+            const existingRaw = localStorage.getItem(TILO_NOTES_KEY);
+            let notesArr = [];
+            if (existingRaw) {
+                const parsed = JSON.parse(existingRaw);
+                if (Array.isArray(parsed)) notesArr = parsed;
+            }
+
+            const existingIdx = notesArr.findIndex(n => n && (n.id === noteId || n.title === title));
+            if (existingIdx !== -1) {
+                notesArr[existingIdx] = {
+                    ...notesArr[existingIdx],
+                    ...notePayload,
+                    createdAt: notesArr[existingIdx].createdAt || nowTs
+                };
+            } else {
+                notesArr.unshift(notePayload);
+            }
+
+            const serialized = JSON.stringify(notesArr);
+            localStorage.setItem(TILO_NOTES_KEY, serialized);
+
+            // همگام‌سازی زنده با Vue state در صورت وجود آرایه notes
+            if (window.TiloPlus && window.TiloPlus.vueState && Array.isArray(window.TiloPlus.vueState.notes)) {
+                const vIdx = window.TiloPlus.vueState.notes.findIndex(n => n && (n.id === noteId || n.title === title));
+                if (vIdx !== -1) window.TiloPlus.vueState.notes[vIdx] = notesArr[existingIdx !== -1 ? existingIdx : 0];
+                else window.TiloPlus.vueState.notes.unshift(notePayload);
+            }
+
+            window.dispatchEvent(new CustomEvent('tilo:notes-updated', { detail: notePayload }));
+            window.dispatchEvent(new StorageEvent('storage', { key: TILO_NOTES_KEY, newValue: serialized }));
+        } catch (_) {}
+    }
+
     /* ==================== وضعیت برنامه (State) ==================== */
 
     const uiState = {
@@ -446,17 +526,17 @@
         uiState.toastTimer = setTimeout(() => {
             uiState.toastMsg = '';
             renderToast();
-        }, 2600);
+        }, 2800);
     }
 
-    /* ==================== پارسر هوشمند آفلاین برنامه متنی ==================== */
+    /* ==================== پارسر هوشمند آفلاین برنامه متنی (فیکس بحرانی) ==================== */
 
     function inferCategoryFromText(text) {
         const t = String(text || '').toLowerCase();
         if (/استراحت|ریکاوری|ناهار|شام|صبحانه|خواب|چرت|میان.?وعده|نفس|استراحت کوتاه/.test(t)) return 'recovery';
         if (/ورزش|سلامت|باشگاه|دویدن|پیاده.?روی|تمرین بدنی|یوگا|کشش/.test(t)) return 'health';
         if (/رشد فردی|کتاب|پادکست|زبان|مهارت|طراحی|برنامه.?نویسی|مدیتیشن|ژورنال|بازبینی/.test(t)) return 'growth';
-        if (/عمومی|نیمه.?عمیق|فارسی|ادبیات|عربی|دینی|دین و زندگی|زبان انگلیسی|هویت|سلامت و بهداشت|مرور|خلاصه/.test(t)) return 'general';
+        if (/عمومی|نیمه.?عمیق|مدرسه|فارسی|ادبیات|عربی|دینی|دین و زندگی|زبان انگلیسی|هویت|سلامت و بهداشت|مرور|خلاصه/.test(t)) return 'general';
         return 'deep';
     }
 
@@ -509,7 +589,7 @@
             if (/جایگزین|پاک|ریست|بجای|به جای/.test(firstLine)) detectedApplyMode = 'replace';
             else if (/اضافه|افزودن|الحاق/.test(firstLine)) detectedApplyMode = 'append';
 
-            if (detectedTarget || detectedApplyMode || firstLine.length < 45) {
+            if (detectedTarget || detectedApplyMode) {
                 startIdx = 1;
             }
         }
@@ -518,20 +598,35 @@
         const parsedBlocks = [];
 
         for (let i = startIdx; i < lines.length; i++) {
-            let line = lines[i].replace(/^[-•*▪▫\d.)]+\s*/, '').trim();
+            // فیکس بحرانی: اگر خط با ساعت HH:MM شروع شود، اعداد ساعت پاک نمی‌شوند
+            let line = lines[i].trim();
+            if (!/^\d{1,2}:\d{2}/.test(toEnDigits(line))) {
+                line = line.replace(/^([-•*▪▫]+|\d+[.)])\s+/, '').trim();
+            }
             if (!line) continue;
 
             let start = null;
             let end = null;
+            const warnings = [];
 
-            const timeRangeMatch = line.match(/(\d{1,2}(?::\d{2})?)\s*(?:تا|الی|-|–|—|to)\s*(\d{1,2}(?::\d{2})?)/i);
+            const timeRangeMatch = line.match(/(\d{1,2}(?::\d{1,2})?)\s*(?:تا|الی|-|–|—|to)\s*(\d{1,2}(?::\d{1,2})?)/i);
             if (timeRangeMatch) {
-                start = parseTextTimeToMinutes(timeRangeMatch[1]);
-                end = parseTextTimeToMinutes(timeRangeMatch[2]);
-                if (start !== null && end !== null && end <= start) {
-                    end = Math.min(1440, start + 30);
+                const parsedStart = parseTextTimeToMinutes(timeRangeMatch[1]);
+                const parsedEnd = parseTextTimeToMinutes(timeRangeMatch[2]);
+
+                if (parsedStart === null || parsedEnd === null) {
+                    warnings.push(`ساعت نامعتبر (${timeRangeMatch[0]})`);
+                } else if (parsedEnd <= parsedStart) {
+                    start = parsedStart;
+                    end = parsedEnd;
+                    warnings.push('ساعت پایان از شروع کوچک‌تر یا مساوی است');
+                } else {
+                    start = parsedStart;
+                    end = parsedEnd;
                 }
                 line = line.replace(timeRangeMatch[0], '').replace(/^\s*\|\s*/, '').trim();
+            } else if (/:/.test(line.split('|')[0] || '') && !/^(?:عنوان|کار|مبحث|دسته|توضیح|title|category|note)\s*:/i.test(line.split('|')[0].trim())) {
+                warnings.push('فرمت بازه ساعت نامعتبر است');
             }
 
             const segments = line.split('|').map(s => s.trim()).filter(Boolean);
@@ -541,6 +636,10 @@
             let isDomino = false;
 
             segments.forEach(seg => {
+                if (/^(?:سنگ بزرگ|domino|⭐)+$/i.test(seg)) {
+                    isDomino = true;
+                    return;
+                }
                 if (/سنگ بزرگ|domino|⭐/i.test(seg)) {
                     isDomino = true;
                 }
@@ -558,7 +657,9 @@
             });
 
             title = title.replace(/⭐/g, '').trim();
-            if (!title) continue;
+            if (!title) {
+                warnings.push('عنوان پارت خالی است');
+            }
 
             const category = parseCategoryLabel(rawCat, `${title} ${note}`);
             const catObj = CATEGORIES[category];
@@ -576,7 +677,10 @@
                 start,
                 end,
                 done: false,
-                domino: isDomino
+                domino: isDomino,
+                selected: true,
+                warnings,
+                hasError: warnings.length > 0
             });
         }
 
@@ -597,6 +701,28 @@
             return addDaysISO(uiState.weekStartISO, map[mode]);
         }
         return uiState.selectedDate;
+    }
+
+    function getDaySelectorOptionsHtml(selectedMode, includeSelectedOption = false) {
+        const todayISO = getTehranTodayISO();
+        const tomorrowISO = addDaysISO(todayISO, 1);
+        const selInfo = getPersianDateInfo(uiState.selectedDate);
+        const todayInfo = getPersianDateInfo(todayISO);
+        const tomInfo = getPersianDateInfo(tomorrowISO);
+
+        let html = '';
+        if (includeSelectedOption) {
+            html += `<option value="selected" ${selectedMode === 'selected' ? 'selected' : ''}>روز انتخاب‌شده (${selInfo.weekday} ${selInfo.shortDate})</option>`;
+        }
+        html += `<option value="today" ${selectedMode === 'today' ? 'selected' : ''}>امروز (${todayInfo.weekday} ${todayInfo.shortDate})</option>`;
+        html += `<option value="tomorrow" ${selectedMode === 'tomorrow' ? 'selected' : ''}>فردا (${tomInfo.weekday} ${tomInfo.shortDate})</option>`;
+
+        WEEKDAY_KEYS.forEach((key, idx) => {
+            const iso = addDaysISO(uiState.weekStartISO, idx);
+            const info = getPersianDateInfo(iso);
+            html += `<option value="${key}" ${selectedMode === key ? 'selected' : ''}>${WEEKDAYS_FA[idx]} (${info.shortDate})</option>`;
+        });
+        return html;
     }
 
     /* ==================== عملیات روی داده‌ها ==================== */
@@ -1442,7 +1568,6 @@
                 background: linear-gradient(90deg, rgba(251,113,133,0.15), #fb7185);
                 border-radius: 2px;
             }
-            /* خط زمان حال که دقیقاً از روی پارت یا بازه فعال عبور می‌کند */
             .tltb-now-overlay {
                 position: absolute;
                 left: 0;
@@ -1481,6 +1606,117 @@
                 margin-right: 4px;
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
                 white-space: nowrap;
+            }
+
+            /* پیش‌نمایش پیست متنی */
+            .tltb-preview-box {
+                background: var(--tltb-bg);
+                border: 1px solid var(--tltb-border);
+                border-radius: 12px;
+                padding: 9px;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            .tltb-preview-item {
+                display: flex;
+                align-items: flex-start;
+                gap: 7px;
+                font-size: 11px;
+                padding: 6px 8px;
+                border-radius: 8px;
+                border: 1px solid var(--tltb-border-soft);
+                border-right-width: 3px;
+                cursor: pointer;
+            }
+            .tltb-preview-item.is-warn {
+                border-color: rgba(248, 113, 113, 0.65) !important;
+                border-right-color: #f87171 !important;
+                background: rgba(248, 113, 113, 0.1) !important;
+            }
+            .tltb-preview-item.is-unchecked {
+                opacity: 0.45;
+            }
+            .tltb-warn-badge {
+                display: inline-block;
+                margin-top: 3px;
+                font-size: 9.5px;
+                font-weight: 800;
+                color: #fecaca;
+                background: rgba(248, 113, 113, 0.25);
+                padding: 1px 6px;
+                border-radius: 5px;
+            }
+
+            /* نمودار نیم‌دایره تعادل انرژی (SVG) */
+            .tltb-energy-wrap {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            }
+            .tltb-gauge-box {
+                position: relative;
+                width: 210px;
+                height: 116px;
+                display: flex;
+                align-items: flex-end;
+                justify-content: center;
+            }
+            .tltb-gauge-center {
+                position: absolute;
+                bottom: 8px;
+                left: 0;
+                right: 0;
+                text-align: center;
+                pointer-events: none;
+            }
+            .tltb-gauge-total {
+                font-size: 18px;
+                font-weight: 900;
+                color: var(--tltb-accent);
+                line-height: 1.1;
+            }
+            .tltb-gauge-sub {
+                font-size: 10px;
+                color: var(--tltb-muted);
+                margin-top: 2px;
+            }
+            .tltb-energy-status {
+                width: 100%;
+                text-align: center;
+                font-size: 11px;
+                font-weight: 800;
+                padding: 6px 10px;
+                border-radius: 10px;
+                background: var(--tltb-bg);
+                border: 1px solid var(--tltb-border-soft);
+                color: var(--tltb-text);
+            }
+            .tltb-energy-legend {
+                width: 100%;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            .tltb-energy-row {
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+                font-size: 11px;
+            }
+            .tltb-energy-row-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+            }
+            .tltb-energy-dot {
+                width: 9px;
+                height: 9px;
+                border-radius: 50%;
+                display: inline-block;
+                flex-shrink: 0;
             }
 
             /* نوار ثابت پایین برای افزودن سریع */
@@ -1807,6 +2043,8 @@
                 font-weight: 800;
                 box-shadow: 0 8px 24px rgba(0,0,0,0.45);
                 pointer-events: none;
+                max-width: 92vw;
+                text-align: center;
             }
         `;
         document.head.appendChild(style);
@@ -1983,7 +2221,6 @@
         let nowRendered = false;
 
         timed.forEach((b, i) => {
-            // بررسی فاصله زمانی (وقت آزاد) قبل از این پارت
             if (prevEnd !== null && b.start > prevEnd) {
                 const gapMins = b.start - prevEnd;
                 const nowInGap = isToday && !nowRendered && nowMins > prevEnd && nowMins < b.start;
@@ -2012,13 +2249,11 @@
                 }
             }
 
-            // اگر زمان حال پیش از اولین پارت باشد
             if (isToday && !nowRendered && nowMins < b.start) {
                 nowRendered = true;
                 html += `<div class="tltb-now-line">الان (<span class="tltb-num">${minutesToHHMM(nowMins)}</span>)</div>`;
             }
 
-            // اگر زمان حال دقیقاً داخل بازه همین پارت باشد -> خط از میان همین پارت رد شود
             const nowInsideBlock = isToday && !nowRendered && nowMins >= b.start && nowMins <= b.end;
             let insidePct = 50;
             if (nowInsideBlock) {
@@ -2041,7 +2276,6 @@
             prevEnd = Math.max(prevEnd ?? 0, b.end);
         });
 
-        // اگر زمان حال بعد از آخرین پارت روز باشد
         if (isToday && !nowRendered) {
             html += `<div class="tltb-now-line">الان (<span class="tltb-num">${minutesToHHMM(nowMins)}</span>)</div>`;
         }
@@ -2156,42 +2390,168 @@
         return `<div style="display:flex; flex-direction:column; gap:7px;">${cards}</div>`;
     }
 
+    /* ==================== نمودار SVG تعادل انرژی ==================== */
+
+    function renderEnergyChartHtml(dayBlocks) {
+        const minsByCat = { deep: 0, general: 0, recovery: 0, growth: 0, health: 0 };
+        let totalMins = 0;
+
+        dayBlocks.forEach(b => {
+            if (b.start !== null && b.end !== null && b.end > b.start) {
+                const d = b.end - b.start;
+                minsByCat[b.category] = (minsByCat[b.category] || 0) + d;
+                totalMins += d;
+            }
+        });
+
+        const radius = 76;
+        const arcLen = Math.PI * radius; // ~238.76
+        const activeCats = Object.values(CATEGORIES).filter(c => minsByCat[c.id] > 0);
+        const gapSize = activeCats.length > 1 ? 2.2 : 0;
+
+        let offset = 0;
+        const segmentsSvg = activeCats.map(c => {
+            const frac = totalMins > 0 ? (minsByCat[c.id] / totalMins) : 0;
+            const rawLen = frac * arcLen;
+            const drawLen = Math.max(2, rawLen - gapSize);
+            const path = `
+                <path d="M 24 98 A 76 76 0 0 1 176 98"
+                      fill="none"
+                      stroke="${c.defaultColor}"
+                      stroke-width="15"
+                      stroke-linecap="butt"
+                      stroke-dasharray="${drawLen.toFixed(2)} ${(arcLen * 2).toFixed(2)}"
+                      stroke-dashoffset="${(-offset).toFixed(2)}" />
+            `;
+            offset += rawLen;
+            return path;
+        }).join('');
+
+        // پیام وضعیت هوشمند
+        const studyMins = minsByCat.deep + minsByCat.general;
+        const deepPct = totalMins > 0 ? Math.round((minsByCat.deep / totalMins) * 100) : 0;
+        const recPct = totalMins > 0 ? Math.round((minsByCat.recovery / totalMins) * 100) : 0;
+
+        let statusText = 'هنوز تایم‌بلاک زمان‌داری برای تحلیل انرژی ثبت نشده است.';
+        if (totalMins > 0) {
+            if (studyMins >= 180 && recPct < 10) {
+                statusText = '⚠️ استراحت کم است؛ بین پارت‌های سنگین کمی ریکاوری اضافه کن.';
+            } else if (deepPct > 70 && totalMins >= 240) {
+                statusText = '🔥 فشار کار عمیق بالاست؛ برای حفظ راندمان، استراحت و تنوع بگذار.';
+            } else if (studyMins === 0) {
+                statusText = '📌 هنوز پارت درسی ثبت نشده؛ حداقل یک سنگ بزرگ مطالعاتی اضافه کن.';
+            } else if (recPct >= 10 && studyMins >= 120) {
+                statusText = '✅ تعادل انرژی و مطالعه امروز عالی و پایدار است.';
+            } else {
+                statusText = '🌿 ترکیب انرژی قابل قبول است؛ به زمان‌بندی استراحت‌ها پایبند بمان.';
+            }
+        }
+
+        const legendRows = Object.values(CATEGORIES).map(c => {
+            const mins = minsByCat[c.id] || 0;
+            const pct = totalMins > 0 ? Math.round((mins / totalMins) * 100) : 0;
+            return `
+                <div class="tltb-energy-row">
+                    <div class="tltb-energy-row-head">
+                        <span style="display:inline-flex; align-items:center; gap:6px; font-weight:700;">
+                            <span class="tltb-energy-dot" style="background:${c.defaultColor};"></span>
+                            <span>${c.icon} ${c.short}</span>
+                        </span>
+                        <span class="tltb-num" style="color:var(--tltb-muted); font-size:10.5px;">
+                            <strong style="color:var(--tltb-text);">${mins}m</strong> · ${pct}%
+                        </span>
+                    </div>
+                    <div style="height:5px; background:var(--tltb-bg); border-radius:99px; overflow:hidden;">
+                        <div style="height:100%; width:${pct}%; background:${c.defaultColor}; border-radius:99px;"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div class="tltb-energy-wrap">
+                <div class="tltb-gauge-box">
+                    <svg viewBox="0 0 200 112" width="210" height="116" aria-label="نمودار تعادل انرژی">
+                        <path d="M 24 98 A 76 76 0 0 1 176 98"
+                              fill="none"
+                              stroke="rgba(45, 90, 71, 0.35)"
+                              stroke-width="15"
+                              stroke-linecap="round" />
+                        ${segmentsSvg}
+                    </svg>
+                    <div class="tltb-gauge-center">
+                        <div class="tltb-gauge-total tltb-num">${formatShortDurationEn(totalMins)}</div>
+                        <div class="tltb-gauge-sub">مجموع زمان‌بندی (${totalMins} دقیقه)</div>
+                    </div>
+                </div>
+
+                <div class="tltb-energy-status">${statusText}</div>
+                <div class="tltb-energy-legend">${legendRows}</div>
+            </div>
+        `;
+    }
+
     /* ==================== بخش‌های جمع‌شونده پایین صفحه ==================== */
 
     function renderAccordions() {
         const dayBlocks = getBlocksForDate(uiState.selectedDate);
         const selectedInfo = getPersianDateInfo(uiState.selectedDate);
         const reviewData = uiState.store.finalized[uiState.selectedDate] || { note: '', completedAt: null };
-
-        const previewHtml = uiState.pastePreview ? `
-            <div style="background:var(--tltb-bg); border:1px solid var(--tltb-border); border-radius:11px; padding:8px; display:flex; flex-direction:column; gap:5px;">
-                <div style="font-size:11px; font-weight:900; color:var(--tltb-accent);">
-                    پیش‌نمایش (${uiState.pastePreview.blocks.length} پارت برای ${getPersianDateInfo(resolveTargetDateFromMode(uiState.pasteTargetMode)).weekday} ${getPersianDateInfo(resolveTargetDateFromMode(uiState.pasteTargetMode)).shortDate}):
-                </div>
-                ${uiState.pastePreview.blocks.map(b => `
-                    <div style="font-size:10.5px; padding:4px 8px; border-right:3px solid ${b.color}; background:${hexToRgba(b.color, 0.08)}; border-radius:6px;">
-                        <strong class="tltb-num">${b.start !== null ? `${minutesToHHMM(b.start)} - ${minutesToHHMM(b.end)}` : 'بدون ساعت'}</strong> | ${escapeHtml(b.title)} <span style="color:${b.color};">(${CATEGORIES[b.category].short})</span>
-                    </div>
-                `).join('')}
-                <button type="button" class="tltb-pill-btn accent" style="justify-content:center; margin-top:3px;" data-apply-paste="1">
-                    ✓ تایید و اعمال روی همین روز (همراه با بکاپ)
-                </button>
-            </div>
-        ` : '';
-
-        const totalMinsByCat = { deep: 0, general: 0, recovery: 0, growth: 0, health: 0 };
-        let totalTimedMins = 0;
-        dayBlocks.forEach(b => {
-            if (b.start !== null && b.end !== null) {
-                const d = b.end - b.start;
-                totalMinsByCat[b.category] = (totalMinsByCat[b.category] || 0) + d;
-                totalTimedMins += d;
-            }
-        });
-
         const studyBlocks = dayBlocks.filter(b => CATEGORIES[b.category]?.studyRelevant);
 
+        // پیش‌نمایش هوشمند پیست متن با چک‌باکس انتخاب و هشدار قرمز
+        let previewHtml = '';
+        if (uiState.pastePreview && Array.isArray(uiState.pastePreview.blocks)) {
+            const items = uiState.pastePreview.blocks;
+            const checkedCount = items.filter(b => b.selected).length;
+            const targetISO = resolveTargetDateFromMode(uiState.pasteTargetMode);
+            const targetInfo = getPersianDateInfo(targetISO);
+            const modeText = uiState.pasteApplyMode === 'replace' ? 'جایگزینی کامل' : 'اضافه کردن';
+
+            previewHtml = `
+                <div class="tltb-preview-box">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:wrap;">
+                        <span style="font-size:11px; font-weight:900; color:var(--tltb-accent);">
+                            پیش‌نمایش (${checkedCount}/${items.length} انتخاب‌شده) · ${targetInfo.weekday} ${targetInfo.shortDate}
+                        </span>
+                        <div style="display:flex; gap:4px;">
+                            <button type="button" class="tltb-pill-btn" data-paste-select-all="1">همه</button>
+                            <button type="button" class="tltb-pill-btn" data-paste-select-all="0">هیچ‌کدام</button>
+                        </div>
+                    </div>
+
+                    ${items.map((b, idx) => {
+                        const timeLabel = (b.start !== null && b.end !== null)
+                            ? `${minutesToHHMM(b.start)} - ${minutesToHHMM(b.end)}`
+                            : 'بدون ساعت';
+                        const bg = b.hasError ? '' : `background:${hexToRgba(b.color, 0.08)};`;
+                        return `
+                            <label class="tltb-preview-item ${b.hasError ? 'is-warn' : ''} ${!b.selected ? 'is-unchecked' : ''}"
+                                   style="border-right-color:${b.color}; ${bg}">
+                                <input type="checkbox" data-paste-chk="${idx}" ${b.selected ? 'checked' : ''} style="margin-top:2px;" />
+                                <div style="flex:1; min-width:0;">
+                                    <div>
+                                        <strong class="tltb-num">${timeLabel}</strong>
+                                        <span> | ${escapeHtml(b.title || '(بدون عنوان)')}</span>
+                                        <span style="color:${b.color}; font-weight:700;"> (${CATEGORIES[b.category].short})</span>
+                                        ${b.domino ? `<span style="color:#fbbf24; font-weight:800;"> ⭐ سنگ بزرگ</span>` : ''}
+                                    </div>
+                                    ${b.note ? `<div style="font-size:10px; color:var(--tltb-muted); margin-top:2px;">${escapeHtml(b.note)}</div>` : ''}
+                                    ${b.warnings && b.warnings.length ? `<div class="tltb-warn-badge">⚠️ ${escapeHtml(b.warnings.join(' · '))}</div>` : ''}
+                                </div>
+                            </label>
+                        `;
+                    }).join('')}
+
+                    <button type="button" class="tltb-pill-btn accent" style="justify-content:center; margin-top:3px;" data-apply-paste="1">
+                        ✓ اعمال ${checkedCount} پارت (${modeText} ${targetInfo.weekday} + بکاپ خودکار)
+                    </button>
+                </div>
+            `;
+        }
+
         return `
+            <!-- ۱. چسباندن برنامه از متن -->
             <div class="tltb-accordion">
                 <button type="button" class="tltb-acc-header" data-toggle-acc="paste">
                     <span>📋 چسباندن برنامه از متن (آفلاین)</span>
@@ -2199,21 +2559,19 @@
                 </button>
                 ${uiState.openAccordions.paste ? `
                     <div class="tltb-acc-body">
-                        <textarea id="tltb-paste-textarea" class="tltb-textarea" rows="4" placeholder="مثال:&#10;فقط امروز را جایگزین کن&#10;05:00 تا 06:30 | عنوان: هندسه 3 | دسته: کار عمیق / تخصصی | توضیح: حل نمونه">${escapeHtml(uiState.pasteRaw)}</textarea>
+                        <textarea id="tltb-paste-textarea" class="tltb-textarea" rows="5" placeholder="مثال:&#10;شنبه جایگزین&#10;05:00 تا 06:30 | مطالعه کتاب | دسته: رشد فردی&#10;15:30 تا 16:55 | هندسه | دسته: عمیق | سنگ بزرگ">${escapeHtml(uiState.pasteRaw)}</textarea>
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
                             <div>
                                 <label style="font-size:10px; color:var(--tltb-muted); display:block; margin-bottom:3px;">روز هدف:</label>
                                 <select id="tltb-paste-target" class="tltb-select">
-                                    <option value="selected" ${uiState.pasteTargetMode === 'selected' ? 'selected' : ''}>روز انتخاب‌شده (${selectedInfo.weekday})</option>
-                                    <option value="today" ${uiState.pasteTargetMode === 'today' ? 'selected' : ''}>امروز</option>
-                                    <option value="tomorrow" ${uiState.pasteTargetMode === 'tomorrow' ? 'selected' : ''}>فردا</option>
+                                    ${getDaySelectorOptionsHtml(uiState.pasteTargetMode, true)}
                                 </select>
                             </div>
                             <div>
                                 <label style="font-size:10px; color:var(--tltb-muted); display:block; margin-bottom:3px;">حالت اعمال (فقط همان روز):</label>
                                 <select id="tltb-paste-mode" class="tltb-select">
-                                    <option value="replace" ${uiState.pasteApplyMode === 'replace' ? 'selected' : ''}>جایگزینی کامل فقط همان روز</option>
-                                    <option value="append" ${uiState.pasteApplyMode === 'append' ? 'selected' : ''}>افزودن به برنامه همان روز</option>
+                                    <option value="replace" ${uiState.pasteApplyMode === 'replace' ? 'selected' : ''}>جایگزینی کامل همان روز</option>
+                                    <option value="append" ${uiState.pasteApplyMode === 'append' ? 'selected' : ''}>اضافه کردن به همان روز</option>
                                 </select>
                             </div>
                         </div>
@@ -2223,6 +2581,7 @@
                 ` : ''}
             </div>
 
+            <!-- ۲. کپی روتین -->
             <div class="tltb-accordion">
                 <button type="button" class="tltb-acc-header" data-toggle-acc="routine">
                     <span>🔁 کپی روتین (${selectedInfo.weekday} به روز دیگر)</span>
@@ -2231,32 +2590,32 @@
                 ${uiState.openAccordions.routine ? `
                     <div class="tltb-acc-body">
                         <p style="font-size:10.5px; color:var(--tltb-muted); margin:0;">
-                            مبدأ: <strong>${selectedInfo.weekday} (${selectedInfo.shortDate})</strong> — ${dayBlocks.length} تایم‌بلاک
+                            مبدأ: <strong>${selectedInfo.weekday} (${selectedInfo.shortDate})</strong> — <span class="tltb-num">${dayBlocks.length}</span> تایم‌بلاک
                         </p>
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
-                            <select id="tltb-routine-target" class="tltb-select">
-                                <option value="tomorrow" ${uiState.routineTarget === 'tomorrow' ? 'selected' : ''}>مقصد: فردا</option>
-                                <option value="sat" ${uiState.routineTarget === 'sat' ? 'selected' : ''}>مقصد: شنبه این هفته</option>
-                                <option value="sun" ${uiState.routineTarget === 'sun' ? 'selected' : ''}>مقصد: یکشنبه این هفته</option>
-                                <option value="mon" ${uiState.routineTarget === 'mon' ? 'selected' : ''}>مقصد: دوشنبه این هفته</option>
-                                <option value="tue" ${uiState.routineTarget === 'tue' ? 'selected' : ''}>مقصد: سه‌شنبه این هفته</option>
-                                <option value="wed" ${uiState.routineTarget === 'wed' ? 'selected' : ''}>مقصد: چهارشنبه این هفته</option>
-                                <option value="thu" ${uiState.routineTarget === 'thu' ? 'selected' : ''}>مقصد: پنجشنبه این هفته</option>
-                                <option value="fri" ${uiState.routineTarget === 'fri' ? 'selected' : ''}>مقصد: جمعه این هفته</option>
-                            </select>
-                            <select id="tltb-routine-mode" class="tltb-select">
-                                <option value="append" ${uiState.routineMode === 'append' ? 'selected' : ''}>افزودن به مقصد (امن)</option>
-                                <option value="replace" ${uiState.routineMode === 'replace' ? 'selected' : ''}>جایگزینی فقط روز مقصد</option>
-                            </select>
+                            <div>
+                                <label style="font-size:10px; color:var(--tltb-muted); display:block; margin-bottom:3px;">روز مقصد:</label>
+                                <select id="tltb-routine-target" class="tltb-select">
+                                    ${getDaySelectorOptionsHtml(uiState.routineTarget, false)}
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size:10px; color:var(--tltb-muted); display:block; margin-bottom:3px;">حالت کپی:</label>
+                                <select id="tltb-routine-mode" class="tltb-select">
+                                    <option value="append" ${uiState.routineMode === 'append' ? 'selected' : ''}>اضافه به مقصد (امن)</option>
+                                    <option value="replace" ${uiState.routineMode === 'replace' ? 'selected' : ''}>جایگزینی مقصد</option>
+                                </select>
+                            </div>
                         </div>
                         <button type="button" class="tltb-pill-btn accent" style="justify-content:center;" data-exec-routine="1">کپی برنامه به روز مقصد</button>
                     </div>
                 ` : ''}
             </div>
 
+            <!-- ۳. بازبینی شب -->
             <div class="tltb-accordion">
                 <button type="button" class="tltb-acc-header" data-toggle-acc="review">
-                    <span>🌙 بازبینی شب و جمع‌بندی پایان روز</span>
+                    <span>🌙 بازبینی شب و ذخیره در دفترچه یادداشت</span>
                     <span>${uiState.openAccordions.review ? '▴' : '▾'}</span>
                 </button>
                 ${uiState.openAccordions.review ? `
@@ -2265,15 +2624,16 @@
                             <span>انجام‌شده: <strong class="tltb-num" style="color:var(--tltb-accent);">${dayBlocks.filter(b => b.done).length}</strong></span>
                             <span>باقی‌مانده: <strong class="tltb-num" style="color:var(--tltb-warn);">${dayBlocks.filter(b => !b.done).length}</strong></span>
                         </div>
-                        <textarea id="tltb-review-note" class="tltb-textarea" rows="2" placeholder="امروز چطور گذشت؟ چه چیزی انرژی‌ات را گرفت یا به تو سرعت داد؟">${escapeHtml(reviewData.note || '')}</textarea>
+                        <textarea id="tltb-review-note" class="tltb-textarea" rows="3" placeholder="امروز چطور گذشت؟ چه چیزی انرژی‌ات را گرفت یا به تو سرعت داد؟">${escapeHtml(reviewData.note || '')}</textarea>
                         <div style="display:flex; flex-wrap:wrap; gap:6px;">
-                            <button type="button" class="tltb-pill-btn accent" style="flex:1; justify-content:center;" data-save-review="1">ثبت بازبینی شب</button>
+                            <button type="button" class="tltb-pill-btn accent" style="flex:1; justify-content:center;" data-save-review="1">ثبت بازبینی شب در یادداشت‌ها</button>
                             ${dayBlocks.some(b => !b.done) ? `<button type="button" class="tltb-pill-btn" data-carry-tomorrow="1">انتقال مانده‌ها به فردا ➔</button>` : ''}
                         </div>
                     </div>
                 ` : ''}
             </div>
 
+            <!-- ۴. تعادل انرژی (نمودار SVG) و ارسال به تایمر -->
             <div class="tltb-accordion">
                 <button type="button" class="tltb-acc-header" data-toggle-acc="energy">
                     <span>⚡ تعادل انرژی روز و ارسال به تایمر</span>
@@ -2281,25 +2641,9 @@
                 </button>
                 ${uiState.openAccordions.energy ? `
                     <div class="tltb-acc-body">
-                        <div style="display:flex; flex-direction:column; gap:5px;">
-                            ${Object.values(CATEGORIES).map(c => {
-                                const mins = totalMinsByCat[c.id] || 0;
-                                const pct = totalTimedMins > 0 ? Math.round((mins / totalTimedMins) * 100) : 0;
-                                return `
-                                    <div style="font-size:10.5px;">
-                                        <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
-                                            <span>${c.icon} ${c.label}</span>
-                                            <span style="color:var(--tltb-muted);">${formatDurationEn(mins)} (${pct}%)</span>
-                                        </div>
-                                        <div style="height:5px; background:var(--tltb-bg); border-radius:99px; overflow:hidden;">
-                                            <div style="height:100%; width:${pct}%; background:${c.defaultColor};"></div>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
+                        ${renderEnergyChartHtml(dayBlocks)}
                         ${studyBlocks.length ? `
-                            <div style="border-top:1px solid var(--tltb-border-soft); padding-top:8px; margin-top:2px;">
+                            <div style="border-top:1px solid var(--tltb-border-soft); padding-top:9px; margin-top:4px;">
                                 <div style="font-size:11px; font-weight:800; margin-bottom:5px;">ارسال پارت‌های مطالعاتی به صف تایمر:</div>
                                 <div style="display:flex; flex-direction:column; gap:4px; margin-bottom:7px;">
                                     ${studyBlocks.map(b => `
@@ -2317,6 +2661,7 @@
                 ` : ''}
             </div>
 
+            <!-- ۵. پشتیبان‌گیری و سطل بازیابی -->
             <div class="tltb-accordion">
                 <button type="button" class="tltb-acc-header" data-toggle-acc="backup">
                     <span>💾 پشتیبان‌گیری و سطل بازیابی (${uiState.store.trash.length})</span>
@@ -2462,7 +2807,6 @@
 
                     <input type="text" id="tltb-form-title" class="tltb-input" placeholder="عنوان کار (مثلاً: تست‌زنی حسابان 2)" value="${escapeHtml(f.title)}" />
 
-                    <!-- انتخاب دسته -->
                     <div>
                         <div style="font-size:10.5px; color:var(--tltb-muted); margin-bottom:5px;">دسته‌بندی:</div>
                         <div class="tltb-cat-pills">
@@ -2473,7 +2817,6 @@
                         </div>
                     </div>
 
-                    <!-- انتخاب رنگ پیشنهادی + دستی کامل -->
                     <div>
                         <div style="font-size:10.5px; color:var(--tltb-muted); margin-bottom:5px;">رنگ کارت:</div>
                         <div class="tltb-color-row">
@@ -2730,7 +3073,7 @@
             renderOverlay();
         });
 
-        // کلیک روی بدنه کارت = فقط انتخاب/هایلایت و باز/بسته شدن منوی اکشن (⋯) — بدون باز کردن ویرایش
+        // کلیک روی بدنه کارت = فقط باز/بسته شدن منوی اکشن (⋯) — بدون باز کردن ویرایش
         overlay.querySelectorAll('[data-card-select]').forEach(cardEl => {
             cardEl.addEventListener('click', e => {
                 if (e.target.closest('button, input, label, a, .tltb-drawer-actions')) return;
@@ -2740,7 +3083,7 @@
             });
         });
 
-        // دکمه عمدی ویرایش (✎)
+        // ویرایش فقط از طریق دکمه ✎
         overlay.querySelectorAll('[data-edit-block]').forEach(btn => {
             btn.addEventListener('click', e => {
                 e.preventDefault();
@@ -2751,7 +3094,6 @@
             });
         });
 
-        // دکمه‌های داخلی کارت‌ها با stopPropagation
         overlay.querySelectorAll('[data-toggle-done]').forEach(btn => {
             btn.addEventListener('click', e => {
                 e.preventDefault();
@@ -2881,7 +3223,7 @@
             });
         });
 
-        // چسباندن برنامه از متن
+        // چسباندن برنامه از متن + تیک‌زدن پارت‌ها در پیش‌نمایش
         const pasteTa = overlay.querySelector('#tltb-paste-textarea');
         if (pasteTa) {
             pasteTa.addEventListener('input', () => { uiState.pasteRaw = pasteTa.value; });
@@ -2892,11 +3234,12 @@
         });
         overlay.querySelector('#tltb-paste-mode')?.addEventListener('change', e => {
             uiState.pasteApplyMode = e.target.value;
+            renderOverlay();
         });
         overlay.querySelector('[data-preview-paste]')?.addEventListener('click', () => {
             const parsed = parseScheduleText(uiState.pasteRaw);
             if (!parsed || !parsed.blocks.length) {
-                showToast('هیچ تایم‌بلاک معتبری در متن پیدا نشد');
+                showToast('هیچ تایم‌بلاکی در متن پیدا نشد');
                 return;
             }
             if (parsed.detectedTarget) uiState.pasteTargetMode = parsed.detectedTarget;
@@ -2904,13 +3247,50 @@
             uiState.pastePreview = parsed;
             renderOverlay();
         });
+        overlay.querySelectorAll('[data-paste-chk]').forEach(chk => {
+            chk.addEventListener('change', () => {
+                const idx = Number(chk.getAttribute('data-paste-chk'));
+                if (uiState.pastePreview && uiState.pastePreview.blocks[idx]) {
+                    uiState.pastePreview.blocks[idx].selected = chk.checked;
+                    renderOverlay();
+                }
+            });
+        });
+        overlay.querySelectorAll('[data-paste-select-all]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const val = btn.getAttribute('data-paste-select-all') === '1';
+                if (uiState.pastePreview && Array.isArray(uiState.pastePreview.blocks)) {
+                    uiState.pastePreview.blocks.forEach(b => { b.selected = val; });
+                    renderOverlay();
+                }
+            });
+        });
         overlay.querySelector('[data-apply-paste]')?.addEventListener('click', () => {
             if (!uiState.pastePreview || !uiState.pastePreview.blocks.length) return;
+            const chosen = uiState.pastePreview.blocks.filter(b => b.selected);
+            if (!chosen.length) {
+                showToast('هیچ پارتی برای اعمال انتخاب نشده است');
+                return;
+            }
+
+            const hasInvalidSelected = chosen.some(b => !b.title || (b.start !== null && b.end !== null && b.end <= b.start));
+            if (hasInvalidSelected) {
+                showToast('لطفاً تیک پارت‌های دارای خطای قرمز را بردارید یا متن را اصلاح کنید');
+                return;
+            }
+
             const targetDate = resolveTargetDateFromMode(uiState.pasteTargetMode);
-            const newBlocks = uiState.pastePreview.blocks.map(b => ({
-                ...b,
+            const newBlocks = chosen.map(b => ({
                 id: generateId('blk'),
-                date: targetDate
+                date: targetDate,
+                title: b.title,
+                note: b.note || '',
+                category: b.category,
+                color: b.color,
+                start: b.start,
+                end: b.end,
+                done: false,
+                domino: Boolean(b.domino)
             }));
 
             let nextAll = [...uiState.store.blocks];
@@ -2926,10 +3306,11 @@
             uiState.pasteRaw = '';
             uiState.pastePreview = null;
             renderOverlay();
-            showToast(`برنامه ${getPersianDateInfo(targetDate).weekday} با موفقیت اعمال شد ✓`);
+            const tInfo = getPersianDateInfo(targetDate);
+            showToast(`${newBlocks.length} پارت روی ${tInfo.weekday} (${tInfo.shortDate}) ذخیره شد ✓`);
         });
 
-        // کپی روتین
+        // کپی روتین (مبدأ → مقصد با toast شفاف)
         overlay.querySelector('#tltb-routine-target')?.addEventListener('change', e => { uiState.routineTarget = e.target.value; });
         overlay.querySelector('#tltb-routine-mode')?.addEventListener('change', e => { uiState.routineMode = e.target.value; });
         overlay.querySelector('[data-exec-routine]')?.addEventListener('click', () => {
@@ -2957,18 +3338,25 @@
             nextAll = enforceSingleDominoPerDay([...nextAll, ...cloned]);
             uiState.store.blocks = nextAll;
             uiState.store = saveStore(uiState.store, { backup: true });
-            showToast(`برنامه به ${getPersianDateInfo(targetDate).weekday} کپی شد ✓`);
+            const srcInfo = getPersianDateInfo(uiState.selectedDate);
+            const dstInfo = getPersianDateInfo(targetDate);
+            renderOverlay();
+            showToast(`کپی شد: ${srcInfo.weekday} (${srcInfo.shortDate}) ← ${dstInfo.weekday} (${dstInfo.shortDate}) ✓`);
         });
 
-        // بازبینی شب
+        // بازبینی شب + ذخیره در دفترچه یادداشت tilo
         overlay.querySelector('[data-save-review]')?.addEventListener('click', () => {
             const note = overlay.querySelector('#tltb-review-note')?.value || '';
+            const dayBlocks = getBlocksForDate(uiState.selectedDate);
+            const doneCount = dayBlocks.filter(b => b.done).length;
+
             uiState.store.finalized[uiState.selectedDate] = {
                 note: note.trim(),
                 completedAt: Date.now()
             };
             uiState.store = saveStore(uiState.store);
-            showToast('بازبینی شب ثبت شد 🌙');
+            saveNightReviewToNotes(uiState.selectedDate, note, doneCount, dayBlocks.length);
+            showToast('بازبینی شب در تقویم و دفترچه یادداشت ذخیره شد 🌙');
         });
         overlay.querySelector('[data-carry-tomorrow]')?.addEventListener('click', () => {
             const undone = getBlocksForDate(uiState.selectedDate).filter(b => !b.done);
@@ -3059,7 +3447,6 @@
                 uiState.form.domino = e.target.checked;
             });
 
-            // انتخاب دسته
             overlay.querySelectorAll('[data-pick-cat]').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const catId = btn.getAttribute('data-pick-cat');
@@ -3069,7 +3456,6 @@
                 });
             });
 
-            // انتخاب رنگ پیشنهادی و رنگ دلخواه دستی
             overlay.querySelectorAll('[data-pick-color]').forEach(btn => {
                 btn.addEventListener('click', () => {
                     uiState.form.color = normalizeHex6(btn.getAttribute('data-pick-color'));
@@ -3089,7 +3475,6 @@
                 });
             }
 
-            // راه‌اندازی چرخ ساعت ۲۴ ساعته (بدون تبدیل خودکار صبح/عصر)
             if (uiState.form.hasTime) {
                 syncWheelPositions(overlay, false);
 
@@ -3123,7 +3508,6 @@
                     });
                 });
 
-                // میانبرهای سریع ساعت شروع: 05:00 | 06:30 | 14:30 | 16:00 | 21:00
                 overlay.querySelectorAll('[data-quick-start]').forEach(btn => {
                     btn.addEventListener('click', () => {
                         const [h, m] = btn.getAttribute('data-quick-start').split(':').map(Number);
@@ -3140,7 +3524,6 @@
                     });
                 });
 
-                // میانبرهای سریع مدت زمان
                 overlay.querySelectorAll('[data-quick-dur]').forEach(btn => {
                     btn.addEventListener('click', () => {
                         const dur = Number(btn.getAttribute('data-quick-dur'));
@@ -3256,6 +3639,7 @@
             return res;
         },
         sendBlocksToStudyTimer,
+        parseScheduleText,
         getStore: () => loadStore(),
         getTodayBlocks: () => getBlocksForDate(getTehranTodayISO()),
         refresh: () => {
@@ -3272,7 +3656,6 @@
         if (uiState.isOpen) renderOverlay();
     });
 
-    // به‌روزرسانی خودکار خط «الان» هر ۱ دقیقه وقتی محور ساعتی امروز باز است
     setInterval(() => {
         if (uiState.isOpen && !uiState.sheetOpen && uiState.viewMode === 'day' && uiState.daySubView === 'timeline' && uiState.selectedDate === getTehranTodayISO()) {
             renderOverlay();
