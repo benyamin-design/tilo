@@ -121,6 +121,64 @@
         html body > #tilo-err-banner.show {
             display: flex !important;
         }
+
+        /* مخفی کردن قالب چاپ روی صفحه؛ فقط موقع print دیده شود */
+        #tilo-print-report,
+        .tilo-print-sheet {
+            position: absolute !important;
+            left: -99999px !important;
+            top: 0 !important;
+            width: 1px !important;
+            height: 1px !important;
+            overflow: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            z-index: -1 !important;
+        }
+        @media print {
+            html, body {
+                background: #fff !important;
+                color: #111 !important;
+                height: auto !important;
+                overflow: visible !important;
+            }
+            body * {
+                visibility: hidden !important;
+            }
+            #tilo-boot-loader,
+            #tilo-vue-fallback,
+            #tilo-err-banner,
+            #tilo-martell-launcher,
+            #tltb-floating-launcher,
+            nav,
+            .tilo-toast {
+                display: none !important;
+            }
+            #tilo-print-report,
+            #tilo-print-report * {
+                visibility: visible !important;
+            }
+            #tilo-print-report.tilo-print-sheet,
+            #tilo-print-report {
+                position: static !important;
+                left: auto !important;
+                top: auto !important;
+                width: 100% !important;
+                height: auto !important;
+                overflow: visible !important;
+                opacity: 1 !important;
+                pointer-events: auto !important;
+                z-index: 1 !important;
+                display: block !important;
+                background: #fff !important;
+                color: #111 !important;
+                padding: 16px !important;
+            }
+            #app > *:not(#tilo-print-report) {
+                display: none !important;
+            }
+        }
+
     </style>
 
     <!-- استایل اصلی محلی نسخه v17 -->
