@@ -690,3 +690,449 @@ html body #app .fixed.inset-0 {
     border-radius: 0 !important;
   }
 }
+
+
+/* ========== v21: داشبورد جذاب‌تر + تایمر کامل ========== */
+
+/* نوار خلاصه امروز */
+.tilo-today-strip {
+  background: linear-gradient(135deg, var(--t-accent-soft), var(--t-inset)) !important;
+  border: 1px solid var(--t-border);
+  border-radius: var(--t-radius);
+}
+.tilo-today-strip-text { font-size: 0.88rem !important; }
+
+/* کارت‌های KPI با رنگ متفاوت ملایم */
+.tilo-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+.tilo-stat-card {
+  border-radius: var(--t-radius) !important;
+  padding: 1rem !important;
+  border: 1px solid var(--t-border) !important;
+  background: var(--t-card) !important;
+  min-width: 0;
+}
+.tilo-stat-card:nth-child(1) { border-top: 3px solid #35634e !important; }
+.tilo-stat-card:nth-child(2) { border-top: 3px solid #2f5d7c !important; }
+.tilo-stat-card:nth-child(3) { border-top: 3px solid #8a6532 !important; }
+.tilo-stat-card:nth-child(4) { border-top: 3px solid #57664f !important; }
+.tilo-stat-card .tilo-stat-value {
+  font-size: clamp(1.15rem, 4.5vw, 1.55rem) !important;
+  font-weight: 800 !important;
+  color: var(--t-text) !important;
+}
+
+/* کارت شروع تمرکز */
+.tilo-cta-focus {
+  background: linear-gradient(160deg, var(--t-accent-soft), var(--t-card)) !important;
+  border: 1px solid var(--t-accent) !important;
+  border-radius: var(--t-radius);
+  padding: 1.15rem 1.1rem;
+}
+
+/* streak */
+.tilo-streak-card {
+  background: var(--t-card) !important;
+  border: 1px solid var(--t-border) !important;
+  border-radius: var(--t-radius);
+  padding: 1rem 1.1rem;
+  position: relative;
+  overflow: hidden;
+}
+.tilo-streak-card::before {
+  content: "";
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--t-accent-solid);
+  border-radius: 0 4px 4px 0;
+}
+
+/* analytics KPI */
+.tilo-an-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+@media (max-width: 640px) {
+  .tilo-an-kpi-grid { grid-template-columns: 1fr; }
+}
+.tilo-an-kpi {
+  background: var(--t-inset);
+  border: 1px solid var(--t-border);
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.tilo-an-kpi.is-max { border-color: rgba(53,99,78,0.55); }
+.tilo-an-kpi.is-min { border-color: rgba(138,101,50,0.45); }
+.tilo-an-kpi-lbl { font-size: 10.5px; color: var(--t-muted); font-weight: 700; }
+.tilo-an-kpi-val { font-size: 13.5px; font-weight: 800; color: var(--t-text); overflow-wrap: anywhere; }
+.tilo-an-kpi-sub { font-size: 10.5px; color: var(--t-muted); overflow-wrap: anywhere; line-height: 1.45; }
+
+.tilo-chart-shell { position: relative; padding-top: 4px; }
+.tilo-chart-avg-line {
+  position: absolute;
+  left: 0; right: 0;
+  border-top: 1px dashed var(--t-accent);
+  pointer-events: none;
+  z-index: 1;
+}
+.tilo-chart-avg-line span {
+  position: absolute;
+  left: 0;
+  top: -9px;
+  font-size: 10px;
+  color: var(--t-accent);
+  background: var(--t-card);
+  padding: 0 4px;
+}
+.tilo-trend-bars.is-dense { gap: 4px; }
+.tilo-trend-fill.is-max { background: var(--t-accent-solid) !important; }
+.tilo-trend-fill.is-min { background: #8a6532 !important; opacity: 0.85; }
+.tilo-trend-col.is-selected .tilo-trend-track { outline: 2px solid var(--t-accent); }
+.tilo-an-detail-bar {
+  background: var(--t-inset);
+  border: 1px solid var(--t-border);
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+}
+.tilo-an-detail-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+  font-size: 12px;
+  color: var(--t-muted);
+}
+.tilo-an-min-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e5c58c;
+  background: var(--t-warning-soft);
+  padding: 2px 8px;
+  border-radius: 7px;
+}
+.tilo-an-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--t-muted);
+}
+.tilo-leg-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-left: 4px;
+  background: var(--t-border);
+}
+.tilo-leg-dot.is-max { background: var(--t-accent-solid); }
+.tilo-leg-dot.is-min { background: #8a6532; }
+.tilo-leg-dot.is-today { background: var(--t-accent); }
+
+/* گزارش مشاور کارت‌ها */
+.tilo-rep-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.55rem;
+}
+@media (min-width: 640px) {
+  .tilo-rep-summary { grid-template-columns: repeat(4, 1fr); }
+}
+.tilo-rep-stat {
+  background: var(--t-inset);
+  border: 1px solid var(--t-border);
+  border-radius: 11px;
+  padding: 0.65rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tilo-rep-stat span { font-size: 10.5px; color: var(--t-muted); }
+.tilo-rep-stat strong { font-size: 13px; color: var(--t-text); overflow-wrap: anywhere; }
+.tilo-rep-day-card {
+  border: 1px solid var(--t-border);
+  border-radius: 12px;
+  background: var(--t-inset);
+  overflow: hidden;
+}
+.tilo-rep-day-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0.75rem 0.9rem;
+  border-bottom: 1px solid var(--t-border);
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.tilo-rep-part-list { padding: 0.35rem 0.5rem 0.55rem; }
+.tilo-rep-part-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0.55rem 0.4rem;
+  border-bottom: 1px solid var(--t-border);
+  align-items: flex-start;
+}
+.tilo-rep-part-row:last-child { border-bottom: none; }
+.tilo-rep-sub {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--t-accent);
+}
+.tilo-rep-note { color: var(--t-muted); }
+
+/* ========== TIMER (قبلاً در CSS نبود → ظاهر شکسته) ========== */
+.tilo-tm-modes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+  padding: 0.55rem !important;
+}
+@media (max-width: 420px) {
+  .tilo-tm-modes { grid-template-columns: repeat(2, 1fr); }
+}
+.tilo-tm-mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0.65rem 0.35rem;
+  border-radius: 12px;
+  border: 1px solid var(--t-border);
+  background: var(--t-inset);
+  color: var(--t-muted);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.tilo-tm-mode-btn i { font-size: 14px; }
+.tilo-tm-mode-btn.is-active {
+  background: var(--t-accent-soft);
+  border-color: var(--t-accent);
+  color: var(--t-accent);
+}
+.tilo-tm-mode-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.tilo-tm-stage {
+  padding: 1.25rem 1.1rem 1.35rem !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  border: 1px solid var(--t-border) !important;
+  background: var(--t-card) !important;
+  border-radius: var(--t-radius) !important;
+}
+.tilo-tm-stage.is-focus {
+  border-color: var(--t-accent) !important;
+  box-shadow: 0 0 0 1px rgba(53,99,78,0.25);
+}
+.tilo-tm-stage.is-break {
+  border-color: rgba(138,101,50,0.55) !important;
+}
+
+.tilo-tm-top {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.tilo-tm-mini-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border-radius: 9px;
+  border: 1px solid var(--t-border);
+  background: var(--t-inset);
+  color: var(--t-muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tilo-tm-round-badge {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--t-accent);
+  background: var(--t-accent-soft);
+  border: 1px solid var(--t-accent);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+.tilo-tm-active { text-align: center; width: 100%; }
+.tilo-tm-active-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--t-text);
+  overflow-wrap: anywhere;
+}
+.tilo-tm-subtle-tag {
+  font-size: 11px;
+  color: var(--t-muted);
+  background: var(--t-inset);
+  border: 1px solid var(--t-border);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.tilo-tm-ring-wrap {
+  position: relative;
+  width: min(72vw, 220px);
+  height: min(72vw, 220px);
+  margin: 0.25rem auto;
+}
+.tilo-tm-ring-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.tilo-tm-ring-track {
+  fill: none;
+  stroke: var(--t-inset);
+  stroke-width: 8;
+}
+.tilo-tm-ring-prog {
+  fill: none;
+  stroke: var(--t-accent-solid);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.35s ease;
+}
+.tilo-tm-ring-prog.is-break { stroke: #8a6532; }
+.tilo-tm-ring-prog.is-paused { stroke: #94a3b8; }
+.tilo-tm-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 12px;
+}
+.tilo-tm-phase-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--t-muted);
+  margin-bottom: 2px;
+}
+.tilo-timer-digits {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace !important;
+  font-size: clamp(2.1rem, 9vw, 2.85rem) !important;
+  font-weight: 800 !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+  color: var(--t-text) !important;
+  line-height: 1.1 !important;
+  margin: 0 !important;
+}
+.tilo-tm-sub-lbl {
+  font-size: 11px;
+  color: var(--t-muted);
+  margin-top: 4px;
+}
+
+.tilo-tm-rounds {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+.tilo-tm-round-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--t-inset);
+  border: 1px solid var(--t-border);
+}
+.tilo-tm-round-dot.is-done { background: var(--t-accent-solid); border-color: var(--t-accent-solid); }
+.tilo-tm-round-dot.is-current { background: var(--t-accent); border-color: var(--t-accent); box-shadow: 0 0 0 3px var(--t-accent-soft); }
+.tilo-tm-round-dot.is-break { background: #8a6532; border-color: #8a6532; }
+
+.tilo-tm-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 14px;
+  font-size: 11px;
+  color: var(--t-muted);
+  width: 100%;
+}
+.tilo-tm-meta strong { color: var(--t-text); }
+
+.tilo-tm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  width: 100%;
+}
+.tilo-tm-subactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  width: 100%;
+}
+
+.tilo-tm-panel-box {
+  background: var(--t-inset);
+  border: 1px solid var(--t-border);
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+}
+
+.tilo-tm-part-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.tilo-tm-part-card {
+  width: 100%;
+  text-align: right;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--t-border);
+  background: var(--t-inset);
+  color: var(--t-text);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.tilo-tm-part-card.is-selected {
+  border-color: var(--t-accent);
+  background: var(--t-accent-soft);
+}
+.tilo-tm-part-topic {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--t-text);
+}
+
+/* status pills already partially defined — reinforce */
+.tilo-status-pill.is-idle { color: var(--t-muted); }
+.tilo-status-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  margin-left: 5px;
+}
+
+/* جلوگیری از متن عمودی عجیب کنار صفحه (باگ لایه‌ها) */
+#app, main { overflow-x: hidden; }
