@@ -1136,3 +1136,147 @@ html body #app .fixed.inset-0 {
 
 /* جلوگیری از متن عمودی عجیب کنار صفحه (باگ لایه‌ها) */
 #app, main { overflow-x: hidden; }
+
+
+
+/* ===== Streak week row (فیکس حروف عمودی) ===== */
+.tilo-streak-card {
+  background: var(--t-card) !important;
+  border: 1px solid var(--t-border) !important;
+  border-radius: var(--t-radius) !important;
+  padding: 1rem 1.1rem !important;
+  overflow: hidden;
+}
+.tilo-streak-main {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  width: 100%;
+}
+.tilo-streak-main > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.tilo-streak-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.tilo-streak-count {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--t-text);
+}
+.tilo-streak-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--t-border);
+  background: var(--t-inset);
+  color: var(--t-muted);
+}
+.tilo-streak-badge.is-done {
+  background: var(--t-accent-soft);
+  border-color: var(--t-accent);
+  color: var(--t-accent);
+}
+.tilo-streak-badge.is-pending {
+  background: var(--t-warning-soft);
+  border-color: rgba(138,101,50,0.45);
+  color: var(--t-warning);
+}
+.tilo-streak-sub {
+  margin: 0;
+  font-size: 12px;
+  color: var(--t-muted);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.tilo-streak-week {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.tilo-streak-day {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 5px;
+  min-width: 22px;
+}
+.tilo-streak-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--t-inset);
+  border: 1.5px solid var(--t-border);
+}
+.tilo-streak-dot.is-active {
+  background: var(--t-accent-solid);
+  border-color: var(--t-accent-solid);
+}
+.tilo-streak-dot.is-today {
+  box-shadow: 0 0 0 3px var(--t-accent-soft);
+}
+.tilo-streak-dlbl {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--t-muted);
+  line-height: 1;
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+}
+
+/* KPI چهارتایی داشبورد — جذاب‌تر */
+html body .tilo-stat-grid,
+.tilo-stat-grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 0.7rem !important;
+}
+html body .tilo-stat-card {
+  position: relative;
+  border-radius: 14px !important;
+  padding: 0.95rem 0.9rem !important;
+  background: var(--t-card) !important;
+  border: 1px solid var(--t-border) !important;
+  overflow: hidden;
+}
+html body .tilo-stat-card::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0; left: 0;
+  height: 3px;
+}
+html body .tilo-stat-grid > :nth-child(1)::after { background: #35634e; }
+html body .tilo-stat-grid > :nth-child(2)::after { background: #2f5d7c; }
+html body .tilo-stat-grid > :nth-child(3)::after { background: #8a6532; }
+html body .tilo-stat-grid > :nth-child(4)::after { background: #57664f; }
+
+/* نمودار میله‌ای قوی‌تر */
+.tilo-trend-track {
+  height: 100px !important;
+  border-radius: 10px !important;
+  background: var(--t-inset) !important;
+}
+.tilo-trend-fill {
+  border-radius: 8px 8px 0 0 !important;
+  min-height: 3px;
+  background: #3d6b55 !important;
+}
+.tilo-trend-fill.is-today { background: var(--t-accent-solid) !important; }
+.tilo-trend-fill.is-max { background: #4ade80 !important; }
+.tilo-trend-fill.is-min { background: #b45309 !important; }
+.tilo-trend-val {
+  font-size: 10px !important;
+  font-weight: 700;
+  color: var(--t-text) !important;
+}
