@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#111916">
     <title>tilo | فضای آرام مطالعه و تمرکز</title>
 
-    <!-- استایل بحرانی لودینگ در میلی‌ثانیه اول (مستقل از Vue و CDNها) -->
+    <!-- استایل بحرانی لودینگ و ایزوله‌سازی کامل چاپ/PDF (مستقل از کش CSS و CDNها) -->
     <style id="tilo-critical-boot">
         [v-cloak] { display: none !important; }
         body {
@@ -20,6 +20,25 @@
         }
         body > div:not(#app) { display: none !important; }
 
+        /* مخفی‌سازی قطعی قالب گزارش مشاور روی صفحه عادی */
+        html body #tilo-print-report,
+        html body .tilo-print-sheet,
+        #tilo-print-report,
+        .tilo-print-sheet {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            position: fixed !important;
+            left: -99999px !important;
+            top: -99999px !important;
+            width: 0 !important;
+            height: 0 !important;
+            overflow: hidden !important;
+            pointer-events: none !important;
+            z-index: -1 !important;
+        }
+
+        /* لودر اولیه با تگ section و !important تا قانون بالا آن را مخفی نکند */
         html body > #tilo-boot-loader {
             position: fixed;
             inset: 0;
@@ -60,6 +79,7 @@
             to { transform: rotate(360deg); }
         }
 
+        /* صفحه خطای فارسی در صورت لود نشدن Vue از تمام منابع */
         html body > #tilo-vue-fallback {
             display: none !important;
             position: fixed;
@@ -98,6 +118,7 @@
             cursor: pointer;
         }
 
+        /* بنر غیرمزاحم خطاهای سراسری */
         html body > #tilo-err-banner {
             display: none !important;
             position: fixed;
@@ -122,69 +143,190 @@
             display: flex !important;
         }
 
-        /* مخفی کردن قالب چاپ روی صفحه؛ فقط موقع print دیده شود */
-        #tilo-print-report,
-        .tilo-print-sheet {
-            position: absolute !important;
-            left: -99999px !important;
-            top: 0 !important;
-            width: 1px !important;
-            height: 1px !important;
-            overflow: hidden !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-            z-index: -1 !important;
+        /* ==================== قوانین انحصاری چاپ و خروجی PDF فارسی A4 ==================== */
+        @page {
+            size: A4 portrait;
+            margin: 12mm;
         }
         @media print {
-            html, body {
-                background: #fff !important;
-                color: #111 !important;
+            html, body,
+            html body:is(.tilo-theme-day, .tilo-theme-night),
+            html body.h-screen,
+            html body #app {
+                display: block !important;
                 height: auto !important;
+                min-height: 0 !important;
                 overflow: visible !important;
+                background: #ffffff !important;
+                color: #111827 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
-            body * {
-                visibility: hidden !important;
-            }
+
+            /* مخفی‌سازی تمام بخش‌های UI هنگام چاپ */
+            body > :not(#app),
+            #app > :not(#tilo-print-report),
+            nav,
+            header,
             #tilo-boot-loader,
             #tilo-vue-fallback,
             #tilo-err-banner,
             #tilo-martell-launcher,
             #tltb-floating-launcher,
-            nav,
-            .tilo-toast {
+            .tilo-toast,
+            .tilo-onboard-backdrop,
+            .tilo-more-backdrop {
                 display: none !important;
+                visibility: hidden !important;
             }
+
+            /* نمایش رسمی قالب گزارش مشاور فقط در حالت چاپ */
+            html body #tilo-print-report,
+            html body .tilo-print-sheet,
             #tilo-print-report,
-            #tilo-print-report * {
+            .tilo-print-sheet {
+                display: block !important;
                 visibility: visible !important;
-            }
-            #tilo-print-report.tilo-print-sheet,
-            #tilo-print-report {
+                opacity: 1 !important;
                 position: static !important;
                 left: auto !important;
                 top: auto !important;
                 width: 100% !important;
                 height: auto !important;
                 overflow: visible !important;
-                opacity: 1 !important;
                 pointer-events: auto !important;
-                z-index: 1 !important;
-                display: block !important;
-                background: #fff !important;
-                color: #111 !important;
-                padding: 16px !important;
+                z-index: auto !important;
+                background: #ffffff !important;
+                color: #111827 !important;
+                font-family: Vazirmatn, Tahoma, sans-serif !important;
+                direction: rtl !important;
+                font-size: 11px !important;
+                line-height: 1.65 !important;
             }
-            #app > *:not(#tilo-print-report) {
-                display: none !important;
+
+            #tilo-print-report .tp-header {
+                display: flex !important;
+                justify-content: space-between;
+                align-items: center;
+                gap: 12px;
+                padding-bottom: 10px;
+                margin-bottom: 12px;
+                border-bottom: 2px solid #24382d;
+            }
+            #tilo-print-report .tp-title {
+                margin: 0;
+                font-size: 16px;
+                font-weight: 900;
+                color: #111827 !important;
+            }
+            #tilo-print-report .tp-subtitle {
+                margin: 3px 0 0 0;
+                font-size: 10.5px;
+                color: #4b5563 !important;
+            }
+            #tilo-print-report .tp-brand-box {
+                text-align: left;
+                display: flex !important;
+                flex-direction: column;
+                font-size: 11px;
+                color: #374151 !important;
+            }
+            #tilo-print-report .tp-brand-box strong {
+                font-size: 13px;
+                color: #111827 !important;
+            }
+            #tilo-print-report .tp-kpi-grid {
+                display: grid !important;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 8px;
+                margin-bottom: 14px;
+            }
+            #tilo-print-report .tp-kpi {
+                border: 1px solid #d1d5db;
+                background: #f9fafb !important;
+                border-radius: 6px;
+                padding: 7px 9px;
+                display: flex !important;
+                flex-direction: column;
+                gap: 2px;
+            }
+            #tilo-print-report .tp-kpi span {
+                font-size: 9.5px;
+                color: #4b5563 !important;
+            }
+            #tilo-print-report .tp-kpi strong {
+                font-size: 11.5px;
+                font-weight: 800;
+                color: #111827 !important;
+            }
+            #tilo-print-report .tp-day-block {
+                margin-bottom: 14px;
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            #tilo-print-report .tp-day-bar {
+                display: flex !important;
+                justify-content: space-between;
+                align-items: center;
+                gap: 8px;
+                background: #eef4f0 !important;
+                border: 1px solid #cbd5ce;
+                border-bottom: none;
+                padding: 6px 10px;
+                font-size: 11px;
+                color: #111827 !important;
+            }
+            #tilo-print-report .tp-table {
+                width: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+            }
+            #tilo-print-report .tp-table th,
+            #tilo-print-report .tp-table td {
+                border: 1px solid #cbd5ce;
+                padding: 5px 7px;
+                text-align: right;
+                vertical-align: top;
+                word-wrap: break-word;
+                color: #111827 !important;
+            }
+            #tilo-print-report .tp-table th {
+                background: #f3f4f6 !important;
+                font-weight: 800;
+                font-size: 10px;
+            }
+            #tilo-print-report .tp-table tr {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            #tilo-print-report .tp-muted {
+                font-size: 9.5px;
+                color: #4b5563 !important;
+                margin-top: 2px;
+            }
+            #tilo-print-report .tp-empty {
+                text-align: center;
+                padding: 18px;
+                border: 1px dashed #cbd5ce;
+                color: #4b5563 !important;
+            }
+            #tilo-print-report .tp-footer {
+                margin-top: 18px;
+                padding-top: 10px;
+                border-top: 1px solid #d1d5db;
+                display: flex !important;
+                justify-content: space-between;
+                gap: 12px;
+                font-size: 10.5px;
+                color: #374151 !important;
             }
         }
-
     </style>
 
-    <!-- استایل اصلی محلی نسخه v17 -->
-    <link rel="stylesheet" href="./tilo-ui.css?v=17">
+    <!-- استایل اصلی محلی -->
+    <link rel="stylesheet" href="./tilo-ui.css?v=19">
 
-    <!-- فونت و آیکون‌ها غیرمسدودکننده -->
+    <!-- فونت و آیکون‌ها به‌صورت غیرمسدودکننده تا لودر از میلی‌ثانیه اول دیده شود -->
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.0.0/Vazirmatn-font-face.css" rel="stylesheet" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
 
@@ -221,7 +363,7 @@
         })();
     </script>
 
-    <!-- لودر مقاوم Vue 3 (محلی -> jsdelivr -> cdnjs -> unpkg) + کنترل خطای سراسری -->
+    <!-- لودر مقاوم Vue 3 (محلی -> jsdelivr -> cdnjs -> unpkg) + کنترل خطا -->
     <script>
         (function () {
             'use strict';
@@ -276,7 +418,7 @@
             };
 
             var vueSources = [
-                { url: './vue.global.prod.js?v=17', timeout: 2500 },
+                { url: './vue.global.prod.js?v=19', timeout: 2500 },
                 { url: 'https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js', timeout: 6500 },
                 { url: 'https://cdnjs.cloudflare.com/ajax/libs/vue/3.5.13/vue.global.prod.min.js', timeout: 6500 },
                 { url: 'https://unpkg.com/vue@3/dist/vue.global.prod.js', timeout: 6500 }
@@ -334,7 +476,7 @@
         })();
     </script>
 
-    <!-- بارگذاری تنبل Firebase (کاملاً اختیاری و آفلاین‌دوست) -->
+    <!-- بارگذاری تنبل Firebase فقط زمانی که کاربر کانفیگ داشته باشد یا درخواست اتصال بدهد -->
     <script>
         window.__tiloLoadFirebaseSDK = function () {
             if (window.FirebaseSDK) return Promise.resolve(window.FirebaseSDK);
@@ -372,14 +514,14 @@
 </head>
 <body class="font-sans antialiased h-screen flex flex-col md:flex-row overflow-hidden select-none tilo-theme-night" data-accent="sage">
 
-    <!-- لودر اولیه از میلی‌ثانیه اول -->
+    <!-- لودر اولیه: از میلی‌ثانیه اول دیده می‌شود و تا mount موفق یا fallback می‌ماند -->
     <section id="tilo-boot-loader" aria-live="polite" style="display:flex;">
         <div class="tilo-boot-mark">t</div>
         <div class="tilo-boot-spin"></div>
         <div style="font-size: 13px; font-weight: 700; color: #afbeb4;">در حال آماده‌سازی tilo...</div>
     </section>
 
-    <!-- صفحه خطای فارسی در صورت لود نشدن Vue -->
+    <!-- صفحه خطای فارسی در صورت لود نشدن هسته Vue -->
     <section id="tilo-vue-fallback" role="alert">
         <div class="tilo-fb-card">
             <div style="font-size: 16px; font-weight: 800; margin-bottom: 8px;">هسته برنامه بارگذاری نشد</div>
@@ -390,7 +532,7 @@
         </div>
     </section>
 
-    <!-- بنر غیرمزاحم خطاهای سراسری -->
+    <!-- بنر غیرمزاحم خطاهای احتمالی اسکریپت -->
     <aside id="tilo-err-banner" role="status">
         <span id="tilo-err-banner-msg"></span>
         <button type="button" onclick="document.getElementById('tilo-err-banner').classList.remove('show')" style="background:transparent;border:1px solid rgba(255,180,170,0.4);color:#ffb4aa;border-radius:8px;padding:3px 9px;cursor:pointer;font-family:inherit;font-size:11px;">بستن</button>
@@ -399,10 +541,10 @@
     <!-- ریشه اصلی برنامه Vue -->
     <div id="app" class="w-full h-full flex flex-col md:flex-row max-w-7xl mx-auto relative" v-cloak>
 
-        <!-- توست بازخورد -->
+        <!-- توست ساده بازخورد عملیات -->
         <div v-if="toastMessage" class="tilo-toast" role="status">{{ toastMessage }}</div>
 
-        <!-- ==================== آنبوردینگ ۴ مرحله‌ای ==================== -->
+        <!-- ==================== آنبوردینگ ۴ مرحله‌ای آرام و شخصی ==================== -->
         <div v-if="showWelcomeModal" class="tilo-onboard-backdrop">
             <div class="tilo-onboard-card">
                 <div class="tilo-onboard-top">
@@ -414,9 +556,11 @@
                     <div class="tilo-onboard-progress-fill" :style="{ width: (onboardingStep * 25) + '%' }"></div>
                 </div>
 
+                <!-- مرحله ۱: انتخاب نقش (اجباری) -->
                 <div v-if="onboardingStep === 1" class="tilo-onboard-body">
                     <h2 class="tilo-onboard-title">الان بیشتر در چه نقشی از tilo استفاده می‌کنی؟</h2>
                     <p class="tilo-onboard-sub">بخش‌ها و فرم‌های برنامه را دقیقاً بر اساس نیاز تو خلوت و آماده می‌کنیم.</p>
+
                     <div class="tilo-role-grid">
                         <button type="button" v-for="r in roleOptions" :key="r.id"
                             @click="selectRole(r.id)"
@@ -428,6 +572,7 @@
                     </div>
                 </div>
 
+                <!-- مرحله ۲: جزئیات نقش + هدف دوره -->
                 <div v-else-if="onboardingStep === 2" class="tilo-onboard-body">
                     <h2 class="tilo-onboard-title">کمی دقیق‌تر درباره مسیر فعلی‌ات</h2>
                     <p class="tilo-onboard-sub">هر زمان خواستی می‌توانی این موارد را در تنظیمات عوض کنی.</p>
@@ -473,6 +618,7 @@
                     </div>
                 </div>
 
+                <!-- مرحله ۳: ساعت تمرکز و هدف روزانه -->
                 <div v-else-if="onboardingStep === 3" class="tilo-onboard-body">
                     <h2 class="tilo-onboard-title">ریتم روزانه‌ات چطور است؟</h2>
                     <p class="tilo-onboard-sub">یک هدف واقع‌بینانه کمک می‌کند هر روز با حس خوب کار را ببندی.</p>
@@ -504,6 +650,7 @@
                     </div>
                 </div>
 
+                <!-- مرحله ۴: نام نمایشی و ورود -->
                 <div v-else class="tilo-onboard-body">
                     <h2 class="tilo-onboard-title">چه صدایت کنیم؟</h2>
                     <p class="tilo-onboard-sub">همه اطلاعات روی همین دستگاه ذخیره می‌شود و بدون اینترنت هم کار می‌کند.</p>
@@ -522,15 +669,22 @@
                     </div>
                 </div>
 
+                <!-- دکمه‌های ناوبری مراحل -->
                 <div class="tilo-onboard-actions">
-                    <button type="button" v-if="onboardingStep > 1" @click="prevOnboardingStep" class="btn-calm bg-slate-800 text-slate-200 text-xs px-4">قبلی</button>
-                    <button type="button" v-if="onboardingStep < 4" @click="nextOnboardingStep" class="btn-calm bg-primary text-white text-sm flex-1 py-3">ادامه</button>
-                    <button type="button" v-else @click="completeWelcome" class="btn-calm bg-primary text-white text-sm flex-1 py-3">ورود به فضای کار</button>
+                    <button type="button" v-if="onboardingStep > 1" @click="prevOnboardingStep" class="btn-calm bg-slate-800 text-slate-200 text-xs px-4">
+                        قبلی
+                    </button>
+                    <button type="button" v-if="onboardingStep < 4" @click="nextOnboardingStep" class="btn-calm bg-primary text-white text-sm flex-1 py-3">
+                        ادامه
+                    </button>
+                    <button type="button" v-else @click="completeWelcome" class="btn-calm bg-primary text-white text-sm flex-1 py-3">
+                        ورود به فضای کار
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- ==================== منوی ناوبری اصلی ==================== -->
+        <!-- ==================== منوی ناوبری اصلی (تطبیق‌شده با نقش + «بیشتر») ==================== -->
         <nav class="soft-card w-full md:w-60 md:h-full flex md:flex-col justify-around md:justify-start p-2 md:p-4 order-last md:order-first z-50 fixed md:relative bottom-0 left-0 right-0 border-t md:border-t-0 md:border-l border-slate-800/80">
             <div class="hidden md:flex items-center gap-3 mb-6 px-2 pt-1">
                 <div class="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-white font-black text-base">t</div>
@@ -553,6 +707,7 @@
                 <span v-if="tab.id === 'timer' && timer.active" class="absolute top-1.5 right-3 w-2 h-2 bg-sage rounded-full"></span>
             </button>
 
+            <!-- دکمه «بیشتر» برای تب‌های فرعی -->
             <button v-if="moreNavTabs.length > 0"
                 type="button"
                 @click="moreMenuOpen = !moreMenuOpen"
@@ -563,7 +718,7 @@
             </button>
         </nav>
 
-        <!-- منوی کشویی «بیشتر» -->
+        <!-- منوی کشویی آرام «بیشتر» -->
         <div v-if="moreMenuOpen" class="tilo-more-backdrop" @click.self="moreMenuOpen = false">
             <div class="tilo-more-sheet soft-card">
                 <div class="flex justify-between items-center pb-2 mb-2 border-b border-slate-800">
@@ -589,12 +744,15 @@
         <!-- ==================== محتوای اصلی ==================== -->
         <main class="flex-1 overflow-y-auto p-4 md:p-7 pb-28 md:pb-8">
 
-            <!-- هدر آرام -->
+            <!-- هدر آرام و خلوت -->
             <header class="tilo-page-header" v-show="!(currentTab === 'timer' && timerFocusMode)">
                 <div>
-                    <h2 class="text-lg md:text-xl font-extrabold text-white">{{ tabTitle }}</h2>
+                    <h2 class="text-lg md:text-xl font-extrabold text-white">
+                        {{ tabTitle }}
+                    </h2>
                     <p class="text-slate-400 text-xs mt-0.5">{{ currentDateStr }}</p>
                 </div>
+
                 <div class="flex items-center gap-2">
                     <button type="button" @click="toggleTheme" class="tilo-theme-switch-btn text-xs" :title="settings.theme === 'day' ? 'حالت شب' : 'حالت روز'">
                         <i :class="settings.theme === 'day' ? 'fas fa-moon' : 'fas fa-sun'"></i>
@@ -605,10 +763,10 @@
                 </div>
             </header>
 
-            <!-- ==================== ۱. تب داشبورد، استریک، نمودار و گزارش مشاور ==================== -->
+            <!-- ==================== ۱. تب داشبورد و تحلیل ==================== -->
             <div v-show="currentTab === 'dashboard'" class="space-y-5 max-w-4xl mx-auto">
 
-                <!-- خلاصه یک‌خطی امروز -->
+                <!-- خلاصه یک‌خطی امروز (انجام‌شده / باقی‌مانده) -->
                 <div class="tilo-today-strip soft-card">
                     <div class="tilo-today-strip-text">{{ todaySummaryLine }}</div>
                     <div class="tilo-today-bar">
@@ -616,7 +774,7 @@
                     </div>
                 </div>
 
-                <!-- کارت استمرار مطالعه (Study Streak — پارت ۲) -->
+                <!-- کارت استمرار مطالعه (Study Streak) -->
                 <div class="soft-card tilo-streak-card">
                     <div class="tilo-streak-main">
                         <div>
@@ -634,6 +792,7 @@
                                 <span v-if="!studyStreak.todayDone && studyStreak.current > 0"> · با تکمیل یک پارت امروز، زنجیره حفظ می‌شود</span>
                             </p>
                         </div>
+
                         <div class="tilo-streak-week" aria-label="وضعیت ۷ روز اخیر">
                             <div v-for="d in studyStreak.last7" :key="d.iso" class="tilo-streak-day" :title="d.label + ': ' + d.minutes + ' دقیقه'">
                                 <span class="tilo-streak-dot" :class="{ 'is-active': d.active, 'is-today': d.isToday }"></span>
@@ -700,7 +859,7 @@
                     </div>
                 </div>
 
-                <!-- صف امروز + انجام‌شده‌های امروز -->
+                <!-- صف امروز + تکمیل‌شده‌ها -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div class="soft-card p-5">
                         <div class="flex justify-between items-center mb-3.5">
@@ -724,7 +883,9 @@
                                     <p class="text-sm font-bold text-white truncate">{{ part.topic }}</p>
                                     <p class="text-xs text-slate-400 mt-0.5">{{ part.plannedTime }} دقیقه</p>
                                 </div>
-                                <button type="button" @click="selectPartAndGoToTimer(part)" class="btn-calm bg-primary text-white text-xs py-2 px-3 shrink-0">شروع</button>
+                                <button type="button" @click="selectPartAndGoToTimer(part)" class="btn-calm bg-primary text-white text-xs py-2 px-3 shrink-0">
+                                    شروع
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -761,7 +922,7 @@
                     </div>
                 </div>
 
-                <!-- نمودار روند ۷ و ۱۴ روزه با بیشترین/کمترین و جمع هفته (پارت ۲) -->
+                <!-- نمودار روند ۷ و ۱۴ روزه با بیشترین/کمترین مقدار و جمع هفته -->
                 <div class="soft-card p-5 space-y-4">
                     <div class="flex flex-wrap justify-between items-center gap-3">
                         <div>
@@ -789,13 +950,21 @@
                         </div>
                         <div class="tilo-an-kpi is-max">
                             <span class="tilo-an-kpi-lbl">بیشترین (Max)</span>
-                            <strong class="tilo-an-kpi-val">{{ analyticsMinMax.maxDay ? formatMinutes(analyticsMinMax.maxDay.minutes) : '—' }}</strong>
-                            <span class="tilo-an-kpi-sub">{{ analyticsMinMax.maxDay ? analyticsMinMax.maxDay.fullLabel : 'بدون ثبت' }}</span>
+                            <strong class="tilo-an-kpi-val">
+                                {{ analyticsMinMax.maxDay ? formatMinutes(analyticsMinMax.maxDay.minutes) : '—' }}
+                            </strong>
+                            <span class="tilo-an-kpi-sub">
+                                {{ analyticsMinMax.maxDay ? analyticsMinMax.maxDay.fullLabel : 'بدون ثبت' }}
+                            </span>
                         </div>
                         <div class="tilo-an-kpi is-min">
                             <span class="tilo-an-kpi-lbl">کمترین (Min)</span>
-                            <strong class="tilo-an-kpi-val">{{ analyticsMinMax.minDay ? formatMinutes(analyticsMinMax.minDay.minutes) : '—' }}</strong>
-                            <span class="tilo-an-kpi-sub">{{ analyticsMinMax.minDay ? analyticsMinMax.minDay.fullLabel : 'بدون ثبت' }}</span>
+                            <strong class="tilo-an-kpi-val">
+                                {{ analyticsMinMax.minDay ? formatMinutes(analyticsMinMax.minDay.minutes) : '—' }}
+                            </strong>
+                            <span class="tilo-an-kpi-sub">
+                                {{ analyticsMinMax.minDay ? analyticsMinMax.minDay.fullLabel : 'بدون ثبت' }}
+                            </span>
                         </div>
                     </div>
 
@@ -822,7 +991,11 @@
                                 <div class="tilo-trend-track">
                                     <div class="tilo-trend-fill"
                                         :style="{ height: day.barPercent + '%' }"
-                                        :class="{ 'is-today': day.isToday, 'is-max': day.isMax, 'is-min': day.isMin }"></div>
+                                        :class="{
+                                            'is-today': day.isToday,
+                                            'is-max': day.isMax,
+                                            'is-min': day.isMin
+                                        }"></div>
                                 </div>
                                 <span class="tilo-trend-lbl">{{ day.label }}</span>
                             </button>
@@ -860,12 +1033,12 @@
 
                     <div class="flex flex-wrap gap-2 pt-1">
                         <button type="button" @click="copyWeeklySummary" class="btn-calm bg-slate-800 text-slate-200 text-xs py-2 px-3.5">
-                            <i class="fas fa-copy"></i> کپی خلاصه روند
+                            <i class="fas fa-copy"></i> کپی خلاصه برای مشاور / خودم
                         </button>
                     </div>
                 </div>
 
-                <!-- آرشیو و گزارش مشاور (پارت ۳: امروز / ۷ روز / ۱۴ روز + کپی متن + چاپ/PDF فارسی) -->
+                <!-- آرشیو و گزارش مشاور (امروز / ۷ روز / ۱۴ روز + کپی متن + چاپ/PDF فارسی) -->
                 <div class="soft-card p-5 space-y-4">
                     <div class="flex flex-wrap justify-between items-center gap-3">
                         <div>
@@ -899,7 +1072,9 @@
                         </div>
                         <div v-if="isStudent" class="tilo-rep-stat">
                             <span>عملکرد تستی</span>
-                            <strong>{{ advisorSummary.totalTests > 0 ? (advisorSummary.totalTests + ' تست (' + advisorSummary.netScore + ')') : '—' }}</strong>
+                            <strong>
+                                {{ advisorSummary.totalTests > 0 ? (advisorSummary.totalTests + ' تست (' + advisorSummary.netScore + ')') : '—' }}
+                            </strong>
                         </div>
                     </div>
 
@@ -935,6 +1110,7 @@
                                         </span>
                                     </div>
                                 </div>
+
                                 <button type="button" @click="printAdvisorPDF(day.iso)" class="tilo-chip text-xs shrink-0" title="دریافت PDF همین روز">
                                     <i class="fas fa-print"></i> PDF این روز
                                 </button>
@@ -994,7 +1170,7 @@
                 </div>
             </div>
 
-            <!-- ==================== ۲. تب مدیریت پارت‌ها / کارها ==================== -->
+            <!-- ==================== ۲. تب مدیریت پارت‌ها / کارها (وابسته به نقش) ==================== -->
             <div v-show="currentTab === 'parts'" class="space-y-5 max-w-4xl mx-auto">
                 <div class="soft-card p-5">
                     <h3 class="text-base font-bold text-white mb-4">{{ roleLabels.createPartHeading }}</h3>
@@ -1134,8 +1310,12 @@
                         </div>
 
                         <div class="flex flex-wrap gap-2.5 pt-1">
-                            <button type="submit" class="btn-calm bg-primary text-white text-xs md:text-sm flex-1 py-3">+ افزودن به صف امروز</button>
-                            <button type="button" @click="openDirectCompleteModal" class="btn-calm bg-slate-800 text-slate-200 text-xs py-3 px-4">ثبت مستقیم (بدون تایمر)</button>
+                            <button type="submit" class="btn-calm bg-primary text-white text-xs md:text-sm flex-1 py-3">
+                                + افزودن به صف امروز
+                            </button>
+                            <button type="button" @click="openDirectCompleteModal" class="btn-calm bg-slate-800 text-slate-200 text-xs py-3 px-4">
+                                ثبت مستقیم (بدون تایمر)
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -1181,7 +1361,9 @@
                                 <option value="">همه دسته‌ها</option>
                                 <option v-for="cat in partCategories" :key="cat" :value="cat">{{ cat }}</option>
                             </select>
-                            <button type="button" v-if="completedParts.length > 0" @click="exportCSV" class="btn-calm bg-slate-800 text-xs py-1.5 px-3 text-slate-200">خروجی CSV</button>
+                            <button type="button" v-if="completedParts.length > 0" @click="exportCSV" class="btn-calm bg-slate-800 text-xs py-1.5 px-3 text-slate-200">
+                                خروجی CSV
+                            </button>
                         </div>
                     </div>
 
@@ -1227,10 +1409,9 @@
                 </div>
             </div>
 
-                        <!-- ==================== ۳. تب تایمر تمرکز ==================== -->
+            <!-- ==================== ۳. تب تایمر تمرکز ==================== -->
             <div v-show="currentTab === 'timer'" class="max-w-xl mx-auto space-y-4">
 
-                <!-- سوییچ ۴ حالت تایمر -->
                 <div v-if="!timerFocusMode || timerShowConfig" class="soft-card tilo-tm-modes" role="tablist" aria-label="حالت تایمر">
                     <button type="button"
                         v-for="m in timerModes"
@@ -1244,7 +1425,6 @@
                     </button>
                 </div>
 
-                <!-- کارت اصلی تایمر -->
                 <div class="soft-card tilo-tm-stage" :class="{ 'is-focus': timerFocusMode, 'is-break': timer.active && timer.phase === 'break' }">
                     <div class="tilo-tm-top">
                         <div class="flex items-center gap-2">
@@ -1267,7 +1447,6 @@
                         </div>
                     </div>
 
-                    <!-- پارت یا درس فعال -->
                     <div class="tilo-tm-active">
                         <template v-if="activeTimerInfo">
                             <div class="flex flex-wrap justify-center gap-1.5 mb-1">
@@ -1281,7 +1460,6 @@
                         </p>
                     </div>
 
-                    <!-- حلقه پیشرفت و شمارنده -->
                     <div class="tilo-tm-ring-wrap">
                         <svg class="tilo-tm-ring-svg" viewBox="0 0 120 120" aria-hidden="true">
                             <circle class="tilo-tm-ring-track" cx="60" cy="60" r="54"></circle>
@@ -1305,7 +1483,6 @@
                         </div>
                     </div>
 
-                    <!-- نشانگر دورهای پومودورو -->
                     <div v-if="timer.style === 'pomodoro'" class="tilo-tm-rounds" aria-label="دورهای پومودورو">
                         <span v-for="n in 4" :key="n"
                             class="tilo-tm-round-dot"
@@ -1316,14 +1493,12 @@
                             }"></span>
                     </div>
 
-                    <!-- اطلاعات جلسه در حال اجرا -->
                     <div v-if="timer.active" class="tilo-tm-meta">
                         <span>شروع: <strong>{{ timer.startTehranStr }}</strong></span>
                         <span>تمرکز: <strong>{{ totalSessionFocusMinutes }} دقیقه</strong></span>
                         <span>وقفه‌ها: <strong>{{ timer.pauseCount }}</strong></span>
                     </div>
 
-                    <!-- دکمه‌های کنترل اصلی -->
                     <div class="tilo-tm-actions">
                         <button type="button" v-if="!timer.active" @click="startTimer" class="btn-calm bg-primary text-white w-full py-3.5 text-sm md:text-base">
                             <i class="fas fa-play"></i>
@@ -1351,10 +1526,8 @@
                     </div>
                 </div>
 
-                <!-- پنل تنظیمات حالت انتخابی + لیست انتخاب سریع پارت امروز -->
                 <div v-if="!timerFocusMode || timerShowConfig" class="soft-card p-4 space-y-4">
 
-                    <!-- توضیحات و تنظیم پومودورو ۲۵+۵ -->
                     <div v-if="activeTimerModeKey === 'pomodoro'" class="tilo-tm-panel-box">
                         <div class="flex items-center justify-between gap-2">
                             <span class="text-xs font-bold text-white">پومودورو استاندارد</span>
@@ -1366,7 +1539,6 @@
                         </label>
                     </div>
 
-                    <!-- تنظیمات حالت آزاد -->
                     <div v-if="activeTimerModeKey === 'free'" class="space-y-3">
                         <div class="flex items-center justify-between gap-2">
                             <span class="text-xs font-bold text-white">جهت شمارش آزاد</span>
@@ -1402,7 +1574,6 @@
                         <input type="text" v-model="timer.quickTopic" @change="saveTimer" :disabled="timer.active" class="input-calm text-xs" :placeholder="isStudent ? 'عنوان مبحث (مثلاً: تست فصل ۲)' : 'عنوان کار یا تمرکز (اختیاری)'">
                     </div>
 
-                    <!-- لیست پارت‌های امروز داخل صفحه تایمر + انتخاب یک‌کلیکی -->
                     <div v-if="activeTimerModeKey !== 'free'" class="space-y-2.5">
                         <div class="flex flex-wrap items-center justify-between gap-2">
                             <span class="text-xs font-bold text-white">
@@ -1449,7 +1620,6 @@
                         </div>
                     </div>
 
-                    <!-- ثبت خودکار در پایان شمارش‌معکوس -->
                     <label v-if="timer.style === 'countdown'" class="flex items-center gap-2 cursor-pointer text-xs text-slate-300 pt-2 border-t border-slate-800">
                         <input type="checkbox" v-model="timer.autoStop" @change="saveTimer" class="w-4 h-4 rounded">
                         <span>ثبت خودکار هنگام رسیدن به {{ currentTargetMinutes }} دقیقه</span>
@@ -1618,7 +1788,6 @@
             <!-- ==================== ۷. تب تنظیمات و شخصی‌سازی ==================== -->
             <div v-show="currentTab === 'settings'" class="max-w-xl mx-auto space-y-5">
 
-                <!-- پروفایل و نقش کاربر -->
                 <div class="soft-card p-5 space-y-4">
                     <div class="flex justify-between items-center">
                         <h3 class="font-bold text-white text-base">شخصی‌سازی و نقش شما</h3>
@@ -1651,7 +1820,6 @@
                         <input type="text" v-model="settings.periodGoal" @change="saveAll" class="input-calm text-xs" placeholder="یک جمله کوتاه برای یادآوری...">
                     </div>
 
-                    <!-- فیلدهای تخصصی فقط برای دانش‌آموز -->
                     <div v-if="isStudent" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800">
                         <div>
                             <label class="tilo-field-label">رشته</label>
@@ -1677,7 +1845,6 @@
                         </div>
                     </div>
 
-                    <!-- ظاهر، تم و رنگ تأکیدی ملایم -->
                     <div class="space-y-3 pt-2 border-t border-slate-800">
                         <div class="flex items-center justify-between">
                             <span class="text-xs font-bold text-slate-300">حالت ظاهری</span>
@@ -1706,7 +1873,6 @@
                     </div>
                 </div>
 
-                <!-- افزودن درس دلخواه (فقط دانش‌آموز) -->
                 <div v-if="isStudent" class="soft-card p-5 space-y-3">
                     <h3 class="font-bold text-white text-sm">افزودن درس جدید به لیست</h3>
                     <div class="flex gap-2">
@@ -1715,7 +1881,6 @@
                     </div>
                 </div>
 
-                <!-- پشتیبان‌گیری و انتقال ساده آفلاین -->
                 <div class="soft-card p-5 space-y-4">
                     <h3 class="font-bold text-white text-sm">پشتیبان‌گیری و انتقال بین دستگاه‌ها</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1781,7 +1946,6 @@
                     </div>
                 </div>
 
-                <!-- آمار تست فقط برای دانش‌آموز -->
                 <div v-if="isStudent" class="p-3 bg-slate-900/60 rounded-xl border border-slate-800 space-y-2">
                     <label class="tilo-field-label">عملکرد تستی این پارت</label>
                     <div class="grid grid-cols-3 gap-2">
@@ -1836,7 +2000,7 @@
             </div>
         </div>
 
-        <!-- ==================== قالب رسمی چاپ / PDF فارسی A4 ==================== -->
+        <!-- ==================== قالب رسمی چاپ / PDF فارسی A4 (فقط در @media print) ==================== -->
         <section id="tilo-print-report" class="tilo-print-sheet" dir="rtl" aria-hidden="true">
             <div class="tp-header">
                 <div>
@@ -2119,7 +2283,6 @@
                             moreMenuOpen.value = false;
                         };
 
-                        // بازبینی ۳ خطی پایان روز
                         const showReviewBox = ref(false);
                         const reviewSavedMsg = ref('');
                         const dailyReview = ref({ win: '', blocker: '', nextFirst: '' });
@@ -2144,7 +2307,6 @@
                             } catch (_) {}
                         };
 
-                        // حالت ابر و اشتراک
                         const currentUser = ref(null);
                         const authInstance = ref(null);
                         let dbInstance = null;
@@ -2190,7 +2352,6 @@
                             }
                         };
 
-                        /* ==================== پارت ۱: تایمر تمرکز ==================== */
                         const timerModes = [
                             { id: 'part-countdown', label: 'هدف پارت', icon: 'fas fa-hourglass-half' },
                             { id: 'part-stopwatch', label: 'روی پارت', icon: 'fas fa-stopwatch' },
@@ -2288,7 +2449,6 @@
                         const detailPart = ref(null);
                         const calc = ref({ c: 0, w: 0, u: 0 });
 
-                        // دفترچه مشکلات
                         const problemForm = ref({ subject: '', status: 'open', title: '', note: '' });
                         const problemFilter = ref('');
                         const filteredProblems = computed(() => {
@@ -2324,7 +2484,6 @@
                             saveAll();
                         };
 
-                        // برنامه هفتگی
                         const weekDays = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
                         const selectedWeekDay = ref('شنبه');
                         const scheduleForm = ref({ subject: '', topic: '', duration: 60 });
@@ -2464,7 +2623,6 @@
                             return `امروز: ${doneText} · ${remainText}`;
                         });
 
-                        /* ==================== پارت ۲: Study Streak + نمودار ۷/۱۴ روز ==================== */
                         const shiftISO = (iso, deltaDays) => {
                             const [y, m, d] = String(iso || todayISO).split('-').map(Number);
                             const dt = new Date(Date.UTC(y, (m || 1) - 1, d || 1, 12, 0, 0));
@@ -2663,7 +2821,6 @@
                             }
                         };
 
-                        /* ==================== پارت ۳: آرشیو و گزارش مشاور + PDF ==================== */
                         const advisorRange = ref(7);
                         const printSingleDateISO = ref(null);
 
@@ -2799,7 +2956,6 @@
                             setTimeout(() => { window.print(); }, 90);
                         };
 
-                        /* ==================== ابزارها، تم، ذخیره و عملیات پارت/تایمر ==================== */
                         const currentDaySchedule = computed(() => schedule.value.filter(s => s.day === selectedWeekDay.value));
                         const calcTotalTests = computed(() => (calc.value.c || 0) + (calc.value.w || 0) + (calc.value.u || 0));
                         const calcPercentTotal = computed(() => calcTotalTests.value === 0 ? '—' : ((calc.value.c / calcTotalTests.value) * 100).toFixed(1) + '%');
@@ -3283,7 +3439,6 @@
                             }
                         };
 
-                        // عملیات تایمر
                         const selectTimerMode = (modeKey) => {
                             if (timer.value.active) return showToast('هنگام اجرای تایمر نمی‌توان حالت را تغییر داد');
                             timer.value.phase = 'focus';
@@ -3797,7 +3952,7 @@
                             openCompleteModal, openEditModal, openPartDetail, confirmCompletePart,
                             deletePart, restorePart, permanentDeletePart,
                             addScheduleItem, removeScheduleItem, sendScheduleToParts, addCustomSubject,
-                            saveAll, saveFirebaseConfig, loginWithGoogle, logoutGoogle, syncToCloud,
+                            saveAll, saveTimer, saveFirebaseConfig, loginWithGoogle, logoutGoogle, syncToCloud,
                             exportCSV, exportJSON, importJSON
                         };
                     }
@@ -3813,14 +3968,14 @@
         });
     </script>
 
-    <!-- اسکریپت‌های جانبی محلی با defer و نسخه کش v=17 -->
-    <script src="./tilo-cloud.js?v=17" defer></script>
-    <script src="./tilo-upgrade.js?v=17" defer></script>
-    <script src="./tilo-extras.js?v=17" defer></script>
-    <script src="./tilo-notes.js?v=17" defer></script>
-    <script src="./tilo-martell.js?v=17" defer></script>
-    <script src="./tilo-martell-paste.js?v=17" defer></script>
-    <script src="./tilo-martell-bridge.js?v=17" defer></script>
+    <!-- اسکریپت‌های جانبی محلی با defer و نسخه کش v=18 -->
+    <script src="./tilo-cloud.js?v=19" defer></script>
+    <script src="./tilo-upgrade.js?v=19" defer></script>
+    <script src="./tilo-extras.js?v=19" defer></script>
+    <script src="./tilo-notes.js?v=19" defer></script>
+    <script src="./tilo-martell.js?v=19" defer></script>
+    <script src="./tilo-martell-paste.js?v=19" defer></script>
+    <script src="./tilo-martell-bridge.js?v=19" defer></script>
 
     <script>
         (function () {
