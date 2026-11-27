@@ -1280,3 +1280,117 @@ html body .tilo-stat-grid > :nth-child(4)::after { background: #57664f; }
   font-weight: 700;
   color: var(--t-text) !important;
 }
+
+/* ========== Motion polish: notes + soft cards (Corporate-Calm) ========== */
+:root {
+  --t-ease: cubic-bezier(0.2, 0, 0, 1);
+  --t-ease-out: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --t-ease-in: cubic-bezier(0.3, 0, 1, 1);
+  --t-dur-q: 160ms;
+  --t-dur: 260ms;
+  --t-dur-s: 380ms;
+}
+
+/* داشبورد: کارت‌ها نرم ظاهر شوند */
+.soft-card,
+.tilo-stat-card,
+.tilo-streak-card,
+.tilo-cta-focus,
+.tilo-today-strip {
+  transition:
+    transform var(--t-dur) var(--t-ease),
+    opacity var(--t-dur) var(--t-ease),
+    border-color var(--t-dur) var(--t-ease),
+    box-shadow var(--t-dur) var(--t-ease);
+}
+
+.tilo-stat-card:active,
+.btn-calm:active,
+button.tilo-choice-btn:active {
+  transform: scale(0.97);
+  transition-duration: var(--t-dur-q);
+}
+
+.btn-calm,
+.tilo-choice-btn,
+.tilo-role-card {
+  transition:
+    transform var(--t-dur-q) var(--t-ease),
+    background-color var(--t-dur-q) var(--t-ease),
+    border-color var(--t-dur-q) var(--t-ease),
+    color var(--t-dur-q) var(--t-ease);
+}
+
+/* دفترچه یادداشت — اگر استایل‌های tn2 لود شده باشند */
+#tn2-root {
+  transition: opacity var(--t-dur-s) var(--t-ease);
+}
+#tn2-root.tn2-on {
+  animation: tn2In var(--t-dur-s) var(--t-ease-out) both;
+}
+@keyframes tn2In {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+.tn2-item,
+.tn2-card,
+.tn2-page {
+  transition:
+    transform var(--t-dur) var(--t-ease),
+    opacity var(--t-dur) var(--t-ease),
+    background-color var(--t-dur) var(--t-ease),
+    border-color var(--t-dur) var(--t-ease);
+}
+.tn2-item:active,
+.tn2-card:active {
+  transform: scale(0.98);
+}
+
+.tn2-btn,
+.tn2-fab,
+.tn2-new,
+.tn2-chip {
+  transition:
+    transform var(--t-dur-q) var(--t-ease),
+    background-color var(--t-dur-q) var(--t-ease),
+    opacity var(--t-dur-q) var(--t-ease);
+}
+.tn2-btn:active,
+.tn2-fab:active,
+.tn2-new:active {
+  transform: scale(0.96);
+}
+
+.tn2-list .tn2-item {
+  animation: tn2ItemIn var(--t-dur) var(--t-ease-out) both;
+}
+.tn2-list .tn2-item:nth-child(1) { animation-delay: 0ms; }
+.tn2-list .tn2-item:nth-child(2) { animation-delay: 40ms; }
+.tn2-list .tn2-item:nth-child(3) { animation-delay: 80ms; }
+.tn2-list .tn2-item:nth-child(4) { animation-delay: 120ms; }
+.tn2-list .tn2-item:nth-child(5) { animation-delay: 160ms; }
+.tn2-list .tn2-item:nth-child(6) { animation-delay: 200ms; }
+.tn2-list .tn2-item:nth-child(n+7) { animation-delay: 240ms; }
+
+@keyframes tn2ItemIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.tn2-side {
+  transition: transform var(--t-dur-s) var(--t-ease), opacity var(--t-dur) var(--t-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  #tn2-root.tn2-on { animation: none; }
+  .tn2-list .tn2-item { animation: none; }
+}
