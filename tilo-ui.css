@@ -1,1396 +1,874 @@
-/* tilo-ui.css (v16) — فضای کار آرام، بدون ظاهر شلوغ و هوش‌مصنوعی
-   پشتیبانی از تم روز/شب، ۴ رنگ تأکیدی ملایم، آنبوردینگ ۴ مرحله‌ای و تایمر خلوت */
+/**
+ * tilo-notes.js v3 — دفترچه یادداشت پایدار
+ * - رفع پرش صفحه بعد از باز/بستن و کلیک دکمه‌ها
+ * - داده پاک نمی‌شود: به‌روزرسانی درجا + سطل بازیافت
+ * - کلید ذخیره همان tilo_notebook_v2 (سازگار با نسخه قبل)
+ *
+ * در index.html:
+ * <script src="./tilo-notes.js?v=3"></script>
+ */
+(function () {
+  'use strict';
+  if (window.__TiloNotesV3) return;
+  window.__TiloNotesV3 = true;
 
-:root, body.tilo-theme-night {
-  color-scheme: dark;
-  --t-bg: #111916;
-  --t-card: #1b2520;
-  --t-inset: #15201b;
-  --t-text: #e9efeb;
-  --t-muted: #9eb0a5;
-  --t-accent: #a1cfb6;
-  --t-accent-solid: #35634e;
-  --t-accent-hover: #2b5441;
-  --t-accent-soft: #24382d;
-  --t-on-accent: #ffffff;
-  --t-border: #304137;
-  --t-field-border: #55685d;
-  --t-danger: #ffb4aa;
-  --t-danger-soft: #3c2522;
-  --t-warning: #e5c58c;
-  --t-warning-soft: #362f22;
-  --t-overlay: rgba(8, 14, 11, 0.72);
-  --t-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
-  --t-radius: 14px;
-  --t-control-radius: 11px;
-  --t-nav-height: 4.75rem;
-}
+  var STORE = 'tilo_notebook_v2';
+  var PIN = 'tilo_notebook_pin_v2';
+  var BG = 'tilo_notebook_bg_v2';
+  var TRASH = 'tilo_notebook_trash_v2';
 
-body.tilo-theme-day {
-  color-scheme: light;
-  --t-bg: #f4f4ef;
-  --t-card: #fffefb;
-  --t-inset: #eceee8;
-  --t-text: #223027;
-  --t-muted: #5a6c60;
-  --t-accent: #35634e;
-  --t-accent-solid: #35634e;
-  --t-accent-hover: #2b5441;
-  --t-accent-soft: #e2ede5;
-  --t-on-accent: #ffffff;
-  --t-border: #d4ddd5;
-  --t-field-border: #99a89d;
-  --t-danger: #a43830;
-  --t-danger-soft: #f8e9e5;
-  --t-warning: #7b591e;
-  --t-warning-soft: #f4ecda;
-  --t-overlay: rgba(24, 34, 28, 0.45);
-  --t-shadow: 0 2px 8px rgba(24, 38, 30, 0.05);
-}
+  var COLORS = [
+    { id: 'def', label: 'عادی', c: '#e2e8f0' },
+    { id: 'red', label: 'قرمز', c: '#f87171' },
+    { id: 'ora', label: 'نارنجی', c: '#fb923c' },
+    { id: 'yel', label: 'زرد', c: '#fbbf24' },
+    { id: 'grn', label: 'سبز', c: '#4ade80' },
+    { id: 'tea', label: 'فیروزه', c: '#2dd4bf' },
+    { id: 'blu', label: 'آبی', c: '#60a5fa' },
+    { id: 'pur', label: 'بنفش', c: '#c084fc' },
+    { id: 'pnk', label: 'صورتی', c: '#f472b6' }
+  ];
 
-/* ۴ گزینه رنگ تأکیدی ملایم (بدون رنگین‌کمان) */
-body[data-accent="slate"].tilo-theme-night {
-  --t-accent: #9ec5df;
-  --t-accent-solid: #2f5d7c;
-  --t-accent-hover: #264d68;
-  --t-accent-soft: #1f3342;
-}
-body[data-accent="slate"].tilo-theme-day {
-  --t-accent: #2f5d7c;
-  --t-accent-solid: #2f5d7c;
-  --t-accent-hover: #264d68;
-  --t-accent-soft: #e1ecf3;
-}
+  var BGS = [
+    { id: 'ink', name: 'مرکب شب', page: '#12151c', ui: '#0c0e14', text: '#e8edf5', line: 'rgba(255,255,255,.08)' },
+    { id: 'cream', name: 'کاغذ کرم', page: '#fffcf7', ui: '#f3eee6', text: '#1f2937', line: 'rgba(0,0,0,.08)' },
+    { id: 'sage', name: 'سبز ملایم', page: '#14201a', ui: '#0e1612', text: '#d9efe4', line: 'rgba(255,255,255,.08)' },
+    { id: 'ocean', name: 'آبی آرام', page: '#121a28', ui: '#0d131c', text: '#d7e6f8', line: 'rgba(255,255,255,.08)' },
+    { id: 'plum', name: 'بنفش کم‌رنگ', page: '#1a1524', ui: '#120f1a', text: '#ebe4f8', line: 'rgba(255,255,255,.08)' }
+  ];
 
-body[data-accent="olive"].tilo-theme-night {
-  --t-accent: #c2d1b2;
-  --t-accent-solid: #57664f;
-  --t-accent-hover: #485640;
-  --t-accent-soft: #2b3326;
-}
-body[data-accent="olive"].tilo-theme-day {
-  --t-accent: #57664f;
-  --t-accent-solid: #57664f;
-  --t-accent-hover: #485640;
-  --t-accent-soft: #e9eee4;
-}
+  var DEFAULT_CATS = [
+    { id: 'study', name: 'درس و نکته', emoji: '📚' },
+    { id: 'daily', name: 'روند روز', emoji: '🗓️' },
+    { id: 'life', name: 'زندگی و کار', emoji: '🌱' },
+    { id: 'idea', name: 'ایده', emoji: '💡' }
+  ];
 
-body[data-accent="amber"].tilo-theme-night {
-  --t-accent: #e5c58c;
-  --t-accent-solid: #8a6532;
-  --t-accent-hover: #735327;
-  --t-accent-soft: #382e1f;
-}
-body[data-accent="amber"].tilo-theme-day {
-  --t-accent: #8a6532;
-  --t-accent-solid: #8a6532;
-  --t-accent-hover: #735327;
-  --t-accent-soft: #f4eadc;
-}
+  var savedScrollY = 0;
+  var listScrollTop = 0;
+  var editorScrollTop = 0;
+  var filter = '';
+  var q = '';
+  var showAi = false;
+  var listMode = true;
+  var focusMode = false;
+  var showTrash = false;
+  var unlocked = true;
+  var saveTimer = null;
+  var saveLabel = 'ذخیره شد';
 
-html body:is(.tilo-theme-day, .tilo-theme-night) {
-  background: var(--t-bg) !important;
-  color: var(--t-text) !important;
-  line-height: 1.7;
-}
-html body.h-screen { height: 100vh; height: 100dvh; }
-html body #app, html body main { min-width: 0; min-height: 0; }
-html body main {
-  padding-bottom: 2.5rem !important;
-  scrollbar-gutter: stable;
-}
-html body :is(input, select, textarea) { font-family: inherit; }
-html body :is(p, h2, h3, h4, label, .tilo-break) { overflow-wrap: anywhere; }
-html body :is(input, textarea, .tilo-share-code-box) {
-  user-select: text;
-  -webkit-user-select: text;
-}
+  function now() { return Date.now(); }
 
-/* پایه چیدمان حتی اگر Tailwind CDN در ایران کند یا قطع شود */
-.flex { display: flex; }
-.flex-col { flex-direction: column; }
-.flex-wrap { flex-wrap: wrap; }
-.flex-1 { flex: 1 1 0%; }
-.items-center { align-items: center; }
-.justify-between { justify-content: space-between; }
-.justify-center { justify-content: center; }
-.justify-around { justify-content: space-around; }
-.justify-end { justify-content: flex-end; }
-.grid { display: grid; }
-.grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
-.grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.gap-1\.5 { gap: 0.375rem; }
-.gap-2 { gap: 0.5rem; }
-.gap-2\.5 { gap: 0.625rem; }
-.gap-3 { gap: 0.75rem; }
-.gap-4 { gap: 1rem; }
-.space-y-2 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.5rem; }
-.space-y-2\.5 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.625rem; }
-.space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.75rem; }
-.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem; }
-.space-y-5 > :not([hidden]) ~ :not([hidden]) { margin-top: 1.25rem; }
-.w-full { width: 100%; }
-.h-full { height: 100%; }
-.min-w-0 { min-width: 0; }
-.shrink-0 { flex-shrink: 0; }
-.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hidden { display: none; }
-.fixed { position: fixed; }
-.relative { position: relative; }
-.absolute { position: absolute; }
-.inset-0 { inset: 0; }
-.overflow-hidden { overflow: hidden; }
-.overflow-y-auto { overflow-y: auto; }
-.text-center { text-align: center; }
-.text-right { text-align: right; }
-.text-left { text-align: left; }
-.mx-auto { margin-left: auto; margin-right: auto; }
-.max-w-lg { max-width: 32rem; }
-.max-w-xl { max-width: 36rem; }
-.max-w-4xl { max-width: 56rem; }
-.max-w-7xl { max-width: 80rem; }
-.p-2 { padding: 0.5rem; }
-.p-4 { padding: 1rem; }
-.p-5 { padding: 1.25rem; }
-.p-6 { padding: 1.5rem; }
-@media (min-width: 640px) {
-  .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .sm\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .sm\:flex-row { flex-direction: row; }
-  .sm\:items-center { align-items: center; }
-}
-@media (min-width: 768px) {
-  .md\:flex-row { flex-direction: row; }
-  .md\:flex-col { flex-direction: column; }
-  .md\:flex { display: flex; }
-  .md\:w-60 { width: 15rem; }
-  .md\:h-full { height: 100%; }
-  .md\:relative { position: relative; }
-  .md\:order-first { order: -9999; }
-  .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .md\:col-span-2 { grid-column: span 2 / span 2; }
-  .md\:mt-auto { margin-top: auto; }
-  .md\:p-7 { padding: 1.75rem; }
-}
-@media (min-width: 1024px) {
-  .lg\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-}
-
-/* کارت‌ها و هدر آرام */
-html body:is(.tilo-theme-day, .tilo-theme-night) .soft-card,
-html body:is(.tilo-theme-day, .tilo-theme-night) nav.soft-card {
-  background: var(--t-card) !important;
-  border: 1px solid var(--t-border) !important;
-  border-radius: var(--t-radius) !important;
-  box-shadow: var(--t-shadow) !important;
-  color: var(--t-text);
-  backdrop-filter: none !important;
-}
-
-.tilo-page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 1.25rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--t-border);
-}
-
-/* خلاصه یک‌خطی امروز */
-.tilo-today-strip {
-  padding: 0.85rem 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-}
-.tilo-today-strip-text {
-  font-size: 0.84rem;
-  font-weight: 700;
-  color: var(--t-text);
-}
-.tilo-today-bar {
-  width: 100%;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--t-inset);
-  overflow: hidden;
-}
-.tilo-today-bar-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: var(--t-accent-solid);
-  transition: width 0.25s ease;
-}
-
-/* ردیف‌های لیست، برچسب‌ها و وضعیت خالی */
-.tilo-list-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 0.9rem;
-  border-radius: var(--t-control-radius);
-  background: var(--t-inset);
-  border: 1px solid var(--t-border);
-}
-.tilo-tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 7px;
-  font-size: 11px;
-  font-weight: 700;
-  background: var(--t-accent-soft);
-  color: var(--t-accent);
-}
-.tilo-empty-box {
-  text-align: center;
-  padding: 1.5rem 1rem;
-  border-radius: var(--t-control-radius);
-  background: var(--t-inset);
-  border: 1px dashed var(--t-border);
-}
-.tilo-field-label {
-  display: block;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--t-muted);
-  margin-bottom: 6px;
-}
-
-/* تایپوگرافی و رنگ‌ها */
-html body:is(.tilo-theme-day, .tilo-theme-night) :is(.text-white, .text-slate-200, .text-slate-300) {
-  color: var(--t-text) !important;
-}
-html body:is(.tilo-theme-day, .tilo-theme-night) :is(.text-slate-400, .text-slate-500) {
-  color: var(--t-muted) !important;
-}
-html body:is(.tilo-theme-day, .tilo-theme-night) :is(.text-primarySoft, .text-tealSoft, .text-sage) {
-  color: var(--t-accent) !important;
-}
-html body:is(.tilo-theme-day, .tilo-theme-night) .text-amberSoft { color: var(--t-warning) !important; }
-html body:is(.tilo-theme-day, .tilo-theme-night) .text-roseSoft { color: var(--t-danger) !important; }
-html body:is(.tilo-theme-day, .tilo-theme-night) .bg-slate-800,
-html body:is(.tilo-theme-day, .tilo-theme-night) .bg-slate-900\/60,
-html body:is(.tilo-theme-day, .tilo-theme-night) .bg-slate-900\/90 {
-  background-color: var(--t-inset) !important;
-  color: var(--t-text) !important;
-}
-html body:is(.tilo-theme-day, .tilo-theme-night) [class*="border-slate-"] {
-  border-color: var(--t-border) !important;
-}
-
-/* دکمه‌ها و فیلدها */
-.btn-calm {
-  border: 1px solid var(--t-border);
-  border-radius: var(--t-control-radius);
-  font-weight: 700;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-}
-html body:is(.tilo-theme-day, .tilo-theme-night) .bg-primary {
-  background: var(--t-accent-solid) !important;
-  border-color: var(--t-accent-solid) !important;
-  color: var(--t-on-accent) !important;
-}
-html body:is(.tilo-theme-day, .tilo-theme-night) .bg-primary:hover {
-  background: var(--t-accent-hover) !important;
-}
-html body:is(.tilo-theme-day, .tilo-theme-night) .bg-primary\/20 {
-  background: var(--t-accent-soft) !important;
-}
-html body:is(.tilo-theme-day, .tilo-theme-night) button.bg-roseSoft {
-  background: var(--t-danger-soft) !important;
-  color: var(--t-danger) !important;
-  border-color: var(--t-danger) !important;
-}
-.tilo-link-btn {
-  background: transparent;
-  border: none;
-  color: var(--t-accent);
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  padding: 2px 4px;
-}
-.tilo-chip, .tilo-choice-btn {
-  background: var(--t-inset);
-  color: var(--t-text);
-  border: 1px solid var(--t-border);
-  border-radius: var(--t-control-radius);
-  padding: 0.45rem 0.75rem;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: border-color 0.15s, background-color 0.15s;
-}
-.tilo-chip.active, .tilo-choice-btn.is-active {
-  background: var(--t-accent-soft);
-  border-color: var(--t-accent);
-  color: var(--t-accent);
-}
-.tilo-accent-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 10px;
-  background: var(--t-inset);
-  border: 1px solid var(--t-border);
-  color: var(--t-text);
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.tilo-accent-chip.is-active {
-  border-color: var(--t-accent);
-  background: var(--t-accent-soft);
-}
-.tilo-accent-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-html body:is(.tilo-theme-day, .tilo-theme-night) .input-calm {
-  background: var(--t-inset) !important;
-  color: var(--t-text) !important;
-  border: 1px solid var(--t-field-border) !important;
-  border-radius: var(--t-control-radius);
-  padding: 0.65rem 0.85rem;
-  width: 100%;
-  min-height: 42px;
-  outline: none;
-}
-html body .input-calm:focus { border-color: var(--t-accent) !important; }
-html body .tilo-theme-switch-btn {
-  background: var(--t-inset) !important;
-  border: 1px solid var(--t-border) !important;
-  color: var(--t-text) !important;
-  border-radius: var(--t-control-radius);
-  width: 38px;
-  height: 38px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-/* آنبوردینگ ۴ مرحله‌ای */
-.tilo-onboard-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 100000;
-  background: var(--t-bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 18px;
-  overflow-y: auto;
-}
-.tilo-onboard-card {
-  width: 100%;
-  max-width: 480px;
-  background: var(--t-card);
-  border: 1px solid var(--t-border);
-  border-radius: 18px;
-  padding: 22px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.tilo-onboard-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.tilo-onboard-step {
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--t-accent);
-}
-.tilo-onboard-progress {
-  width: 100%;
-  height: 4px;
-  border-radius: 99px;
-  background: var(--t-inset);
-  overflow: hidden;
-}
-.tilo-onboard-progress-fill {
-  height: 100%;
-  background: var(--t-accent-solid);
-  transition: width 0.25s ease;
-}
-.tilo-onboard-title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--t-text);
-}
-.tilo-onboard-sub {
-  margin: 4px 0 14px 0;
-  font-size: 12.5px;
-  color: var(--t-muted);
-}
-.tilo-role-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-}
-.tilo-role-card {
-  text-align: right;
-  padding: 13px 14px;
-  border-radius: 13px;
-  background: var(--t-inset);
-  border: 1.5px solid var(--t-border);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  font-family: inherit;
-  transition: border-color 0.15s, background-color 0.15s;
-}
-.tilo-role-card.is-active {
-  border-color: var(--t-accent);
-  background: var(--t-accent-soft);
-}
-.tilo-role-title {
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--t-text);
-}
-.tilo-role-desc {
-  font-size: 11.5px;
-  color: var(--t-muted);
-}
-.tilo-summary-box {
-  background: var(--t-inset);
-  border: 1px solid var(--t-border);
-  border-radius: 12px;
-  padding: 12px;
-  font-size: 12.5px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.tilo-onboard-actions {
-  display: flex;
-  gap: 8px;
-  padding-top: 6px;
-}
-
-/* تایمر مدرن و حالت تمرکز سبک */
-.tilo-timer-stage {
-  padding: 1.5rem 1.25rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.tilo-timer-stage.is-focus {
-  padding: 2.25rem 1.25rem;
-  border-color: var(--t-accent) !important;
-}
-.tilo-timer-digits {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: clamp(2.6rem, 11vw, 4rem);
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
-  color: var(--t-text);
-  line-height: 1.15;
-  margin: 0.5rem 0;
-}
-.tilo-status-pill {
-  font-size: 11.5px;
-  font-weight: 800;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: var(--t-inset);
-  color: var(--t-muted);
-  border: 1px solid var(--t-border);
-}
-.tilo-status-pill.is-running {
-  background: var(--t-accent-soft);
-  color: var(--t-accent);
-  border-color: var(--t-accent);
-}
-.tilo-status-pill.is-paused {
-  background: var(--t-warning-soft);
-  color: var(--t-warning);
-  border-color: var(--t-warning);
-}
-.tilo-part-pick-list {
-  max-height: 220px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.tilo-part-option {
-  width: 100%;
-  text-align: right;
-  padding: 10px 12px;
-  border-radius: var(--t-control-radius);
-  background: var(--t-inset);
-  border: 1px solid var(--t-border);
-  cursor: pointer;
-  font-family: inherit;
-}
-.tilo-part-option.is-selected {
-  background: var(--t-accent-soft);
-  border-color: var(--t-accent);
-}
-
-/* نمودار ساده CSS برای روند ۳ تا ۱۴ روزه */
-.tilo-trend-bars {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  gap: 8px;
-  align-items: end;
-  padding-top: 8px;
-}
-.tilo-trend-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  min-width: 0;
-}
-.tilo-trend-val {
-  font-size: 10.5px;
-  font-variant-numeric: tabular-nums;
-  color: var(--t-muted);
-}
-.tilo-trend-track {
-  width: 100%;
-  max-width: 30px;
-  height: 88px;
-  border-radius: 8px;
-  background: var(--t-inset);
-  display: flex;
-  align-items: flex-end;
-  overflow: hidden;
-}
-.tilo-trend-fill {
-  width: 100%;
-  background: var(--t-border);
-  border-radius: 6px 6px 0 0;
-  transition: height 0.25s ease;
-}
-.tilo-trend-fill.is-today {
-  background: var(--t-accent-solid);
-}
-.tilo-trend-lbl {
-  font-size: 10.5px;
-  color: var(--t-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-.tilo-insight-list {
-  margin: 0;
-  padding: 0 1rem 0 0;
-  font-size: 12.5px;
-  color: var(--t-text);
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-/* منوی بیشتر و مودال‌ها */
-.tilo-more-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 100050;
-  background: var(--t-overlay);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding: 14px;
-}
-.tilo-more-sheet {
-  width: 100%;
-  max-width: 380px;
-  padding: 16px;
-}
-.tilo-more-item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 12px;
-  border-radius: var(--t-control-radius);
-  background: var(--t-inset);
-  border: 1px solid var(--t-border);
-  color: var(--t-text);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.tilo-more-item.is-active {
-  border-color: var(--t-accent);
-  color: var(--t-accent);
-  background: var(--t-accent-soft);
-}
-.tilo-toast {
-  position: fixed;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2147483646;
-  background: var(--t-card);
-  color: var(--t-accent);
-  border: 1px solid var(--t-accent);
-  padding: 8px 16px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 800;
-  box-shadow: var(--t-shadow);
-}
-html body #app .fixed.inset-0 {
-  background: var(--t-overlay) !important;
-  overflow-y: auto;
-}
-.tilo-dropdown-panel {
-  max-height: 260px;
-  overflow-y: auto;
-}
-
-/* موبایل */
-@media (max-width: 767px) {
-  html body :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea) {
-    font-size: 16px !important;
+  function empty() {
+    var id = 'p' + now();
+    return {
+      version: 3,
+      activeId: id,
+      cats: DEFAULT_CATS.slice(),
+      pages: [{
+        id: id,
+        title: 'صفحه اول',
+        body: '',
+        cat: 'study',
+        color: 'def',
+        pinned: false,
+        createdAt: now(),
+        updatedAt: now()
+      }]
+    };
   }
-  html body main {
-    padding-bottom: calc(var(--t-nav-height) + 2rem + env(safe-area-inset-bottom)) !important;
+
+  function load() {
+    try {
+      var r = localStorage.getItem(STORE);
+      if (!r) {
+        var old = localStorage.getItem('tilo_notebook_v1');
+        if (old) {
+          var o = JSON.parse(old);
+          var d = empty();
+          if (o.pages && o.pages.length) {
+            d.pages = o.pages.map(function (p) {
+              return {
+                id: p.id || ('p' + now() + Math.random().toString(16).slice(2, 6)),
+                title: p.title || 'بدون عنوان',
+                body: p.body || p.text || '',
+                cat: p.cat || 'study',
+                color: p.color || 'def',
+                pinned: !!p.pinned,
+                createdAt: p.createdAt || now(),
+                updatedAt: p.updatedAt || now()
+              };
+            });
+            d.activeId = d.pages[0].id;
+          }
+          if (o.cats && o.cats.length) d.cats = o.cats;
+          save(d);
+          return d;
+        }
+        return empty();
+      }
+      var data = JSON.parse(r);
+      if (!data.pages || !data.pages.length) {
+        var e = empty();
+        data.pages = e.pages;
+        data.activeId = e.activeId;
+      }
+      if (!data.cats || !data.cats.length) data.cats = DEFAULT_CATS.slice();
+      if (!data.activeId) data.activeId = data.pages[0].id;
+      data.pages = data.pages.map(function (p) {
+        return {
+          id: p.id,
+          title: p.title || 'بدون عنوان',
+          body: p.body != null ? p.body : (p.text || ''),
+          cat: p.cat || 'study',
+          color: p.color || 'def',
+          pinned: !!p.pinned,
+          createdAt: p.createdAt || now(),
+          updatedAt: p.updatedAt || now()
+        };
+      });
+      data.version = 3;
+      return data;
+    } catch (err) {
+      return empty();
+    }
   }
-  html body nav.soft-card {
-    border-radius: 0 !important;
-    padding: 6px 8px calc(6px + env(safe-area-inset-bottom)) 8px;
+
+  function save(d) {
+    try {
+      localStorage.setItem(STORE, JSON.stringify(d));
+      saveLabel = 'ذخیره شد';
+    } catch (e) {
+      saveLabel = 'خطا در ذخیره';
+      try { alert('حافظه مرورگر پر است. از کپی متن استفاده کن یا سطل را خالی کن.'); } catch (x) {}
+    }
   }
-  html body nav.soft-card > button {
-    min-height: 52px;
-    flex: 1 1 0;
+
+  function loadTrash() {
+    try {
+      var t = localStorage.getItem(TRASH);
+      return t ? JSON.parse(t) : [];
+    } catch (e) { return []; }
   }
-}
-@media (min-width: 768px) {
-  html body nav.soft-card {
-    border-radius: 0 !important;
+
+  function saveTrash(arr) {
+    try { localStorage.setItem(TRASH, JSON.stringify(arr.slice(0, 40))); } catch (e) {}
   }
-}
 
-
-/* ========== v21: داشبورد جذاب‌تر + تایمر کامل ========== */
-
-/* نوار خلاصه امروز */
-.tilo-today-strip {
-  background: linear-gradient(135deg, var(--t-accent-soft), var(--t-inset)) !important;
-  border: 1px solid var(--t-border);
-  border-radius: var(--t-radius);
-}
-.tilo-today-strip-text { font-size: 0.88rem !important; }
-
-/* کارت‌های KPI با رنگ متفاوت ملایم */
-.tilo-stat-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-}
-.tilo-stat-card {
-  border-radius: var(--t-radius) !important;
-  padding: 1rem !important;
-  border: 1px solid var(--t-border) !important;
-  background: var(--t-card) !important;
-  min-width: 0;
-}
-.tilo-stat-card:nth-child(1) { border-top: 3px solid #35634e !important; }
-.tilo-stat-card:nth-child(2) { border-top: 3px solid #2f5d7c !important; }
-.tilo-stat-card:nth-child(3) { border-top: 3px solid #8a6532 !important; }
-.tilo-stat-card:nth-child(4) { border-top: 3px solid #57664f !important; }
-.tilo-stat-card .tilo-stat-value {
-  font-size: clamp(1.15rem, 4.5vw, 1.55rem) !important;
-  font-weight: 800 !important;
-  color: var(--t-text) !important;
-}
-
-/* کارت شروع تمرکز */
-.tilo-cta-focus {
-  background: linear-gradient(160deg, var(--t-accent-soft), var(--t-card)) !important;
-  border: 1px solid var(--t-accent) !important;
-  border-radius: var(--t-radius);
-  padding: 1.15rem 1.1rem;
-}
-
-/* streak */
-.tilo-streak-card {
-  background: var(--t-card) !important;
-  border: 1px solid var(--t-border) !important;
-  border-radius: var(--t-radius);
-  padding: 1rem 1.1rem;
-  position: relative;
-  overflow: hidden;
-}
-.tilo-streak-card::before {
-  content: "";
-  position: absolute;
-  right: 0; top: 0; bottom: 0;
-  width: 4px;
-  background: var(--t-accent-solid);
-  border-radius: 0 4px 4px 0;
-}
-
-/* analytics KPI */
-.tilo-an-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.6rem;
-}
-@media (max-width: 640px) {
-  .tilo-an-kpi-grid { grid-template-columns: 1fr; }
-}
-.tilo-an-kpi {
-  background: var(--t-inset);
-  border: 1px solid var(--t-border);
-  border-radius: 12px;
-  padding: 0.7rem 0.8rem;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.tilo-an-kpi.is-max { border-color: rgba(53,99,78,0.55); }
-.tilo-an-kpi.is-min { border-color: rgba(138,101,50,0.45); }
-.tilo-an-kpi-lbl { font-size: 10.5px; color: var(--t-muted); font-weight: 700; }
-.tilo-an-kpi-val { font-size: 13.5px; font-weight: 800; color: var(--t-text); overflow-wrap: anywhere; }
-.tilo-an-kpi-sub { font-size: 10.5px; color: var(--t-muted); overflow-wrap: anywhere; line-height: 1.45; }
-
-.tilo-chart-shell { position: relative; padding-top: 4px; }
-.tilo-chart-avg-line {
-  position: absolute;
-  left: 0; right: 0;
-  border-top: 1px dashed var(--t-accent);
-  pointer-events: none;
-  z-index: 1;
-}
-.tilo-chart-avg-line span {
-  position: absolute;
-  left: 0;
-  top: -9px;
-  font-size: 10px;
-  color: var(--t-accent);
-  background: var(--t-card);
-  padding: 0 4px;
-}
-.tilo-trend-bars.is-dense { gap: 4px; }
-.tilo-trend-fill.is-max { background: var(--t-accent-solid) !important; }
-.tilo-trend-fill.is-min { background: #8a6532 !important; opacity: 0.85; }
-.tilo-trend-col.is-selected .tilo-trend-track { outline: 2px solid var(--t-accent); }
-.tilo-an-detail-bar {
-  background: var(--t-inset);
-  border: 1px solid var(--t-border);
-  border-radius: 12px;
-  padding: 0.75rem 0.9rem;
-}
-.tilo-an-detail-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 0.4rem;
-  font-size: 12px;
-  color: var(--t-muted);
-}
-.tilo-an-min-tag {
-  font-size: 11px;
-  font-weight: 700;
-  color: #e5c58c;
-  background: var(--t-warning-soft);
-  padding: 2px 8px;
-  border-radius: 7px;
-}
-.tilo-an-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  font-size: 11px;
-  color: var(--t-muted);
-}
-.tilo-leg-dot {
-  display: inline-block;
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  margin-left: 4px;
-  background: var(--t-border);
-}
-.tilo-leg-dot.is-max { background: var(--t-accent-solid); }
-.tilo-leg-dot.is-min { background: #8a6532; }
-.tilo-leg-dot.is-today { background: var(--t-accent); }
-
-/* گزارش مشاور کارت‌ها */
-.tilo-rep-summary {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.55rem;
-}
-@media (min-width: 640px) {
-  .tilo-rep-summary { grid-template-columns: repeat(4, 1fr); }
-}
-.tilo-rep-stat {
-  background: var(--t-inset);
-  border: 1px solid var(--t-border);
-  border-radius: 11px;
-  padding: 0.65rem 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.tilo-rep-stat span { font-size: 10.5px; color: var(--t-muted); }
-.tilo-rep-stat strong { font-size: 13px; color: var(--t-text); overflow-wrap: anywhere; }
-.tilo-rep-day-card {
-  border: 1px solid var(--t-border);
-  border-radius: 12px;
-  background: var(--t-inset);
-  overflow: hidden;
-}
-.tilo-rep-day-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0.75rem 0.9rem;
-  border-bottom: 1px solid var(--t-border);
-  flex-wrap: wrap;
-  align-items: flex-start;
-}
-.tilo-rep-part-list { padding: 0.35rem 0.5rem 0.55rem; }
-.tilo-rep-part-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0.55rem 0.4rem;
-  border-bottom: 1px solid var(--t-border);
-  align-items: flex-start;
-}
-.tilo-rep-part-row:last-child { border-bottom: none; }
-.tilo-rep-sub {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--t-accent);
-}
-.tilo-rep-note { color: var(--t-muted); }
-
-/* ========== TIMER (قبلاً در CSS نبود → ظاهر شکسته) ========== */
-.tilo-tm-modes {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.4rem;
-  padding: 0.55rem !important;
-}
-@media (max-width: 420px) {
-  .tilo-tm-modes { grid-template-columns: repeat(2, 1fr); }
-}
-.tilo-tm-mode-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 0.65rem 0.35rem;
-  border-radius: 12px;
-  border: 1px solid var(--t-border);
-  background: var(--t-inset);
-  color: var(--t-muted);
-  font-family: inherit;
-  font-size: 10.5px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
-}
-.tilo-tm-mode-btn i { font-size: 14px; }
-.tilo-tm-mode-btn.is-active {
-  background: var(--t-accent-soft);
-  border-color: var(--t-accent);
-  color: var(--t-accent);
-}
-.tilo-tm-mode-btn:disabled { opacity: 0.55; cursor: not-allowed; }
-
-.tilo-tm-stage {
-  padding: 1.25rem 1.1rem 1.35rem !important;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.85rem;
-  border: 1px solid var(--t-border) !important;
-  background: var(--t-card) !important;
-  border-radius: var(--t-radius) !important;
-}
-.tilo-tm-stage.is-focus {
-  border-color: var(--t-accent) !important;
-  box-shadow: 0 0 0 1px rgba(53,99,78,0.25);
-}
-.tilo-tm-stage.is-break {
-  border-color: rgba(138,101,50,0.55) !important;
-}
-
-.tilo-tm-top {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-.tilo-tm-mini-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 9px;
-  border-radius: 9px;
-  border: 1px solid var(--t-border);
-  background: var(--t-inset);
-  color: var(--t-muted);
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.tilo-tm-round-badge {
-  font-size: 11px;
-  font-weight: 800;
-  color: var(--t-accent);
-  background: var(--t-accent-soft);
-  border: 1px solid var(--t-accent);
-  border-radius: 999px;
-  padding: 2px 9px;
-}
-
-.tilo-tm-active { text-align: center; width: 100%; }
-.tilo-tm-active-title {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 800;
-  color: var(--t-text);
-  overflow-wrap: anywhere;
-}
-.tilo-tm-subtle-tag {
-  font-size: 11px;
-  color: var(--t-muted);
-  background: var(--t-inset);
-  border: 1px solid var(--t-border);
-  border-radius: 999px;
-  padding: 2px 8px;
-}
-
-.tilo-tm-ring-wrap {
-  position: relative;
-  width: min(72vw, 220px);
-  height: min(72vw, 220px);
-  margin: 0.25rem auto;
-}
-.tilo-tm-ring-svg {
-  width: 100%;
-  height: 100%;
-  transform: rotate(-90deg);
-}
-.tilo-tm-ring-track {
-  fill: none;
-  stroke: var(--t-inset);
-  stroke-width: 8;
-}
-.tilo-tm-ring-prog {
-  fill: none;
-  stroke: var(--t-accent-solid);
-  stroke-width: 8;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 0.35s ease;
-}
-.tilo-tm-ring-prog.is-break { stroke: #8a6532; }
-.tilo-tm-ring-prog.is-paused { stroke: #94a3b8; }
-.tilo-tm-ring-center {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 12px;
-}
-.tilo-tm-phase-lbl {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--t-muted);
-  margin-bottom: 2px;
-}
-.tilo-timer-digits {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace !important;
-  font-size: clamp(2.1rem, 9vw, 2.85rem) !important;
-  font-weight: 800 !important;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.03em;
-  color: var(--t-text) !important;
-  line-height: 1.1 !important;
-  margin: 0 !important;
-}
-.tilo-tm-sub-lbl {
-  font-size: 11px;
-  color: var(--t-muted);
-  margin-top: 4px;
-}
-
-.tilo-tm-rounds {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-}
-.tilo-tm-round-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--t-inset);
-  border: 1px solid var(--t-border);
-}
-.tilo-tm-round-dot.is-done { background: var(--t-accent-solid); border-color: var(--t-accent-solid); }
-.tilo-tm-round-dot.is-current { background: var(--t-accent); border-color: var(--t-accent); box-shadow: 0 0 0 3px var(--t-accent-soft); }
-.tilo-tm-round-dot.is-break { background: #8a6532; border-color: #8a6532; }
-
-.tilo-tm-meta {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px 14px;
-  font-size: 11px;
-  color: var(--t-muted);
-  width: 100%;
-}
-.tilo-tm-meta strong { color: var(--t-text); }
-
-.tilo-tm-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  width: 100%;
-}
-.tilo-tm-subactions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
-  width: 100%;
-}
-
-.tilo-tm-panel-box {
-  background: var(--t-inset);
-  border: 1px solid var(--t-border);
-  border-radius: 12px;
-  padding: 0.75rem 0.85rem;
-}
-
-.tilo-tm-part-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  max-height: 240px;
-  overflow-y: auto;
-}
-.tilo-tm-part-card {
-  width: 100%;
-  text-align: right;
-  padding: 0.7rem 0.85rem;
-  border-radius: 12px;
-  border: 1px solid var(--t-border);
-  background: var(--t-inset);
-  color: var(--t-text);
-  font-family: inherit;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-}
-.tilo-tm-part-card.is-selected {
-  border-color: var(--t-accent);
-  background: var(--t-accent-soft);
-}
-.tilo-tm-part-topic {
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--t-text);
-}
-
-/* status pills already partially defined — reinforce */
-.tilo-status-pill.is-idle { color: var(--t-muted); }
-.tilo-status-dot {
-  display: inline-block;
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: currentColor;
-  margin-left: 5px;
-}
-
-/* جلوگیری از متن عمودی عجیب کنار صفحه (باگ لایه‌ها) */
-#app, main { overflow-x: hidden; }
-
-
-
-/* ===== Streak week row (فیکس حروف عمودی) ===== */
-.tilo-streak-card {
-  background: var(--t-card) !important;
-  border: 1px solid var(--t-border) !important;
-  border-radius: var(--t-radius) !important;
-  padding: 1rem 1.1rem !important;
-  overflow: hidden;
-}
-.tilo-streak-main {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  gap: 12px !important;
-  width: 100%;
-}
-.tilo-streak-main > div:first-child {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.tilo-streak-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-.tilo-streak-count {
-  font-size: 1rem;
-  font-weight: 800;
-  color: var(--t-text);
-}
-.tilo-streak-badge {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 9px;
-  border-radius: 999px;
-  border: 1px solid var(--t-border);
-  background: var(--t-inset);
-  color: var(--t-muted);
-}
-.tilo-streak-badge.is-done {
-  background: var(--t-accent-soft);
-  border-color: var(--t-accent);
-  color: var(--t-accent);
-}
-.tilo-streak-badge.is-pending {
-  background: var(--t-warning-soft);
-  border-color: rgba(138,101,50,0.45);
-  color: var(--t-warning);
-}
-.tilo-streak-sub {
-  margin: 0;
-  font-size: 12px;
-  color: var(--t-muted);
-  line-height: 1.55;
-  overflow-wrap: anywhere;
-}
-.tilo-streak-week {
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: nowrap !important;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-.tilo-streak-day {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  gap: 5px;
-  min-width: 22px;
-}
-.tilo-streak-dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: var(--t-inset);
-  border: 1.5px solid var(--t-border);
-}
-.tilo-streak-dot.is-active {
-  background: var(--t-accent-solid);
-  border-color: var(--t-accent-solid);
-}
-.tilo-streak-dot.is-today {
-  box-shadow: 0 0 0 3px var(--t-accent-soft);
-}
-.tilo-streak-dlbl {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--t-muted);
-  line-height: 1;
-  writing-mode: horizontal-tb !important;
-  text-orientation: mixed !important;
-}
-
-/* KPI چهارتایی داشبورد — جذاب‌تر */
-html body .tilo-stat-grid,
-.tilo-stat-grid {
-  display: grid !important;
-  grid-template-columns: 1fr 1fr !important;
-  gap: 0.7rem !important;
-}
-html body .tilo-stat-card {
-  position: relative;
-  border-radius: 14px !important;
-  padding: 0.95rem 0.9rem !important;
-  background: var(--t-card) !important;
-  border: 1px solid var(--t-border) !important;
-  overflow: hidden;
-}
-html body .tilo-stat-card::after {
-  content: "";
-  position: absolute;
-  top: 0; right: 0; left: 0;
-  height: 3px;
-}
-html body .tilo-stat-grid > :nth-child(1)::after { background: #35634e; }
-html body .tilo-stat-grid > :nth-child(2)::after { background: #2f5d7c; }
-html body .tilo-stat-grid > :nth-child(3)::after { background: #8a6532; }
-html body .tilo-stat-grid > :nth-child(4)::after { background: #57664f; }
-
-/* نمودار میله‌ای قوی‌تر */
-.tilo-trend-track {
-  height: 100px !important;
-  border-radius: 10px !important;
-  background: var(--t-inset) !important;
-}
-.tilo-trend-fill {
-  border-radius: 8px 8px 0 0 !important;
-  min-height: 3px;
-  background: #3d6b55 !important;
-}
-.tilo-trend-fill.is-today { background: var(--t-accent-solid) !important; }
-.tilo-trend-fill.is-max { background: #4ade80 !important; }
-.tilo-trend-fill.is-min { background: #b45309 !important; }
-.tilo-trend-val {
-  font-size: 10px !important;
-  font-weight: 700;
-  color: var(--t-text) !important;
-}
-
-/* ========== Motion polish: notes + soft cards (Corporate-Calm) ========== */
-:root {
-  --t-ease: cubic-bezier(0.2, 0, 0, 1);
-  --t-ease-out: cubic-bezier(0.05, 0.7, 0.1, 1);
-  --t-ease-in: cubic-bezier(0.3, 0, 1, 1);
-  --t-dur-q: 160ms;
-  --t-dur: 260ms;
-  --t-dur-s: 380ms;
-}
-
-/* داشبورد: کارت‌ها نرم ظاهر شوند */
-.soft-card,
-.tilo-stat-card,
-.tilo-streak-card,
-.tilo-cta-focus,
-.tilo-today-strip {
-  transition:
-    transform var(--t-dur) var(--t-ease),
-    opacity var(--t-dur) var(--t-ease),
-    border-color var(--t-dur) var(--t-ease),
-    box-shadow var(--t-dur) var(--t-ease);
-}
-
-.tilo-stat-card:active,
-.btn-calm:active,
-button.tilo-choice-btn:active {
-  transform: scale(0.97);
-  transition-duration: var(--t-dur-q);
-}
-
-.btn-calm,
-.tilo-choice-btn,
-.tilo-role-card {
-  transition:
-    transform var(--t-dur-q) var(--t-ease),
-    background-color var(--t-dur-q) var(--t-ease),
-    border-color var(--t-dur-q) var(--t-ease),
-    color var(--t-dur-q) var(--t-ease);
-}
-
-/* دفترچه یادداشت — اگر استایل‌های tn2 لود شده باشند */
-#tn2-root {
-  transition: opacity var(--t-dur-s) var(--t-ease);
-}
-#tn2-root.tn2-on {
-  animation: tn2In var(--t-dur-s) var(--t-ease-out) both;
-}
-@keyframes tn2In {
-  from { opacity: 0; transform: translateY(12px) scale(0.98); }
-  to   { opacity: 1; transform: none; }
-}
-
-.tn2-item,
-.tn2-card,
-.tn2-page {
-  transition:
-    transform var(--t-dur) var(--t-ease),
-    opacity var(--t-dur) var(--t-ease),
-    background-color var(--t-dur) var(--t-ease),
-    border-color var(--t-dur) var(--t-ease);
-}
-.tn2-item:active,
-.tn2-card:active {
-  transform: scale(0.98);
-}
-
-.tn2-btn,
-.tn2-fab,
-.tn2-new,
-.tn2-chip {
-  transition:
-    transform var(--t-dur-q) var(--t-ease),
-    background-color var(--t-dur-q) var(--t-ease),
-    opacity var(--t-dur-q) var(--t-ease);
-}
-.tn2-btn:active,
-.tn2-fab:active,
-.tn2-new:active {
-  transform: scale(0.96);
-}
-
-.tn2-list .tn2-item {
-  animation: tn2ItemIn var(--t-dur) var(--t-ease-out) both;
-}
-.tn2-list .tn2-item:nth-child(1) { animation-delay: 0ms; }
-.tn2-list .tn2-item:nth-child(2) { animation-delay: 40ms; }
-.tn2-list .tn2-item:nth-child(3) { animation-delay: 80ms; }
-.tn2-list .tn2-item:nth-child(4) { animation-delay: 120ms; }
-.tn2-list .tn2-item:nth-child(5) { animation-delay: 160ms; }
-.tn2-list .tn2-item:nth-child(6) { animation-delay: 200ms; }
-.tn2-list .tn2-item:nth-child(n+7) { animation-delay: 240ms; }
-
-@keyframes tn2ItemIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: none; }
-}
-
-.tn2-side {
-  transition: transform var(--t-dur-s) var(--t-ease), opacity var(--t-dur) var(--t-ease);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+  function hash(s) {
+    var h = 2166136261;
+    s = 'tn2:' + String(s);
+    for (var i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return String(h >>> 0);
   }
-  #tn2-root.tn2-on { animation: none; }
-  .tn2-list .tn2-item { animation: none; }
-}
+
+  function faTime(ts) {
+    try {
+      return new Date(ts).toLocaleString('fa-IR', {
+        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function todayISO() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function color(id) {
+    for (var i = 0; i < COLORS.length; i++) if (COLORS[i].id === id) return COLORS[i];
+    return COLORS[0];
+  }
+
+  function theme() {
+    var id = localStorage.getItem(BG) || 'ink';
+    for (var i = 0; i < BGS.length; i++) if (BGS[i].id === id) return BGS[i];
+    return BGS[0];
+  }
+
+  function catLabel(st, id) {
+    for (var i = 0; i < st.cats.length; i++) if (st.cats[i].id === id) {
+      return (st.cats[i].emoji || '') + ' ' + st.cats[i].name;
+    }
+    return 'سایر';
+  }
+
+  function analyze(text) {
+    var t = (text || '').trim();
+    if (!t) return 'هنوز متنی نیست. نکته درس، خلاصه یا روند روز را بنویس.';
+    var words = t.split(/\s+/).filter(Boolean).length;
+    var lines = t.split(/\n/).filter(function (x) { return x.trim(); }).length;
+    var bits = [];
+    bits.push('حدود <b>' + words + '</b> کلمه در <b>' + lines + '</b> خط.');
+    if (/تست|درست|غلط|درصد|گزینه/.test(t)) bits.push('ردپای تست‌زنی — تعداد و درصد را هم ثبت کن.');
+    if (/نکته|فرمول|تعریف|قانون|قضیه/.test(t)) bits.push('حالت نکته‌نویسی؛ برای مرور بعدی مناسب است.');
+    if (/فردا|باید|هدف|برنامه/.test(t)) bits.push('عبارات برنامه‌محور؛ سه اولویت فردا را جدا بنویس.');
+    if (/خست|استرس|نگران|خوب|بد/.test(t)) bits.push('حال‌وهوا ثبت شده؛ الگوی انرژی را هفتگی مرور کن.');
+    if (words < 40) bits.push('کمی کوتاه است؛ یک مثال یا نتیجه اضافه کن.');
+    if (words > 250) bits.push('یادداشت کامل — با کپی می‌توانی برای مشاور بفرستی.');
+    return bits.map(function (b) { return '• ' + b; }).join('<br>');
+  }
+
+  var state = load();
+  unlocked = !localStorage.getItem(PIN);
+
+  function page() {
+    for (var i = 0; i < state.pages.length; i++) {
+      if (state.pages[i].id === state.activeId) return state.pages[i];
+    }
+    if (state.pages[0]) {
+      state.activeId = state.pages[0].id;
+      return state.pages[0];
+    }
+    return null;
+  }
+
+  function filtered() {
+    var list = state.pages.slice();
+    list.sort(function (a, b) {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+      return (b.updatedAt || 0) - (a.updatedAt || 0);
+    });
+    if (filter) list = list.filter(function (p) { return p.cat === filter; });
+    if (q) {
+      var qq = q.trim().toLowerCase();
+      list = list.filter(function (p) {
+        return String(p.title || '').toLowerCase().indexOf(qq) >= 0 ||
+          String(p.body || '').toLowerCase().indexOf(qq) >= 0;
+      });
+    }
+    return list;
+  }
+
+  function captureScroll() {
+    var el = document.getElementById('tn2-root');
+    if (!el) return;
+    var list = el.querySelector('.tn2-list');
+    var ta = el.querySelector('#tn2-text');
+    if (list) listScrollTop = list.scrollTop;
+    if (ta) editorScrollTop = ta.scrollTop;
+  }
+
+  function restoreScroll() {
+    var el = document.getElementById('tn2-root');
+    if (!el) return;
+    var list = el.querySelector('.tn2-list');
+    var ta = el.querySelector('#tn2-text');
+    if (list) list.scrollTop = listScrollTop;
+    if (ta) ta.scrollTop = editorScrollTop;
+  }
+
+  function lockBody() {
+    savedScrollY = window.scrollY || window.pageYOffset || 0;
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = '-' + savedScrollY + 'px';
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+  }
+
+  function unlockBody() {
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
+    window.scrollTo(0, savedScrollY);
+  }
+
+  function persistFields() {
+    var el = document.getElementById('tn2-root');
+    if (!el) return;
+    var p = page();
+    if (!p) return;
+    var title = el.querySelector('#tn2-title');
+    var text = el.querySelector('#tn2-text');
+    var cat = el.querySelector('#tn2-cat');
+    var changed = false;
+    if (title && title.value !== p.title) { p.title = title.value; changed = true; }
+    if (text && text.value !== p.body) { p.body = text.value; changed = true; }
+    if (cat && cat.value !== p.cat) { p.cat = cat.value; changed = true; }
+    if (changed) {
+      p.updatedAt = now();
+      saveLabel = 'در حال ذخیره…';
+    }
+  }
+
+  function upsertPage(partial) {
+    var p = page();
+    if (!p) return;
+    Object.keys(partial).forEach(function (k) { p[k] = partial[k]; });
+    p.updatedAt = now();
+    save(state);
+  }
+
+  function softDeleteActive() {
+    var p = page();
+    if (!p) return;
+    if (!confirm('این صفحه به سطل برود؟ (قابل بازگردانی)')) return;
+    captureScroll();
+    var trash = loadTrash();
+    trash.unshift(Object.assign({}, p, { deletedAt: now() }));
+    saveTrash(trash);
+    state.pages = state.pages.filter(function (x) { return x.id !== p.id; });
+    if (!state.pages.length) {
+      var e = empty();
+      state.pages = e.pages;
+      state.activeId = e.activeId;
+    } else {
+      state.activeId = state.pages[0].id;
+    }
+    save(state);
+    listMode = true;
+    showTrash = false;
+    paint();
+  }
+
+  function restoreFromTrash(id) {
+    var trash = loadTrash();
+    var found = null;
+    var next = [];
+    for (var i = 0; i < trash.length; i++) {
+      if (trash[i].id === id) found = trash[i];
+      else next.push(trash[i]);
+    }
+    if (!found) return;
+    delete found.deletedAt;
+    var exists = state.pages.some(function (p) { return p.id === found.id; });
+    if (exists) found.id = 'p' + now();
+    state.pages.unshift(found);
+    state.activeId = found.id;
+    saveTrash(next);
+    save(state);
+    showTrash = false;
+    listMode = false;
+    paint();
+  }
+
+  function css() {
+    if (document.getElementById('tn2-css')) return;
+    var s = document.createElement('style');
+    s.id = 'tn2-css';
+    s.textContent = [
+      '#tn2-root{position:fixed!important;inset:0!important;z-index:2147483000!important;display:none!important;flex-direction:column!important;font-family:Tahoma,Vazirmatn,system-ui,sans-serif!important}',
+      '#tn2-root.tn2-on{display:flex!important}',
+      '#tn2-root *{box-sizing:border-box}',
+      '#tn2-root button{font-family:inherit;cursor:pointer}',
+      '.tn2-top{display:flex;align-items:center;gap:8px;padding:10px 12px;flex-shrink:0;border-bottom:1px solid var(--tn2-line);background:var(--tn2-ui)}',
+      '.tn2-ico{width:40px;height:40px;border-radius:12px;border:1px solid var(--tn2-line);background:transparent;color:inherit;display:grid;place-items:center;flex-shrink:0}',
+      '.tn2-main{flex:1;min-height:0;display:flex;flex-direction:column}',
+      '.tn2-side{width:100%;max-width:100%;display:flex;flex-direction:column;min-height:0;flex:1}',
+      '.tn2-list{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:8px;display:flex;flex-direction:column;gap:6px}',
+      '.tn2-item{text-align:right;border:1px solid var(--tn2-line);background:transparent;color:inherit;border-radius:14px;padding:12px 12px;display:flex;flex-direction:column;gap:4px;transition:transform .15s cubic-bezier(.2,0,0,1),background .15s ease}',
+      '.tn2-item b{font-size:14px}',
+      '.tn2-item span{font-size:11px;opacity:.65}',
+      '.tn2-item.on{border-color:rgba(45,90,71,.7);background:rgba(45,90,71,.12)}',
+      '.tn2-item:active{transform:scale(.98)}',
+      '.tn2-search,.tn2-select,#tn2-title,#tn2-text{width:100%;border:1px solid var(--tn2-line);background:var(--tn2-page);color:inherit;border-radius:12px;padding:10px 12px;font-size:14px}',
+      '#tn2-text{min-height:220px;resize:vertical;line-height:1.85;font-size:15px}',
+      '.tn2-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}',
+      '.tn2-btn{border:1px solid var(--tn2-line);background:transparent;color:inherit;border-radius:12px;padding:10px 12px;font-size:13px;transition:transform .12s ease}',
+      '.tn2-btn:active{transform:scale(.97)}',
+      '.tn2-primary{background:#2d5a47;border-color:#2d5a47;color:#f0fdf6;font-weight:700}',
+      '.tn2-chip{width:28px;height:28px;border-radius:999px;border:2px solid transparent;padding:0}',
+      '.tn2-chip.on{border-color:#fff;box-shadow:0 0 0 2px rgba(45,90,71,.5)}',
+      '.tn2-page{flex:1;min-height:0;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--tn2-page)}',
+      '.tn2-foot{padding:8px 12px;border-top:1px solid var(--tn2-line);font-size:11px;opacity:.7;display:flex;justify-content:space-between;gap:8px;flex-shrink:0}',
+      '.tn2-lock{flex:1;display:grid;place-items:center;padding:24px}',
+      '.tn2-card{width:min(360px,100%);background:var(--tn2-page);border:1px solid var(--tn2-line);border-radius:18px;padding:20px;text-align:center}',
+      '.tn2-fab{position:fixed;right:16px;bottom:88px;z-index:2147482000;width:52px;height:52px;border-radius:16px;border:none;background:linear-gradient(145deg,#2d5a47,#1a3d30);color:#e8fff5;box-shadow:0 10px 28px rgba(0,0,0,.35);font-size:18px;display:grid;place-items:center}',
+      '.tn2-fab:active{transform:scale(.96)}',
+      '.tn2-filter{padding:8px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--tn2-line)}',
+      '.tn2-ai{font-size:12px;line-height:1.7;padding:10px 12px;border-radius:12px;border:1px solid var(--tn2-line);background:rgba(45,90,71,.08)}',
+      '.tn2-focus .tn2-side-list{display:none!important}',
+      '@media (min-width:860px){.tn2-main{flex-direction:row}.tn2-side{width:320px;max-width:36%;border-left:1px solid var(--tn2-line)}.tn2-page{flex:1}}',
+      '@media (prefers-reduced-motion:reduce){#tn2-root *{transition:none!important;animation:none!important}}'
+    ].join('');
+    document.head.appendChild(s);
+  }
+
+  function rootEl() {
+    var el = document.getElementById('tn2-root');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'tn2-root';
+      el.setAttribute('dir', 'rtl');
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+
+  function open() {
+    css();
+    unlocked = !localStorage.getItem(PIN);
+    lockBody();
+    var el = rootEl();
+    el.className = 'tn2-on';
+    el.style.cssText = 'display:flex!important;position:fixed!important;inset:0!important;z-index:2147483000!important';
+    listMode = true;
+    showTrash = false;
+    focusMode = false;
+    paint();
+  }
+
+  function close() {
+    captureScroll();
+    persistFields();
+    save(state);
+    var el = document.getElementById('tn2-root');
+    if (el) {
+      el.className = '';
+      el.style.cssText = 'display:none!important';
+    }
+    unlockBody();
+  }
+
+  function paint() {
+    css();
+    var el = rootEl();
+    var th = theme();
+    el.style.setProperty('--tn2-page', th.page);
+    el.style.setProperty('--tn2-ui', th.ui);
+    el.style.setProperty('--tn2-line', th.line);
+    el.style.background = th.ui;
+    el.style.color = th.text;
+    if (focusMode) el.classList.add('tn2-focus');
+    else el.classList.remove('tn2-focus');
+
+    if (!unlocked) {
+      el.innerHTML =
+        '<div class="tn2-lock"><div class="tn2-card">' +
+        '<div style="font-size:28px;margin-bottom:8px"><i class="fas fa-lock"></i></div>' +
+        '<div style="font-weight:800;margin-bottom:6px">دفترچه قفل است</div>' +
+        '<input id="tn2-pin" type="password" inputmode="numeric" class="tn2-search" placeholder="رمز ورود" dir="ltr" style="margin:10px 0;text-align:center" autocomplete="off">' +
+        '<button type="button" class="tn2-btn tn2-primary" id="tn2-pin-ok" style="width:100%;padding:12px">ورود</button>' +
+        '<button type="button" class="tn2-btn" id="tn2-pin-x" style="width:100%;margin-top:8px;padding:12px">بستن</button>' +
+        '</div></div>';
+      el.querySelector('#tn2-pin-ok').onclick = function (e) {
+        e.preventDefault();
+        var v = el.querySelector('#tn2-pin').value;
+        if (hash(v) === localStorage.getItem(PIN)) { unlocked = true; paint(); }
+        else alert('رمز نادرست است');
+      };
+      el.querySelector('#tn2-pin-x').onclick = function (e) { e.preventDefault(); close(); };
+      return;
+    }
+
+    var p = page();
+    var list = filtered();
+    var trash = loadTrash();
+
+    var items;
+    if (showTrash) {
+      items = trash.map(function (x) {
+        return '<button type="button" class="tn2-item" data-restore="' + esc(x.id) + '">' +
+          '<b>' + esc(x.title || 'بدون عنوان') + '</b>' +
+          '<span>حذف‌شده · ' + faTime(x.deletedAt || x.updatedAt) + ' — برای بازگردانی بزن</span></button>';
+      }).join('') || '<div style="opacity:.5;text-align:center;padding:24px;font-size:13px">سطل خالی است</div>';
+    } else {
+      items = list.map(function (x) {
+        var col = color(x.color);
+        return '<button type="button" class="tn2-item' + (x.id === state.activeId ? ' on' : '') + '" data-id="' + esc(x.id) + '">' +
+          '<b style="color:' + col.c + '">' + (x.pinned ? '📌 ' : '') + esc(x.title || 'بدون عنوان') + '</b>' +
+          '<span>' + esc(catLabel(state, x.cat)) + ' · ' + faTime(x.updatedAt) + '</span></button>';
+      }).join('') || '<div style="opacity:.5;text-align:center;padding:24px;font-size:13px">موردی نیست — صفحه جدید بساز</div>';
+    }
+
+    var catOpts = state.cats.map(function (c) {
+      return '<option value="' + esc(c.id) + '"' + (p && p.cat === c.id ? ' selected' : '') + '>' +
+        esc((c.emoji || '') + ' ' + c.name) + '</option>';
+    }).join('');
+
+    var filterOpts = '<option value="">همه دسته‌ها</option>' + state.cats.map(function (c) {
+      return '<option value="' + esc(c.id) + '"' + (filter === c.id ? ' selected' : '') + '>' +
+        esc((c.emoji || '') + ' ' + c.name) + '</option>';
+    }).join('');
+
+    var chips = COLORS.map(function (c) {
+      return '<button type="button" class="tn2-chip' + (p && p.color === c.id ? ' on' : '') +
+        '" data-color="' + c.id + '" title="' + esc(c.label) + '" style="background:' + c.c + '"></button>';
+    }).join('');
+
+    var bgOpts = BGS.map(function (b) {
+      return '<option value="' + b.id + '"' + ((localStorage.getItem(BG) || 'ink') === b.id ? ' selected' : '') + '>' +
+        esc(b.name) + '</option>';
+    }).join('');
+
+    el.innerHTML =
+      '<div class="tn2-top">' +
+        '<button type="button" class="tn2-ico" id="tn2-close" title="بستن"><i class="fas fa-times"></i></button>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-weight:800;font-size:15px">دفترچه یادداشت</div>' +
+          '<div style="font-size:11px;opacity:.65" id="tn2-save-lbl">' + esc(saveLabel) + '</div>' +
+        '</div>' +
+        '<button type="button" class="tn2-ico" id="tn2-focus" title="تمرکز">' + (focusMode ? '<i class="fas fa-compress"></i>' : '<i class="fas fa-expand"></i>') + '</button>' +
+        '<button type="button" class="tn2-ico" id="tn2-new" title="صفحه جدید"><i class="fas fa-plus"></i></button>' +
+      '</div>' +
+      '<div class="tn2-main">' +
+        '<div class="tn2-side tn2-side-list">' +
+          '<div class="tn2-filter">' +
+            '<input id="tn2-q" class="tn2-search" type="search" placeholder="جستجو در عنوان و متن…" value="' + esc(q) + '">' +
+            '<div class="tn2-row">' +
+              '<select id="tn2-filter" class="tn2-select" style="flex:1">' + filterOpts + '</select>' +
+              '<button type="button" class="tn2-btn" id="tn2-trash-btn">' + (showTrash ? 'صفحه‌ها' : 'سطل (' + trash.length + ')') + '</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="tn2-list">' + items + '</div>' +
+        '</div>' +
+        '<div class="tn2-page" style="' + (listMode && window.innerWidth < 860 ? 'display:none' : '') + '">' +
+          (p && !showTrash ? (
+            '<input id="tn2-title" class="tn2-search" placeholder="عنوان صفحه" value="' + esc(p.title || '') + '">' +
+            '<div class="tn2-row">' +
+              '<select id="tn2-cat" class="tn2-select" style="flex:1">' + catOpts + '</select>' +
+              '<button type="button" class="tn2-btn" id="tn2-pin-page">' + (p.pinned ? 'برداشتن پین' : 'پین') + '</button>' +
+              '<button type="button" class="tn2-btn" id="tn2-today">امروز</button>' +
+            '</div>' +
+            '<div class="tn2-row" style="gap:6px">' + chips + '</div>' +
+            '<textarea id="tn2-text" placeholder="اینجا بنویس… نکته، خلاصه درس، روند روز، کار، ایده">' + esc(p.body || '') + '</textarea>' +
+            '<div class="tn2-row">' +
+              '<button type="button" class="tn2-btn tn2-primary" id="tn2-copy">کپی متن</button>' +
+              '<button type="button" class="tn2-btn" id="tn2-ai-btn">جمع‌بندی</button>' +
+              '<button type="button" class="tn2-btn" id="tn2-del">سطل</button>' +
+              (window.innerWidth < 860 ? '<button type="button" class="tn2-btn" id="tn2-back">لیست</button>' : '') +
+            '</div>' +
+            (showAi ? '<div class="tn2-ai">' + analyze(p.body) + '</div>' : '') +
+            '<div class="tn2-row">' +
+              '<label style="font-size:12px;opacity:.75">پس‌زمینه</label>' +
+              '<select id="tn2-bg" class="tn2-select" style="flex:1">' + bgOpts + '</select>' +
+              '<button type="button" class="tn2-btn" id="tn2-addcat">دسته+</button>' +
+              '<button type="button" class="tn2-btn" id="tn2-setpin">رمز</button>' +
+            '</div>'
+          ) : '<div style="opacity:.55;padding:28px;text-align:center;font-size:13px">' +
+              (showTrash ? 'یک مورد سطل را برای بازگردانی انتخاب کن' : 'یک صفحه از لیست انتخاب کن') +
+            '</div>') +
+        '</div>' +
+      '</div>' +
+      '<div class="tn2-foot"><span>' + state.pages.length + ' صفحه فعال</span><span>حذف = سطل · داده بازنویسی می‌شود نه صفر</span></div>';
+
+    el.querySelector('#tn2-close').onclick = function (e) { e.preventDefault(); close(); };
+
+    var focusBtn = el.querySelector('#tn2-focus');
+    if (focusBtn) focusBtn.onclick = function (e) {
+      e.preventDefault();
+      captureScroll();
+      persistFields();
+      save(state);
+      focusMode = !focusMode;
+      if (focusMode) listMode = false;
+      paint();
+    };
+
+    el.querySelector('#tn2-new').onclick = function (e) {
+      e.preventDefault();
+      captureScroll();
+      persistFields();
+      var id = 'p' + now();
+      state.pages.unshift({
+        id: id,
+        title: 'یادداشت جدید',
+        body: '',
+        cat: filter || 'study',
+        color: 'def',
+        pinned: false,
+        createdAt: now(),
+        updatedAt: now()
+      });
+      state.activeId = id;
+      save(state);
+      listMode = false;
+      showTrash = false;
+      paint();
+      setTimeout(function () {
+        var t = document.getElementById('tn2-title');
+        if (t) t.focus();
+      }, 30);
+    };
+
+    var qEl = el.querySelector('#tn2-q');
+    if (qEl) {
+      qEl.addEventListener('input', function () {
+        q = qEl.value;
+        captureScroll();
+        persistFields();
+        paint();
+        var again = document.getElementById('tn2-q');
+        if (again) {
+          again.focus();
+          try { again.setSelectionRange(again.value.length, again.value.length); } catch (err) {}
+        }
+      });
+    }
+
+    var fEl = el.querySelector('#tn2-filter');
+    if (fEl) fEl.onchange = function () {
+      filter = fEl.value;
+      captureScroll();
+      persistFields();
+      paint();
+    };
+
+    var trashBtn = el.querySelector('#tn2-trash-btn');
+    if (trashBtn) trashBtn.onclick = function (e) {
+      e.preventDefault();
+      captureScroll();
+      persistFields();
+      save(state);
+      showTrash = !showTrash;
+      paint();
+    };
+
+    el.querySelectorAll('.tn2-item[data-id]').forEach(function (btn) {
+      btn.onclick = function (e) {
+        e.preventDefault();
+        captureScroll();
+        persistFields();
+        save(state);
+        state.activeId = btn.getAttribute('data-id');
+        listMode = false;
+        showTrash = false;
+        paint();
+      };
+    });
+
+    el.querySelectorAll('.tn2-item[data-restore]').forEach(function (btn) {
+      btn.onclick = function (e) {
+        e.preventDefault();
+        restoreFromTrash(btn.getAttribute('data-restore'));
+      };
+    });
+
+    var back = el.querySelector('#tn2-back');
+    if (back) back.onclick = function (e) {
+      e.preventDefault();
+      captureScroll();
+      persistFields();
+      save(state);
+      listMode = true;
+      paint();
+    };
+
+    if (p && !showTrash) {
+      el.querySelectorAll('.tn2-chip[data-color]').forEach(function (ch) {
+        ch.onclick = function (e) {
+          e.preventDefault();
+          captureScroll();
+          persistFields();
+          upsertPage({ color: ch.getAttribute('data-color') });
+          paint();
+        };
+      });
+
+      var pinPage = el.querySelector('#tn2-pin-page');
+      if (pinPage) pinPage.onclick = function (e) {
+        e.preventDefault();
+        captureScroll();
+        persistFields();
+        upsertPage({ pinned: !p.pinned });
+        paint();
+      };
+
+      var today = el.querySelector('#tn2-today');
+      if (today) today.onclick = function (e) {
+        e.preventDefault();
+        captureScroll();
+        persistFields();
+        var stamp = todayISO();
+        var title = 'روند روز ' + stamp;
+        var existing = null;
+        for (var i = 0; i < state.pages.length; i++) {
+          if (state.pages[i].title === title) { existing = state.pages[i]; break; }
+        }
+        if (existing) {
+          state.activeId = existing.id;
+        } else {
+          var id = 'p' + now();
+          state.pages.unshift({
+            id: id,
+            title: title,
+            body: '## برنامه امروز\n- \n\n## انجام‌شده\n- \n\n## نکته‌ها\n- \n',
+            cat: 'daily',
+            color: 'tea',
+            pinned: false,
+            createdAt: now(),
+            updatedAt: now()
+          });
+          state.activeId = id;
+        }
+        save(state);
+        listMode = false;
+        paint();
+      };
+
+      var copy = el.querySelector('#tn2-copy');
+      if (copy) copy.onclick = function (e) {
+        e.preventDefault();
+        persistFields();
+        var cur = page();
+        var blob = (cur.title || '') + '\n\n' + (cur.body || '');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(blob).then(function () {
+            saveLabel = 'کپی شد';
+            var lbl = document.getElementById('tn2-save-lbl');
+            if (lbl) lbl.textContent = saveLabel;
+          });
+        } else {
+          prompt('کپی کن:', blob);
+        }
+      };
+
+      var aiBtn = el.querySelector('#tn2-ai-btn');
+      if (aiBtn) aiBtn.onclick = function (e) {
+        e.preventDefault();
+        captureScroll();
+        persistFields();
+        showAi = !showAi;
+        paint();
+      };
+
+      var del = el.querySelector('#tn2-del');
+      if (del) del.onclick = function (e) { e.preventDefault(); softDeleteActive(); };
+
+      var bg = el.querySelector('#tn2-bg');
+      if (bg) bg.onchange = function () {
+        localStorage.setItem(BG, bg.value);
+        captureScroll();
+        persistFields();
+        paint();
+      };
+
+      var addcat = el.querySelector('#tn2-addcat');
+      if (addcat) addcat.onclick = function (e) {
+        e.preventDefault();
+        var name = prompt('نام دسته جدید:');
+        if (!name || !name.trim()) return;
+        state.cats.push({ id: 'c' + now(), name: name.trim(), emoji: '🏷️' });
+        save(state);
+        captureScroll();
+        paint();
+      };
+
+      var setpin = el.querySelector('#tn2-setpin');
+      if (setpin) setpin.onclick = function (e) {
+        e.preventDefault();
+        var has = !!localStorage.getItem(PIN);
+        if (has) {
+          var cur = prompt('رمز فعلی:');
+          if (hash(cur) !== localStorage.getItem(PIN)) return alert('نادرست');
+          var nx = prompt('رمز جدید (خالی = حذف قفل):');
+          if (nx === null) return;
+          if (!String(nx).trim()) localStorage.removeItem(PIN);
+          else localStorage.setItem(PIN, hash(String(nx).trim()));
+        } else {
+          var a = prompt('رمز جدید:');
+          if (!a || !String(a).trim()) return;
+          var b = prompt('تکرار رمز:');
+          if (a !== b) return alert('یکسان نیست');
+          localStorage.setItem(PIN, hash(String(a).trim()));
+        }
+        paint();
+      };
+
+      var title = el.querySelector('#tn2-title');
+      var text = el.querySelector('#tn2-text');
+      var cat = el.querySelector('#tn2-cat');
+      function auto() {
+        clearTimeout(saveTimer);
+        saveLabel = 'در حال ذخیره…';
+        var lbl = document.getElementById('tn2-save-lbl');
+        if (lbl) lbl.textContent = saveLabel;
+        saveTimer = setTimeout(function () {
+          persistFields();
+          save(state);
+          var lbl2 = document.getElementById('tn2-save-lbl');
+          if (lbl2) lbl2.textContent = 'ذخیره شد';
+        }, 450);
+      }
+      if (title) title.addEventListener('input', auto);
+      if (text) text.addEventListener('input', auto);
+      if (cat) cat.addEventListener('change', function () {
+        persistFields();
+        save(state);
+      });
+    }
+
+    restoreScroll();
+  }
+
+  function mountFab() {
+    if (document.getElementById('tn2-fab')) return;
+    var fab = document.createElement('button');
+    fab.id = 'tn2-fab';
+    fab.type = 'button';
+    fab.className = 'tn2-fab';
+    fab.title = 'دفترچه یادداشت';
+    fab.setAttribute('aria-label', 'دفترچه یادداشت');
+    fab.innerHTML = '<i class="fas fa-pen-fancy"></i>';
+    fab.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      open();
+    }, true);
+    document.body.appendChild(fab);
+  }
+
+  function mountMenu() {
+    var navs = document.getElementById('tilo-drawer-navs');
+    if (!navs || document.getElementById('tn2-menu')) return;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'tn2-menu';
+    btn.className = 'w-full text-right px-3 py-2 rounded-xl hover:bg-white/5 text-sm';
+    btn.innerHTML = '<i class="fas fa-book-open ml-2"></i> دفترچه یادداشت';
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      open();
+      try {
+        var drawer = document.getElementById('tilo-drawer');
+        if (drawer) drawer.classList.add('hidden');
+      } catch (err) {}
+    });
+    navs.appendChild(btn);
+  }
+
+  function cleanupOld() {
+    ['tilo-notes-fab', 'tilo-notes-menu-btn', 'tilo-notes-root'].forEach(function (id) {
+      var n = document.getElementById(id);
+      if (n && n.parentNode) n.parentNode.removeChild(n);
+    });
+  }
+
+  window.TiloNotes = { open: open, close: close };
+
+  function boot() {
+    cleanupOld();
+    css();
+    mountFab();
+    mountMenu();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+  setInterval(function () {
+    if (!document.getElementById('tn2-fab')) mountFab();
+    if (!document.getElementById('tn2-menu')) mountMenu();
+  }, 2500);
+})();
