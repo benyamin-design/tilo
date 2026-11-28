@@ -1,10 +1,11 @@
-/* tilo-ui.css (v16) — فضای کار آرام، بدون ظاهر شلوغ و هوش‌مصنوعی
-   پشتیبانی از تم روز/شب، ۴ رنگ تأکیدی ملایم، آنبوردینگ ۴ مرحله‌ای و تایمر خلوت */
+/* tilo-ui.css (v19) — Corporate-Calm Design System & Motion
+   رفع باگ‌های استمرار، آیکن‌ها، KPI، نوار پایین موبایل، مودال/FAB و تم یکدست روز/شب */
 
 :root, body.tilo-theme-night {
   color-scheme: dark;
   --t-bg: #111916;
   --t-card: #1b2520;
+  --t-card-hover: #202c26;
   --t-inset: #15201b;
   --t-text: #e9efeb;
   --t-muted: #9eb0a5;
@@ -19,17 +20,29 @@
   --t-danger-soft: #3c2522;
   --t-warning: #e5c58c;
   --t-warning-soft: #362f22;
-  --t-overlay: rgba(8, 14, 11, 0.72);
-  --t-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+  --t-break: #7dd3fc;
+  --t-break-soft: rgba(125, 211, 252, 0.14);
+  --t-overlay: rgba(8, 14, 11, 0.74);
+  --t-shadow: 0 2px 10px rgba(0, 0, 0, 0.16);
+  --t-shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.24);
   --t-radius: 14px;
   --t-control-radius: 11px;
-  --t-nav-height: 4.75rem;
+  --t-nav-height: 4.5rem;
+
+  /* Motion Tokens — Corporate + Calm */
+  --t-ease: cubic-bezier(0.2, 0, 0, 1);
+  --t-ease-out: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --t-ease-in: cubic-bezier(0.3, 0, 1, 1);
+  --t-dur-q: 170ms;
+  --t-dur: 270ms;
+  --t-dur-s: 390ms;
 }
 
 body.tilo-theme-day {
   color-scheme: light;
   --t-bg: #f4f4ef;
   --t-card: #fffefb;
+  --t-card-hover: #f9f9f4;
   --t-inset: #eceee8;
   --t-text: #223027;
   --t-muted: #5a6c60;
@@ -44,11 +57,14 @@ body.tilo-theme-day {
   --t-danger-soft: #f8e9e5;
   --t-warning: #7b591e;
   --t-warning-soft: #f4ecda;
-  --t-overlay: rgba(24, 34, 28, 0.45);
+  --t-break: #0369a1;
+  --t-break-soft: #e0f2fe;
+  --t-overlay: rgba(24, 34, 28, 0.46);
   --t-shadow: 0 2px 8px rgba(24, 38, 30, 0.05);
+  --t-shadow-elevated: 0 8px 20px rgba(24, 38, 30, 0.09);
 }
 
-/* ۴ گزینه رنگ تأکیدی ملایم (بدون رنگین‌کمان) */
+/* ۴ رنگ تأکیدی ملایم */
 body[data-accent="slate"].tilo-theme-night {
   --t-accent: #9ec5df;
   --t-accent-solid: #2f5d7c;
@@ -88,17 +104,53 @@ body[data-accent="amber"].tilo-theme-day {
   --t-accent-soft: #f4eadc;
 }
 
+/* ==================== پایه و جلوگیری از اسکرول افقی ==================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 html body:is(.tilo-theme-day, .tilo-theme-night) {
   background: var(--t-bg) !important;
   color: var(--t-text) !important;
-  line-height: 1.7;
+  line-height: 1.68;
 }
-html body.h-screen { height: 100vh; height: 100dvh; }
-html body #app, html body main { min-width: 0; min-height: 0; }
+
+html body.h-screen {
+  height: 100vh;
+  height: 100dvh;
+}
+
+html body #app,
 html body main {
-  padding-bottom: 2.5rem !important;
-  scrollbar-gutter: stable;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
 }
+
+html body main {
+  padding-bottom: 3rem !important;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* قفل تمیز اسکرول پس‌زمینه هنگام باز بودن مودال یا منوی کشویی */
+body:has(.fixed.inset-0),
+body:has(.tilo-onboard-backdrop),
+body:has(.tilo-more-backdrop),
+body:has(#tn2-root.tn2-on) {
+  overflow: hidden !important;
+}
+body:has(.fixed.inset-0) main,
+body:has(.tilo-onboard-backdrop) main,
+body:has(.tilo-more-backdrop) main {
+  overflow: hidden !important;
+}
+
 html body :is(input, select, textarea) { font-family: inherit; }
 html body :is(p, h2, h3, h4, label, .tilo-break) { overflow-wrap: anywhere; }
 html body :is(input, textarea, .tilo-share-code-box) {
@@ -106,7 +158,20 @@ html body :is(input, textarea, .tilo-share-code-box) {
   -webkit-user-select: text;
 }
 
-/* پایه چیدمان حتی اگر Tailwind CDN در ایران کند یا قطع شود */
+/* ==================== پایدارسازی آیکن‌ها (باگ ۲) ==================== */
+.fas, .far, .fab, .fa-solid, .fa-regular, .fa-brands {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-style: normal;
+  font-variant: normal;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  flex-shrink: 0;
+}
+
+/* ==================== کلاس‌های کمکی پایه (پشتیبان قطع Tailwind CDN) ==================== */
 .flex { display: flex; }
 .flex-col { flex-direction: column; }
 .flex-wrap { flex-wrap: wrap; }
@@ -125,9 +190,11 @@ html body :is(input, textarea, .tilo-share-code-box) {
 .gap-2\.5 { gap: 0.625rem; }
 .gap-3 { gap: 0.75rem; }
 .gap-4 { gap: 1rem; }
+.space-y-1\.5 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.375rem; }
 .space-y-2 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.5rem; }
 .space-y-2\.5 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.625rem; }
 .space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.75rem; }
+.space-y-3\.5 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.875rem; }
 .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem; }
 .space-y-5 > :not([hidden]) ~ :not([hidden]) { margin-top: 1.25rem; }
 .w-full { width: 100%; }
@@ -154,7 +221,9 @@ html body :is(input, textarea, .tilo-share-code-box) {
 .p-4 { padding: 1rem; }
 .p-5 { padding: 1.25rem; }
 .p-6 { padding: 1.5rem; }
+
 @media (min-width: 640px) {
+  .sm\:inline { display: inline; }
   .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sm\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .sm\:flex-row { flex-direction: row; }
@@ -179,7 +248,7 @@ html body :is(input, textarea, .tilo-share-code-box) {
   .lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
-/* کارت‌ها و هدر آرام */
+/* ==================== کارت‌ها، هدر و سلسله‌مراتب بصری ==================== */
 html body:is(.tilo-theme-day, .tilo-theme-night) .soft-card,
 html body:is(.tilo-theme-day, .tilo-theme-night) nav.soft-card {
   background: var(--t-card) !important;
@@ -195,22 +264,25 @@ html body:is(.tilo-theme-day, .tilo-theme-night) nav.soft-card {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.15rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--t-border);
 }
 
-/* خلاصه یک‌خطی امروز */
+/* نوار خلاصه یک‌خطی امروز */
 .tilo-today-strip {
-  padding: 0.85rem 1rem;
+  padding: 0.9rem 1.05rem !important;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.6rem;
+  background: var(--t-card) !important;
+  border-right: 3.5px solid var(--t-accent-solid) !important;
 }
 .tilo-today-strip-text {
-  font-size: 0.84rem;
-  font-weight: 700;
+  font-size: 0.86rem;
+  font-weight: 800;
   color: var(--t-text);
+  line-height: 1.5;
 }
 .tilo-today-bar {
   width: 100%;
@@ -223,16 +295,201 @@ html body:is(.tilo-theme-day, .tilo-theme-night) nav.soft-card {
   height: 100%;
   border-radius: 999px;
   background: var(--t-accent-solid);
-  transition: width 0.25s ease;
+  transition: width var(--t-dur) var(--t-ease);
 }
 
-/* ردیف‌های لیست، برچسب‌ها و وضعیت خالی */
+/* ==================== کارت استمرار مطالعه — ردیف افقی تمیز (باگ ۱) ==================== */
+.tilo-streak-card {
+  position: relative;
+  padding: 0.95rem 1.1rem !important;
+  border-right: 3.5px solid var(--t-accent-solid) !important;
+  overflow: hidden;
+}
+.tilo-streak-main {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  width: 100%;
+  min-width: 0;
+}
+@media (min-width: 640px) {
+  .tilo-streak-main {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+}
+.tilo-streak-main > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.tilo-streak-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.tilo-streak-count {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--t-text);
+  line-height: 1.4;
+}
+.tilo-streak-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2.5px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--t-border);
+  background: var(--t-inset);
+  color: var(--t-muted);
+  white-space: nowrap;
+}
+.tilo-streak-badge.is-done {
+  background: var(--t-accent-soft);
+  border-color: var(--t-accent);
+  color: var(--t-accent);
+}
+.tilo-streak-badge.is-pending {
+  background: var(--t-warning-soft);
+  border-color: var(--t-warning);
+  color: var(--t-warning);
+}
+.tilo-streak-sub {
+  margin: 0;
+  font-size: 12px;
+  color: var(--t-muted);
+  line-height: 1.55;
+}
+.tilo-streak-sub strong {
+  color: var(--t-text);
+  font-weight: 800;
+}
+
+/* ۷ روز هفته — همیشه افقی بدون شکستن حروف */
+.tilo-streak-week {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  padding-top: 8px;
+  border-top: 1px solid var(--t-border);
+  direction: rtl;
+}
+@media (min-width: 640px) {
+  .tilo-streak-week {
+    width: auto;
+    padding-top: 0;
+    border-top: none;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+}
+.tilo-streak-day {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center;
+  gap: 5px;
+  flex: 1 1 0;
+  min-width: 24px;
+}
+.tilo-streak-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--t-inset);
+  border: 1.5px solid var(--t-field-border);
+  flex-shrink: 0;
+}
+.tilo-streak-dot.is-active {
+  background: var(--t-accent-solid);
+  border-color: var(--t-accent-solid);
+}
+.tilo-streak-dot.is-today {
+  box-shadow: 0 0 0 3px var(--t-accent-soft);
+  border-color: var(--t-accent);
+}
+.tilo-streak-dlbl {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--t-muted);
+  white-space: nowrap !important;
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+}
+
+/* ==================== کارت‌های KPI داشبورد (باگ ۳) ==================== */
+html body .tilo-stat-grid,
+.tilo-stat-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 0.75rem !important;
+}
+@media (min-width: 1024px) {
+  html body .tilo-stat-grid.lg\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+  html body .tilo-stat-grid.lg\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+html body .tilo-stat-card {
+  position: relative;
+  border-radius: var(--t-radius) !important;
+  padding: 1rem 0.95rem !important;
+  background: var(--t-card) !important;
+  border: 1px solid var(--t-border) !important;
+  border-top-width: 3px !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+html body .tilo-stat-grid > :nth-child(1) { border-top-color: #35634e !important; }
+html body .tilo-stat-grid > :nth-child(2) { border-top-color: #2f5d7c !important; }
+html body .tilo-stat-grid > :nth-child(3) { border-top-color: #8a6532 !important; }
+html body .tilo-stat-grid > :nth-child(4) { border-top-color: #57664f !important; }
+
+.tilo-stat-card > p:first-child {
+  font-size: 11.5px !important;
+  font-weight: 700;
+  color: var(--t-muted) !important;
+  margin: 0;
+}
+.tilo-stat-card .tilo-stat-value {
+  font-size: clamp(1.15rem, 4.4vw, 1.5rem) !important;
+  font-weight: 800 !important;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  color: var(--t-text) !important;
+  margin: 4px 0 2px 0 !important;
+}
+.tilo-stat-card > p:last-child {
+  font-size: 11px !important;
+  color: var(--t-muted) !important;
+  margin: 0 !important;
+  line-height: 1.45;
+}
+
+/* ==================== ردیف‌های لیست، برچسب‌ها و وضعیت خالی ==================== */
 .tilo-list-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.75rem 0.9rem;
+  padding: 0.8rem 0.95rem;
   border-radius: var(--t-control-radius);
   background: var(--t-inset);
   border: 1px solid var(--t-border);
@@ -248,7 +505,7 @@ html body:is(.tilo-theme-day, .tilo-theme-night) nav.soft-card {
 }
 .tilo-empty-box {
   text-align: center;
-  padding: 1.5rem 1rem;
+  padding: 1.45rem 1rem;
   border-radius: var(--t-control-radius);
   background: var(--t-inset);
   border: 1px dashed var(--t-border);
@@ -261,7 +518,7 @@ html body:is(.tilo-theme-day, .tilo-theme-night) nav.soft-card {
   margin-bottom: 6px;
 }
 
-/* تایپوگرافی و رنگ‌ها */
+/* ==================== یکدست‌سازی رنگ‌های کمکی در روز و شب ==================== */
 html body:is(.tilo-theme-day, .tilo-theme-night) :is(.text-white, .text-slate-200, .text-slate-300) {
   color: var(--t-text) !important;
 }
@@ -283,7 +540,7 @@ html body:is(.tilo-theme-day, .tilo-theme-night) [class*="border-slate-"] {
   border-color: var(--t-border) !important;
 }
 
-/* دکمه‌ها و فیلدها */
+/* ==================== دکمه‌ها و فیلدهای ورودی ==================== */
 .btn-calm {
   border: 1px solid var(--t-border);
   border-radius: var(--t-control-radius);
@@ -293,14 +550,30 @@ html body:is(.tilo-theme-day, .tilo-theme-night) [class*="border-slate-"] {
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  touch-action: manipulation;
+  transition:
+    transform var(--t-dur-q) var(--t-ease),
+    background-color var(--t-dur-q) var(--t-ease),
+    border-color var(--t-dur-q) var(--t-ease),
+    color var(--t-dur-q) var(--t-ease);
 }
+.btn-calm:hover:not(:disabled) {
+  border-color: var(--t-accent);
+}
+.btn-calm:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.btn-calm:disabled, .tilo-chip:disabled, .tilo-tm-mode-btn:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
 html body:is(.tilo-theme-day, .tilo-theme-night) .bg-primary {
   background: var(--t-accent-solid) !important;
   border-color: var(--t-accent-solid) !important;
   color: var(--t-on-accent) !important;
 }
-html body:is(.tilo-theme-day, .tilo-theme-night) .bg-primary:hover {
+html body:is(.tilo-theme-day, .tilo-theme-night) .bg-primary:hover:not(:disabled) {
   background: var(--t-accent-hover) !important;
 }
 html body:is(.tilo-theme-day, .tilo-theme-night) .bg-primary\/20 {
@@ -311,6 +584,7 @@ html body:is(.tilo-theme-day, .tilo-theme-night) button.bg-roseSoft {
   color: var(--t-danger) !important;
   border-color: var(--t-danger) !important;
 }
+
 .tilo-link-btn {
   background: transparent;
   border: none;
@@ -319,19 +593,28 @@ html body:is(.tilo-theme-day, .tilo-theme-night) button.bg-roseSoft {
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  padding: 2px 4px;
+  padding: 4px 6px;
+  touch-action: manipulation;
 }
 .tilo-chip, .tilo-choice-btn {
   background: var(--t-inset);
   color: var(--t-text);
   border: 1px solid var(--t-border);
   border-radius: var(--t-control-radius);
-  padding: 0.45rem 0.75rem;
+  padding: 0.48rem 0.78rem;
   font-family: inherit;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  transition: border-color 0.15s, background-color 0.15s;
+  touch-action: manipulation;
+  transition:
+    transform var(--t-dur-q) var(--t-ease),
+    border-color var(--t-dur-q) var(--t-ease),
+    background-color var(--t-dur-q) var(--t-ease);
+}
+.tilo-chip:active:not(:disabled),
+.tilo-choice-btn:active:not(:disabled) {
+  transform: scale(0.97);
 }
 .tilo-chip.active, .tilo-choice-btn.is-active {
   background: var(--t-accent-soft);
@@ -361,6 +644,7 @@ html body:is(.tilo-theme-day, .tilo-theme-night) button.bg-roseSoft {
   height: 12px;
   border-radius: 50%;
 }
+
 html body:is(.tilo-theme-day, .tilo-theme-night) .input-calm {
   background: var(--t-inset) !important;
   color: var(--t-text) !important;
@@ -368,24 +652,31 @@ html body:is(.tilo-theme-day, .tilo-theme-night) .input-calm {
   border-radius: var(--t-control-radius);
   padding: 0.65rem 0.85rem;
   width: 100%;
-  min-height: 42px;
+  min-height: 44px;
   outline: none;
+  transition: border-color var(--t-dur-q) var(--t-ease);
 }
 html body .input-calm:focus { border-color: var(--t-accent) !important; }
+
 html body .tilo-theme-switch-btn {
   background: var(--t-inset) !important;
   border: 1px solid var(--t-border) !important;
   color: var(--t-text) !important;
   border-radius: var(--t-control-radius);
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--t-dur-q) var(--t-ease), border-color var(--t-dur-q) var(--t-ease);
+}
+html body .tilo-theme-switch-btn:active {
+  transform: scale(0.95);
 }
 
-/* آنبوردینگ ۴ مرحله‌ای */
+/* ==================== آنبوردینگ ۴ مرحله‌ای ==================== */
 .tilo-onboard-backdrop {
   position: fixed;
   inset: 0;
@@ -396,6 +687,8 @@ html body .tilo-theme-switch-btn {
   justify-content: center;
   padding: 18px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  animation: tiloFadeIn var(--t-dur) var(--t-ease-out) both;
 }
 .tilo-onboard-card {
   width: 100%;
@@ -407,6 +700,7 @@ html body .tilo-theme-switch-btn {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  animation: tiloModalRise var(--t-dur-s) var(--t-ease-out) both;
 }
 .tilo-onboard-top {
   display: flex;
@@ -428,7 +722,7 @@ html body .tilo-theme-switch-btn {
 .tilo-onboard-progress-fill {
   height: 100%;
   background: var(--t-accent-solid);
-  transition: width 0.25s ease;
+  transition: width var(--t-dur) var(--t-ease);
 }
 .tilo-onboard-title {
   margin: 0;
@@ -457,8 +751,12 @@ html body .tilo-theme-switch-btn {
   flex-direction: column;
   gap: 3px;
   font-family: inherit;
-  transition: border-color 0.15s, background-color 0.15s;
+  transition:
+    transform var(--t-dur-q) var(--t-ease),
+    border-color var(--t-dur-q) var(--t-ease),
+    background-color var(--t-dur-q) var(--t-ease);
 }
+.tilo-role-card:active { transform: scale(0.98); }
 .tilo-role-card.is-active {
   border-color: var(--t-accent);
   background: var(--t-accent-soft);
@@ -488,35 +786,86 @@ html body .tilo-theme-switch-btn {
   padding-top: 6px;
 }
 
-/* تایمر مدرن و حالت تمرکز سبک */
-.tilo-timer-stage {
-  padding: 1.5rem 1.25rem;
+/* ==================== تایمر تمرکز مدرن و خوانا ==================== */
+.tilo-tm-modes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 6px !important;
+}
+@media (max-width: 400px) {
+  .tilo-tm-modes { grid-template-columns: repeat(2, 1fr); }
+}
+.tilo-tm-mode-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 52px;
+  padding: 8px 4px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--t-muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    transform var(--t-dur-q) var(--t-ease),
+    background-color var(--t-dur-q) var(--t-ease),
+    color var(--t-dur-q) var(--t-ease),
+    border-color var(--t-dur-q) var(--t-ease);
 }
-.tilo-timer-stage.is-focus {
-  padding: 2.25rem 1.25rem;
+.tilo-tm-mode-btn i { font-size: 14px; }
+.tilo-tm-mode-btn:active:not(:disabled) { transform: scale(0.97); }
+.tilo-tm-mode-btn.is-active {
+  background: var(--t-accent-soft);
+  color: var(--t-accent);
+  border-color: var(--t-accent);
+}
+
+.tilo-tm-stage {
+  padding: 1.35rem 1.2rem 1.5rem 1.2rem !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+  transition: border-color var(--t-dur) var(--t-ease);
+}
+.tilo-tm-stage.is-focus {
   border-color: var(--t-accent) !important;
 }
-.tilo-timer-digits {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: clamp(2.6rem, 11vw, 4rem);
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
-  color: var(--t-text);
-  line-height: 1.15;
-  margin: 0.5rem 0;
+.tilo-tm-stage.is-break {
+  border-color: var(--t-break) !important;
+}
+
+.tilo-tm-top {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 .tilo-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11.5px;
   font-weight: 800;
-  padding: 3px 10px;
+  padding: 4px 11px;
   border-radius: 999px;
   background: var(--t-inset);
   color: var(--t-muted);
   border: 1px solid var(--t-border);
+}
+.tilo-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
 }
 .tilo-status-pill.is-running {
   background: var(--t-accent-soft);
@@ -528,14 +877,189 @@ html body .tilo-theme-switch-btn {
   color: var(--t-warning);
   border-color: var(--t-warning);
 }
-.tilo-part-pick-list {
-  max-height: 220px;
-  overflow-y: auto;
+.tilo-status-pill.is-break {
+  background: var(--t-break-soft);
+  color: var(--t-break);
+  border-color: var(--t-break);
+}
+.tilo-tm-round-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--t-muted);
+  background: var(--t-inset);
+  border: 1px solid var(--t-border);
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+.tilo-tm-mini-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid var(--t-border);
+  background: var(--t-inset);
+  color: var(--t-muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.tilo-tm-mini-btn:hover { color: var(--t-text); border-color: var(--t-accent); }
+
+.tilo-tm-active {
+  text-align: center;
+  min-height: 44px;
+  max-width: 100%;
+}
+.tilo-tm-active-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--t-text);
+}
+.tilo-tm-subtle-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--t-inset);
+  color: var(--t-muted);
+  border: 1px solid var(--t-border);
+}
+
+.tilo-tm-ring-wrap {
+  position: relative;
+  width: min(66vw, 228px);
+  height: min(66vw, 228px);
+  margin: 4px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tilo-tm-ring-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.tilo-tm-ring-track {
+  fill: none;
+  stroke: var(--t-inset);
+  stroke-width: 6.5;
+}
+.tilo-tm-ring-prog {
+  fill: none;
+  stroke: var(--t-accent);
+  stroke-width: 6.5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset var(--t-dur) var(--t-ease), stroke var(--t-dur) var(--t-ease);
+}
+.tilo-tm-ring-prog.is-break { stroke: var(--t-break); }
+.tilo-tm-ring-prog.is-paused { stroke: var(--t-warning); }
+.tilo-tm-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 16px;
+}
+.tilo-tm-phase-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--t-muted);
+}
+.tilo-timer-digits {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(2.15rem, 9vw, 2.95rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+  color: var(--t-text);
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.tilo-tm-sub-lbl {
+  font-size: 11px;
+  color: var(--t-muted);
+  margin-top: 2px;
+}
+
+.tilo-tm-rounds {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.tilo-tm-round-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--t-inset);
+  border: 1.5px solid var(--t-border);
+  transition: transform var(--t-dur-q) var(--t-ease), background-color var(--t-dur-q) var(--t-ease);
+}
+.tilo-tm-round-dot.is-done {
+  background: var(--t-accent-solid);
+  border-color: var(--t-accent);
+}
+.tilo-tm-round-dot.is-current {
+  transform: scale(1.3);
+  background: var(--t-accent);
+  border-color: var(--t-accent);
+}
+.tilo-tm-round-dot.is-break {
+  background: var(--t-break);
+  border-color: var(--t-break);
+}
+
+.tilo-tm-meta {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  padding: 8px 12px;
+  border-radius: 11px;
+  background: var(--t-inset);
+  border: 1px solid var(--t-border);
+  font-size: 11.5px;
+  color: var(--t-muted);
+}
+.tilo-tm-meta strong { color: var(--t-text); }
+
+.tilo-tm-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+}
+.tilo-tm-subactions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.tilo-tm-panel-box {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--t-inset);
+  border: 1px solid var(--t-border);
+}
+
+.tilo-tm-part-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  max-height: 230px;
+  overflow-y: auto;
 }
-.tilo-part-option {
+.tilo-tm-part-card {
   width: 100%;
   text-align: right;
   padding: 10px 12px;
@@ -544,60 +1068,208 @@ html body .tilo-theme-switch-btn {
   border: 1px solid var(--t-border);
   cursor: pointer;
   font-family: inherit;
+  touch-action: manipulation;
+  transition:
+    transform var(--t-dur-q) var(--t-ease),
+    border-color var(--t-dur-q) var(--t-ease),
+    background-color var(--t-dur-q) var(--t-ease);
 }
-.tilo-part-option.is-selected {
+.tilo-tm-part-card:active { transform: scale(0.985); }
+.tilo-tm-part-card:hover { border-color: var(--t-accent); }
+.tilo-tm-part-card.is-selected {
   background: var(--t-accent-soft);
   border-color: var(--t-accent);
+  box-shadow: inset -3px 0 0 var(--t-accent);
+}
+.tilo-tm-part-topic {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--t-text);
 }
 
-/* نمودار ساده CSS برای روند ۳ تا ۱۴ روزه */
+/* ==================== نمودار روند ۷ و ۱۴ روزه با Min / Max ==================== */
+.tilo-an-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+@media (max-width: 560px) {
+  .tilo-an-kpi-grid { grid-template-columns: 1fr; }
+}
+.tilo-an-kpi {
+  padding: 10px 12px;
+  border-radius: var(--t-control-radius);
+  background: var(--t-inset);
+  border: 1px solid var(--t-border);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.tilo-an-kpi.is-max { border-right: 3px solid var(--t-accent); }
+.tilo-an-kpi.is-min { border-right: 3px solid var(--t-warning); }
+.tilo-an-kpi-lbl {
+  font-size: 11px;
+  color: var(--t-muted);
+  font-weight: 700;
+}
+.tilo-an-kpi-val {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--t-text);
+  font-variant-numeric: tabular-nums;
+}
+.tilo-an-kpi-sub {
+  font-size: 10.5px;
+  color: var(--t-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tilo-chart-shell {
+  position: relative;
+  padding-top: 14px;
+}
+.tilo-chart-avg-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--t-border);
+  pointer-events: none;
+  z-index: 1;
+}
+.tilo-chart-avg-line span {
+  position: absolute;
+  left: 2px;
+  top: -17px;
+  font-size: 9.5px;
+  color: var(--t-muted);
+  background: var(--t-card);
+  padding: 0 5px;
+  border-radius: 4px;
+}
+
 .tilo-trend-bars {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  gap: 8px;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 7px;
   align-items: end;
-  padding-top: 8px;
+  position: relative;
+  z-index: 2;
 }
+.tilo-trend-bars.is-dense { gap: 4px; }
+
 .tilo-trend-col {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 5px;
   min-width: 0;
+  padding: 4px 2px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    transform var(--t-dur-q) var(--t-ease),
+    background-color var(--t-dur-q) var(--t-ease),
+    border-color var(--t-dur-q) var(--t-ease);
+}
+.tilo-trend-col:active { transform: scale(0.96); }
+.tilo-trend-col:hover,
+.tilo-trend-col.is-selected {
+  background: var(--t-inset);
+  border-color: var(--t-border);
 }
 .tilo-trend-val {
-  font-size: 10.5px;
+  font-size: 10px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--t-muted);
 }
+.tilo-trend-col.is-max .tilo-trend-val { color: var(--t-accent); }
+.tilo-trend-col.is-min .tilo-trend-val { color: var(--t-warning); }
+
 .tilo-trend-track {
   width: 100%;
-  max-width: 30px;
-  height: 88px;
-  border-radius: 8px;
+  max-width: 28px;
+  height: 96px;
+  border-radius: 7px;
   background: var(--t-inset);
   display: flex;
   align-items: flex-end;
   overflow: hidden;
 }
+.tilo-trend-bars.is-dense .tilo-trend-track { max-width: 18px; }
 .tilo-trend-fill {
   width: 100%;
   background: var(--t-border);
-  border-radius: 6px 6px 0 0;
-  transition: height 0.25s ease;
+  border-radius: 5px 5px 0 0;
+  transition: height var(--t-dur) var(--t-ease);
 }
-.tilo-trend-fill.is-today {
-  background: var(--t-accent-solid);
-}
+.tilo-trend-fill.is-today { background: var(--t-accent-solid); }
+.tilo-trend-fill.is-max { background: var(--t-accent); }
+.tilo-trend-fill.is-min { background: var(--t-warning); }
 .tilo-trend-lbl {
-  font-size: 10.5px;
+  font-size: 10px;
   color: var(--t-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
 }
+
+.tilo-an-detail-bar {
+  padding: 10px 12px;
+  border-radius: var(--t-control-radius);
+  background: var(--t-inset);
+  border: 1px solid var(--t-border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--t-muted);
+}
+.tilo-an-detail-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.tilo-an-detail-stats strong { color: var(--t-text); }
+.tilo-an-min-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--t-warning-soft);
+  color: var(--t-warning);
+}
+.tilo-an-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 11px;
+  color: var(--t-muted);
+}
+.tilo-leg-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.tilo-leg-dot.is-max { background: var(--t-accent); }
+.tilo-leg-dot.is-min { background: var(--t-warning); }
+.tilo-leg-dot.is-today { background: var(--t-accent-solid); }
+
 .tilo-insight-list {
   margin: 0;
   padding: 0 1rem 0 0;
@@ -608,7 +1280,64 @@ html body .tilo-theme-switch-btn {
   gap: 5px;
 }
 
-/* منوی بیشتر و مودال‌ها */
+/* ==================== آرشیو و گزارش مشاور ==================== */
+.tilo-rep-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+  gap: 8px;
+}
+.tilo-rep-stat {
+  padding: 10px 11px;
+  border-radius: var(--t-control-radius);
+  background: var(--t-inset);
+  border: 1px solid var(--t-border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tilo-rep-stat span { font-size: 11px; color: var(--t-muted); }
+.tilo-rep-stat strong { font-size: 13.5px; font-weight: 800; color: var(--t-text); }
+
+.tilo-rep-day-card {
+  border-radius: var(--t-control-radius);
+  background: var(--t-inset);
+  border: 1px solid var(--t-border);
+  overflow: hidden;
+}
+.tilo-rep-day-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--t-card);
+  border-bottom: 1px solid var(--t-border);
+}
+.tilo-rep-part-list {
+  display: flex;
+  flex-direction: column;
+}
+.tilo-rep-part-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--t-border);
+}
+.tilo-rep-part-row:last-child { border-bottom: none; }
+.tilo-rep-sub {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--t-accent);
+}
+.tilo-rep-note { color: var(--t-warning); }
+
+/* مخفی در صفحه عادی */
+.tilo-print-sheet { display: none !important; }
+
+/* ==================== منوی بیشتر، مودال‌ها و FABها (باگ ۴ و ۵) ==================== */
 .tilo-more-backdrop {
   position: fixed;
   inset: 0;
@@ -618,18 +1347,22 @@ html body .tilo-theme-switch-btn {
   align-items: flex-end;
   justify-content: center;
   padding: 14px;
+  overscroll-behavior: contain;
+  animation: tiloFadeIn var(--t-dur-q) var(--t-ease-out) both;
 }
 .tilo-more-sheet {
   width: 100%;
-  max-width: 380px;
+  max-width: 390px;
   padding: 16px;
+  box-shadow: var(--t-shadow-elevated) !important;
+  animation: tiloModalRise var(--t-dur) var(--t-ease-out) both;
 }
 .tilo-more-item {
   width: 100%;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 11px 12px;
+  padding: 12px;
   border-radius: var(--t-control-radius);
   background: var(--t-inset);
   border: 1px solid var(--t-border);
@@ -638,15 +1371,19 @@ html body .tilo-theme-switch-btn {
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--t-dur-q) var(--t-ease), border-color var(--t-dur-q) var(--t-ease);
 }
+.tilo-more-item:active { transform: scale(0.98); }
 .tilo-more-item.is-active {
   border-color: var(--t-accent);
   color: var(--t-accent);
   background: var(--t-accent-soft);
 }
+
 .tilo-toast {
   position: fixed;
-  top: 16px;
+  top: calc(14px + env(safe-area-inset-top, 0px));
   left: 50%;
   transform: translateX(-50%);
   z-index: 2147483646;
@@ -657,731 +1394,145 @@ html body .tilo-theme-switch-btn {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 800;
-  box-shadow: var(--t-shadow);
+  box-shadow: var(--t-shadow-elevated);
+  animation: tiloModalRise var(--t-dur-q) var(--t-ease-out) both;
 }
+
 html body #app .fixed.inset-0 {
   background: var(--t-overlay) !important;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  animation: tiloFadeIn var(--t-dur-q) var(--t-ease-out) both;
 }
+html body #app .fixed.inset-0 > .soft-card {
+  box-shadow: var(--t-shadow-elevated) !important;
+  animation: tiloModalRise var(--t-dur) var(--t-ease-out) both;
+}
+
 .tilo-dropdown-panel {
   max-height: 260px;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
-/* موبایل */
+/* هماهنگ‌سازی دکمه‌های شناور (تایم‌بلاک و دفترچه) با تم آرام و ارتفاع امن بالای نوار پایین */
+#tilo-martell-launcher,
+#tn2-fab,
+.tn2-fab {
+  bottom: calc(var(--t-nav-height) + 14px + env(safe-area-inset-bottom, 0px)) !important;
+  touch-action: manipulation;
+  transition: transform var(--t-dur-q) var(--t-ease), opacity var(--t-dur-q) var(--t-ease) !important;
+}
+#tilo-martell-launcher:active,
+#tn2-fab:active,
+.tn2-fab:active {
+  transform: scale(0.95) !important;
+}
+
+/* ==================== موشن Corporate-Calm (ورود نرم کارت‌ها و لیست‌ها) ==================== */
+@keyframes tiloFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes tiloCardRise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes tiloModalRise {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+main > div > .soft-card,
+main > div > .tilo-stat-grid > .tilo-stat-card {
+  animation: tiloCardRise var(--t-dur) var(--t-ease-out) both;
+}
+main > div > :nth-child(1) { animation-delay: 0ms; }
+main > div > :nth-child(2) { animation-delay: 45ms; }
+main > div > :nth-child(3) { animation-delay: 90ms; }
+main > div > :nth-child(4) { animation-delay: 135ms; }
+main > div > :nth-child(5) { animation-delay: 180ms; }
+main > div > :nth-child(n+6) { animation-delay: 220ms; }
+
+.tilo-list-row {
+  transition: transform var(--t-dur-q) var(--t-ease), border-color var(--t-dur-q) var(--t-ease);
+}
+
+/* دفترچه یادداشت جانبی (tn2) */
+#tn2-root.tn2-on {
+  animation: tiloModalRise var(--t-dur-s) var(--t-ease-out) both;
+}
+.tn2-list .tn2-item {
+  animation: tiloCardRise var(--t-dur) var(--t-ease-out) both;
+}
+.tn2-list .tn2-item:nth-child(1) { animation-delay: 0ms; }
+.tn2-list .tn2-item:nth-child(2) { animation-delay: 45ms; }
+.tn2-list .tn2-item:nth-child(3) { animation-delay: 90ms; }
+.tn2-list .tn2-item:nth-child(4) { animation-delay: 135ms; }
+.tn2-list .tn2-item:nth-child(5) { animation-delay: 180ms; }
+.tn2-list .tn2-item:nth-child(n+6) { animation-delay: 225ms; }
+
+/* ==================== ریسپانسیو موبایل و نوار ناوبری پایین (باگ ۴) ==================== */
 @media (max-width: 767px) {
+  :root, body.tilo-theme-night, body.tilo-theme-day {
+    --t-dur-q: 136ms;
+    --t-dur: 216ms;
+    --t-dur-s: 312ms;
+  }
+
+  /* جلوگیری از زوم ناخواسته هنگام فوکوس روی input در موبایل */
   html body :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea) {
     font-size: 16px !important;
   }
+
   html body main {
-    padding-bottom: calc(var(--t-nav-height) + 2rem + env(safe-area-inset-bottom)) !important;
+    padding-top: calc(1rem + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: calc(var(--t-nav-height) + 4.75rem + env(safe-area-inset-bottom, 0px)) !important;
   }
+
   html body nav.soft-card {
     border-radius: 0 !important;
-    padding: 6px 8px calc(6px + env(safe-area-inset-bottom)) 8px;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    min-height: var(--t-nav-height);
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)) 8px !important;
+    contain: layout style;
   }
+
   html body nav.soft-card > button {
-    min-height: 52px;
+    min-height: 50px;
     flex: 1 1 0;
+    gap: 4px;
+    border-radius: 12px;
+    touch-action: manipulation;
+    transition:
+      transform var(--t-dur-q) var(--t-ease),
+      background-color var(--t-dur-q) var(--t-ease),
+      color var(--t-dur-q) var(--t-ease);
+  }
+  html body nav.soft-card > button:active {
+    transform: scale(0.95);
+  }
+  html body nav.soft-card > button i {
+    font-size: 16px;
+    height: 18px;
   }
 }
+
 @media (min-width: 768px) {
   html body nav.soft-card {
     border-radius: 0 !important;
   }
+  #tilo-martell-launcher,
+  #tn2-fab,
+  .tn2-fab {
+    bottom: 20px !important;
+  }
 }
 
-
-/* ========== v21: داشبورد جذاب‌تر + تایمر کامل ========== */
-
-/* نوار خلاصه امروز */
-.tilo-today-strip {
-  background: linear-gradient(135deg, var(--t-accent-soft), var(--t-inset)) !important;
-  border: 1px solid var(--t-border);
-  border-radius: var(--t-radius);
-}
-.tilo-today-strip-text { font-size: 0.88rem !important; }
-
-/* کارت‌های KPI با رنگ متفاوت ملایم */
-.tilo-stat-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-}
-.tilo-stat-card {
-  border-radius: var(--t-radius) !important;
-  padding: 1rem !important;
-  border: 1px solid var(--t-border) !important;
-  background: var(--t-card) !important;
-  min-width: 0;
-}
-.tilo-stat-card:nth-child(1) { border-top: 3px solid #35634e !important; }
-.tilo-stat-card:nth-child(2) { border-top: 3px solid #2f5d7c !important; }
-.tilo-stat-card:nth-child(3) { border-top: 3px solid #8a6532 !important; }
-.tilo-stat-card:nth-child(4) { border-top: 3px solid #57664f !important; }
-.tilo-stat-card .tilo-stat-value {
-  font-size: clamp(1.15rem, 4.5vw, 1.55rem) !important;
-  font-weight: 800 !important;
-  color: var(--t-text) !important;
-}
-
-/* کارت شروع تمرکز */
-.tilo-cta-focus {
-  background: linear-gradient(160deg, var(--t-accent-soft), var(--t-card)) !important;
-  border: 1px solid var(--t-accent) !important;
-  border-radius: var(--t-radius);
-  padding: 1.15rem 1.1rem;
-}
-
-/* streak */
-.tilo-streak-card {
-  background: var(--t-card) !important;
-  border: 1px solid var(--t-border) !important;
-  border-radius: var(--t-radius);
-  padding: 1rem 1.1rem;
-  position: relative;
-  overflow: hidden;
-}
-.tilo-streak-card::before {
-  content: "";
-  position: absolute;
-  right: 0; top: 0; bottom: 0;
-  width: 4px;
-  background: var(--t-accent-solid);
-  border-radius: 0 4px 4px 0;
-}
-
-/* analytics KPI */
-.tilo-an-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.6rem;
-}
-@media (max-width: 640px) {
-  .tilo-an-kpi-grid { grid-template-columns: 1fr; }
-}
-.tilo-an-kpi {
-  background: var(--t-inset);
-  border: 1px solid var(--t-border);
-  border-radius: 12px;
-  padding: 0.7rem 0.8rem;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.tilo-an-kpi.is-max { border-color: rgba(53,99,78,0.55); }
-.tilo-an-kpi.is-min { border-color: rgba(138,101,50,0.45); }
-.tilo-an-kpi-lbl { font-size: 10.5px; color: var(--t-muted); font-weight: 700; }
-.tilo-an-kpi-val { font-size: 13.5px; font-weight: 800; color: var(--t-text); overflow-wrap: anywhere; }
-.tilo-an-kpi-sub { font-size: 10.5px; color: var(--t-muted); overflow-wrap: anywhere; line-height: 1.45; }
-
-.tilo-chart-shell { position: relative; padding-top: 4px; }
-.tilo-chart-avg-line {
-  position: absolute;
-  left: 0; right: 0;
-  border-top: 1px dashed var(--t-accent);
-  pointer-events: none;
-  z-index: 1;
-}
-.tilo-chart-avg-line span {
-  position: absolute;
-  left: 0;
-  top: -9px;
-  font-size: 10px;
-  color: var(--t-accent);
-  background: var(--t-card);
-  padding: 0 4px;
-}
-.tilo-trend-bars.is-dense { gap: 4px; }
-.tilo-trend-fill.is-max { background: var(--t-accent-solid) !important; }
-.tilo-trend-fill.is-min { background: #8a6532 !important; opacity: 0.85; }
-.tilo-trend-col.is-selected .tilo-trend-track { outline: 2px solid var(--t-accent); }
-.tilo-an-detail-bar {
-  background: var(--t-inset);
-  border: 1px solid var(--t-border);
-  border-radius: 12px;
-  padding: 0.75rem 0.9rem;
-}
-.tilo-an-detail-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 0.4rem;
-  font-size: 12px;
-  color: var(--t-muted);
-}
-.tilo-an-min-tag {
-  font-size: 11px;
-  font-weight: 700;
-  color: #e5c58c;
-  background: var(--t-warning-soft);
-  padding: 2px 8px;
-  border-radius: 7px;
-}
-.tilo-an-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  font-size: 11px;
-  color: var(--t-muted);
-}
-.tilo-leg-dot {
-  display: inline-block;
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  margin-left: 4px;
-  background: var(--t-border);
-}
-.tilo-leg-dot.is-max { background: var(--t-accent-solid); }
-.tilo-leg-dot.is-min { background: #8a6532; }
-.tilo-leg-dot.is-today { background: var(--t-accent); }
-
-/* گزارش مشاور کارت‌ها */
-.tilo-rep-summary {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.55rem;
-}
-@media (min-width: 640px) {
-  .tilo-rep-summary { grid-template-columns: repeat(4, 1fr); }
-}
-.tilo-rep-stat {
-  background: var(--t-inset);
-  border: 1px solid var(--t-border);
-  border-radius: 11px;
-  padding: 0.65rem 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.tilo-rep-stat span { font-size: 10.5px; color: var(--t-muted); }
-.tilo-rep-stat strong { font-size: 13px; color: var(--t-text); overflow-wrap: anywhere; }
-.tilo-rep-day-card {
-  border: 1px solid var(--t-border);
-  border-radius: 12px;
-  background: var(--t-inset);
-  overflow: hidden;
-}
-.tilo-rep-day-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0.75rem 0.9rem;
-  border-bottom: 1px solid var(--t-border);
-  flex-wrap: wrap;
-  align-items: flex-start;
-}
-.tilo-rep-part-list { padding: 0.35rem 0.5rem 0.55rem; }
-.tilo-rep-part-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0.55rem 0.4rem;
-  border-bottom: 1px solid var(--t-border);
-  align-items: flex-start;
-}
-.tilo-rep-part-row:last-child { border-bottom: none; }
-.tilo-rep-sub {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--t-accent);
-}
-.tilo-rep-note { color: var(--t-muted); }
-
-/* ========== TIMER (قبلاً در CSS نبود → ظاهر شکسته) ========== */
-.tilo-tm-modes {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.4rem;
-  padding: 0.55rem !important;
-}
-@media (max-width: 420px) {
-  .tilo-tm-modes { grid-template-columns: repeat(2, 1fr); }
-}
-.tilo-tm-mode-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 0.65rem 0.35rem;
-  border-radius: 12px;
-  border: 1px solid var(--t-border);
-  background: var(--t-inset);
-  color: var(--t-muted);
-  font-family: inherit;
-  font-size: 10.5px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
-}
-.tilo-tm-mode-btn i { font-size: 14px; }
-.tilo-tm-mode-btn.is-active {
-  background: var(--t-accent-soft);
-  border-color: var(--t-accent);
-  color: var(--t-accent);
-}
-.tilo-tm-mode-btn:disabled { opacity: 0.55; cursor: not-allowed; }
-
-.tilo-tm-stage {
-  padding: 1.25rem 1.1rem 1.35rem !important;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.85rem;
-  border: 1px solid var(--t-border) !important;
-  background: var(--t-card) !important;
-  border-radius: var(--t-radius) !important;
-}
-.tilo-tm-stage.is-focus {
-  border-color: var(--t-accent) !important;
-  box-shadow: 0 0 0 1px rgba(53,99,78,0.25);
-}
-.tilo-tm-stage.is-break {
-  border-color: rgba(138,101,50,0.55) !important;
-}
-
-.tilo-tm-top {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-.tilo-tm-mini-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 9px;
-  border-radius: 9px;
-  border: 1px solid var(--t-border);
-  background: var(--t-inset);
-  color: var(--t-muted);
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.tilo-tm-round-badge {
-  font-size: 11px;
-  font-weight: 800;
-  color: var(--t-accent);
-  background: var(--t-accent-soft);
-  border: 1px solid var(--t-accent);
-  border-radius: 999px;
-  padding: 2px 9px;
-}
-
-.tilo-tm-active { text-align: center; width: 100%; }
-.tilo-tm-active-title {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 800;
-  color: var(--t-text);
-  overflow-wrap: anywhere;
-}
-.tilo-tm-subtle-tag {
-  font-size: 11px;
-  color: var(--t-muted);
-  background: var(--t-inset);
-  border: 1px solid var(--t-border);
-  border-radius: 999px;
-  padding: 2px 8px;
-}
-
-.tilo-tm-ring-wrap {
-  position: relative;
-  width: min(72vw, 220px);
-  height: min(72vw, 220px);
-  margin: 0.25rem auto;
-}
-.tilo-tm-ring-svg {
-  width: 100%;
-  height: 100%;
-  transform: rotate(-90deg);
-}
-.tilo-tm-ring-track {
-  fill: none;
-  stroke: var(--t-inset);
-  stroke-width: 8;
-}
-.tilo-tm-ring-prog {
-  fill: none;
-  stroke: var(--t-accent-solid);
-  stroke-width: 8;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 0.35s ease;
-}
-.tilo-tm-ring-prog.is-break { stroke: #8a6532; }
-.tilo-tm-ring-prog.is-paused { stroke: #94a3b8; }
-.tilo-tm-ring-center {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 12px;
-}
-.tilo-tm-phase-lbl {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--t-muted);
-  margin-bottom: 2px;
-}
-.tilo-timer-digits {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace !important;
-  font-size: clamp(2.1rem, 9vw, 2.85rem) !important;
-  font-weight: 800 !important;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.03em;
-  color: var(--t-text) !important;
-  line-height: 1.1 !important;
-  margin: 0 !important;
-}
-.tilo-tm-sub-lbl {
-  font-size: 11px;
-  color: var(--t-muted);
-  margin-top: 4px;
-}
-
-.tilo-tm-rounds {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-}
-.tilo-tm-round-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--t-inset);
-  border: 1px solid var(--t-border);
-}
-.tilo-tm-round-dot.is-done { background: var(--t-accent-solid); border-color: var(--t-accent-solid); }
-.tilo-tm-round-dot.is-current { background: var(--t-accent); border-color: var(--t-accent); box-shadow: 0 0 0 3px var(--t-accent-soft); }
-.tilo-tm-round-dot.is-break { background: #8a6532; border-color: #8a6532; }
-
-.tilo-tm-meta {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px 14px;
-  font-size: 11px;
-  color: var(--t-muted);
-  width: 100%;
-}
-.tilo-tm-meta strong { color: var(--t-text); }
-
-.tilo-tm-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  width: 100%;
-}
-.tilo-tm-subactions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
-  width: 100%;
-}
-
-.tilo-tm-panel-box {
-  background: var(--t-inset);
-  border: 1px solid var(--t-border);
-  border-radius: 12px;
-  padding: 0.75rem 0.85rem;
-}
-
-.tilo-tm-part-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  max-height: 240px;
-  overflow-y: auto;
-}
-.tilo-tm-part-card {
-  width: 100%;
-  text-align: right;
-  padding: 0.7rem 0.85rem;
-  border-radius: 12px;
-  border: 1px solid var(--t-border);
-  background: var(--t-inset);
-  color: var(--t-text);
-  font-family: inherit;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-}
-.tilo-tm-part-card.is-selected {
-  border-color: var(--t-accent);
-  background: var(--t-accent-soft);
-}
-.tilo-tm-part-topic {
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--t-text);
-}
-
-/* status pills already partially defined — reinforce */
-.tilo-status-pill.is-idle { color: var(--t-muted); }
-.tilo-status-dot {
-  display: inline-block;
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: currentColor;
-  margin-left: 5px;
-}
-
-/* جلوگیری از متن عمودی عجیب کنار صفحه (باگ لایه‌ها) */
-#app, main { overflow-x: hidden; }
-
-
-
-/* ===== Streak week row (فیکس حروف عمودی) ===== */
-.tilo-streak-card {
-  background: var(--t-card) !important;
-  border: 1px solid var(--t-border) !important;
-  border-radius: var(--t-radius) !important;
-  padding: 1rem 1.1rem !important;
-  overflow: hidden;
-}
-.tilo-streak-main {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  gap: 12px !important;
-  width: 100%;
-}
-.tilo-streak-main > div:first-child {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.tilo-streak-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-.tilo-streak-count {
-  font-size: 1rem;
-  font-weight: 800;
-  color: var(--t-text);
-}
-.tilo-streak-badge {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 9px;
-  border-radius: 999px;
-  border: 1px solid var(--t-border);
-  background: var(--t-inset);
-  color: var(--t-muted);
-}
-.tilo-streak-badge.is-done {
-  background: var(--t-accent-soft);
-  border-color: var(--t-accent);
-  color: var(--t-accent);
-}
-.tilo-streak-badge.is-pending {
-  background: var(--t-warning-soft);
-  border-color: rgba(138,101,50,0.45);
-  color: var(--t-warning);
-}
-.tilo-streak-sub {
-  margin: 0;
-  font-size: 12px;
-  color: var(--t-muted);
-  line-height: 1.55;
-  overflow-wrap: anywhere;
-}
-.tilo-streak-week {
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: nowrap !important;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-.tilo-streak-day {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  gap: 5px;
-  min-width: 22px;
-}
-.tilo-streak-dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: var(--t-inset);
-  border: 1.5px solid var(--t-border);
-}
-.tilo-streak-dot.is-active {
-  background: var(--t-accent-solid);
-  border-color: var(--t-accent-solid);
-}
-.tilo-streak-dot.is-today {
-  box-shadow: 0 0 0 3px var(--t-accent-soft);
-}
-.tilo-streak-dlbl {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--t-muted);
-  line-height: 1;
-  writing-mode: horizontal-tb !important;
-  text-orientation: mixed !important;
-}
-
-/* KPI چهارتایی داشبورد — جذاب‌تر */
-html body .tilo-stat-grid,
-.tilo-stat-grid {
-  display: grid !important;
-  grid-template-columns: 1fr 1fr !important;
-  gap: 0.7rem !important;
-}
-html body .tilo-stat-card {
-  position: relative;
-  border-radius: 14px !important;
-  padding: 0.95rem 0.9rem !important;
-  background: var(--t-card) !important;
-  border: 1px solid var(--t-border) !important;
-  overflow: hidden;
-}
-html body .tilo-stat-card::after {
-  content: "";
-  position: absolute;
-  top: 0; right: 0; left: 0;
-  height: 3px;
-}
-html body .tilo-stat-grid > :nth-child(1)::after { background: #35634e; }
-html body .tilo-stat-grid > :nth-child(2)::after { background: #2f5d7c; }
-html body .tilo-stat-grid > :nth-child(3)::after { background: #8a6532; }
-html body .tilo-stat-grid > :nth-child(4)::after { background: #57664f; }
-
-/* نمودار میله‌ای قوی‌تر */
-.tilo-trend-track {
-  height: 100px !important;
-  border-radius: 10px !important;
-  background: var(--t-inset) !important;
-}
-.tilo-trend-fill {
-  border-radius: 8px 8px 0 0 !important;
-  min-height: 3px;
-  background: #3d6b55 !important;
-}
-.tilo-trend-fill.is-today { background: var(--t-accent-solid) !important; }
-.tilo-trend-fill.is-max { background: #4ade80 !important; }
-.tilo-trend-fill.is-min { background: #b45309 !important; }
-.tilo-trend-val {
-  font-size: 10px !important;
-  font-weight: 700;
-  color: var(--t-text) !important;
-}
-
-/* ========== Motion polish: notes + soft cards (Corporate-Calm) ========== */
-:root {
-  --t-ease: cubic-bezier(0.2, 0, 0, 1);
-  --t-ease-out: cubic-bezier(0.05, 0.7, 0.1, 1);
-  --t-ease-in: cubic-bezier(0.3, 0, 1, 1);
-  --t-dur-q: 160ms;
-  --t-dur: 260ms;
-  --t-dur-s: 380ms;
-}
-
-/* داشبورد: کارت‌ها نرم ظاهر شوند */
-.soft-card,
-.tilo-stat-card,
-.tilo-streak-card,
-.tilo-cta-focus,
-.tilo-today-strip {
-  transition:
-    transform var(--t-dur) var(--t-ease),
-    opacity var(--t-dur) var(--t-ease),
-    border-color var(--t-dur) var(--t-ease),
-    box-shadow var(--t-dur) var(--t-ease);
-}
-
-.tilo-stat-card:active,
-.btn-calm:active,
-button.tilo-choice-btn:active {
-  transform: scale(0.97);
-  transition-duration: var(--t-dur-q);
-}
-
-.btn-calm,
-.tilo-choice-btn,
-.tilo-role-card {
-  transition:
-    transform var(--t-dur-q) var(--t-ease),
-    background-color var(--t-dur-q) var(--t-ease),
-    border-color var(--t-dur-q) var(--t-ease),
-    color var(--t-dur-q) var(--t-ease);
-}
-
-/* دفترچه یادداشت — اگر استایل‌های tn2 لود شده باشند */
-#tn2-root {
-  transition: opacity var(--t-dur-s) var(--t-ease);
-}
-#tn2-root.tn2-on {
-  animation: tn2In var(--t-dur-s) var(--t-ease-out) both;
-}
-@keyframes tn2In {
-  from { opacity: 0; transform: translateY(12px) scale(0.98); }
-  to   { opacity: 1; transform: none; }
-}
-
-.tn2-item,
-.tn2-card,
-.tn2-page {
-  transition:
-    transform var(--t-dur) var(--t-ease),
-    opacity var(--t-dur) var(--t-ease),
-    background-color var(--t-dur) var(--t-ease),
-    border-color var(--t-dur) var(--t-ease);
-}
-.tn2-item:active,
-.tn2-card:active {
-  transform: scale(0.98);
-}
-
-.tn2-btn,
-.tn2-fab,
-.tn2-new,
-.tn2-chip {
-  transition:
-    transform var(--t-dur-q) var(--t-ease),
-    background-color var(--t-dur-q) var(--t-ease),
-    opacity var(--t-dur-q) var(--t-ease);
-}
-.tn2-btn:active,
-.tn2-fab:active,
-.tn2-new:active {
-  transform: scale(0.96);
-}
-
-.tn2-list .tn2-item {
-  animation: tn2ItemIn var(--t-dur) var(--t-ease-out) both;
-}
-.tn2-list .tn2-item:nth-child(1) { animation-delay: 0ms; }
-.tn2-list .tn2-item:nth-child(2) { animation-delay: 40ms; }
-.tn2-list .tn2-item:nth-child(3) { animation-delay: 80ms; }
-.tn2-list .tn2-item:nth-child(4) { animation-delay: 120ms; }
-.tn2-list .tn2-item:nth-child(5) { animation-delay: 160ms; }
-.tn2-list .tn2-item:nth-child(6) { animation-delay: 200ms; }
-.tn2-list .tn2-item:nth-child(n+7) { animation-delay: 240ms; }
-
-@keyframes tn2ItemIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: none; }
-}
-
-.tn2-side {
-  transition: transform var(--t-dur-s) var(--t-ease), opacity var(--t-dur) var(--t-ease);
-}
-
+/* ==================== کاهش حرکت برای کاربران حساس ==================== */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1391,126 +1542,91 @@ button.tilo-choice-btn:active {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-  #tn2-root.tn2-on { animation: none; }
-  .tn2-list .tn2-item { animation: none; }
+  main > div > .soft-card,
+  main > div > .tilo-stat-grid > .tilo-stat-card,
+  #tn2-root.tn2-on,
+  .tn2-list .tn2-item {
+    animation: none !important;
+    transform: none !important;
+  }
 }
 
-
-/* ========== Streak card + icon fallbacks (fix vertical day labels) ========== */
-.tilo-streak-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 14px 16px !important;
-  overflow: hidden;
-}
-.tilo-streak-main {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-  min-width: 0;
-}
-.tilo-streak-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 10px;
-  width: 100%;
-}
-.tilo-streak-count {
-  font-size: 1.05rem;
-  font-weight: 800;
-  line-height: 1.4;
-  color: #e8edf5;
-}
-.tilo-streak-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.tilo-streak-badge.is-done {
-  background: rgba(45, 90, 71, 0.35);
-  color: #a7f3d0;
-  border: 1px solid rgba(74, 222, 128, 0.25);
-}
-.tilo-streak-badge.is-pending {
-  background: rgba(251, 191, 36, 0.12);
-  color: #fde68a;
-  border: 1px solid rgba(251, 191, 36, 0.25);
-}
-.tilo-streak-sub {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
-  opacity: 0.75;
-  color: #cbd5e1;
-}
-.tilo-streak-week {
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: nowrap !important;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  width: 100%;
-  margin-top: 4px;
-  direction: rtl;
-}
-.tilo-streak-day {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  flex: 1 1 0;
-  min-width: 0;
-  max-width: 3.2rem;
-}
-.tilo-streak-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.35);
-  flex-shrink: 0;
-}
-.tilo-streak-dot.is-active {
-  background: #4ade80;
-  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.18);
-}
-.tilo-streak-dot.is-today {
-  outline: 2px solid rgba(96, 165, 250, 0.7);
-  outline-offset: 2px;
-}
-.tilo-streak-dlbl {
-  display: block;
-  font-size: 10px;
-  line-height: 1.2;
-  text-align: center;
-  white-space: nowrap !important;
-  writing-mode: horizontal-tb !important;
-  text-orientation: mixed !important;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-  opacity: 0.8;
-  color: #94a3b8;
+/* ==================== قوانین چاپ / PDF فارسی A4 ==================== */
+@page {
+  size: A4 portrait;
+  margin: 12mm;
 }
 
-/* KPI grid spacing */
-.tilo-kpi-grid,
-.grid.grid-cols-2 {
-  gap: 10px;
-}
+@media print {
+  html, body,
+  html body:is(.tilo-theme-day, .tilo-theme-night),
+  html body.h-screen,
+  html body #app {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 
-/* Icon font fallback when FA blocked */
-.fas, .far, .fab {
-  font-style: normal;
-  font-variant: normal;
-  text-rendering: auto;
-  -webkit-font-smoothing: antialiased;
+  body > :not(#app),
+  #app > :not(#tilo-print-report),
+  nav, header,
+  #tilo-boot-loader, #tilo-vue-fallback, #tilo-err-banner,
+  #tilo-martell-launcher, #tltb-floating-launcher, #tn2-fab, .tn2-fab,
+  .tilo-toast, .tilo-onboard-backdrop, .tilo-more-backdrop {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  html body #tilo-print-report,
+  html body .tilo-print-sheet {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    pointer-events: auto !important;
+    z-index: auto !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    font-family: Vazirmatn, Tahoma, sans-serif !important;
+    direction: rtl !important;
+    font-size: 11px !important;
+    line-height: 1.65 !important;
+  }
+
+  #tilo-print-report .tp-header {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+    border-bottom: 2px solid #24382d;
+  }
+  #tilo-print-report .tp-title { margin: 0; font-size: 16px; font-weight: 900; color: #111827 !important; }
+  #tilo-print-report .tp-subtitle { margin: 3px 0 0 0; font-size: 10.5px; color: #4b5563 !important; }
+  #tilo-print-report .tp-brand-box { text-align: left; display: flex !important; flex-direction: column; font-size: 11px; color: #374151 !important; }
+  #tilo-print-report .tp-brand-box strong { font-size: 13px; color: #111827 !important; }
+  #tilo-print-report .tp-kpi-grid { display: grid !important; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+  #tilo-print-report .tp-kpi { border: 1px solid #d1d5db; background: #f9fafb !important; border-radius: 6px; padding: 7px 9px; display: flex !important; flex-direction: column; gap: 2px; }
+  #tilo-print-report .tp-kpi span { font-size: 9.5px; color: #4b5563 !important; }
+  #tilo-print-report .tp-kpi strong { font-size: 11.5px; font-weight: 800; color: #111827 !important; }
+  #tilo-print-report .tp-day-block { margin-bottom: 14px; break-inside: avoid; page-break-inside: avoid; }
+  #tilo-print-report .tp-day-bar { display: flex !important; justify-content: space-between; align-items: center; gap: 8px; background: #eef4f0 !important; border: 1px solid #cbd5ce; border-bottom: none; padding: 6px 10px; font-size: 11px; color: #111827 !important; }
+  #tilo-print-report .tp-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  #tilo-print-report .tp-table th, #tilo-print-report .tp-table td { border: 1px solid #cbd5ce; padding: 5px 7px; text-align: right; vertical-align: top; word-wrap: break-word; color: #111827 !important; }
+  #tilo-print-report .tp-table th { background: #f3f4f6 !important; font-weight: 800; font-size: 10px; }
+  #tilo-print-report .tp-table tr { break-inside: avoid; page-break-inside: avoid; }
+  #tilo-print-report .tp-muted { font-size: 9.5px; color: #4b5563 !important; margin-top: 2px; }
+  #tilo-print-report .tp-empty { text-align: center; padding: 18px; border: 1px dashed #cbd5ce; color: #4b5563 !important; }
+  #tilo-print-report .tp-footer { margin-top: 18px; padding-top: 10px; border-top: 1px solid #d1d5db; display: flex !important; justify-content: space-between; gap: 12px; font-size: 10.5px; color: #374151 !important; }
 }
